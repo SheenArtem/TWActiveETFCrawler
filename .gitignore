@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 環境變數
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日誌
+logs/
+*.log
+
+# 資料庫（開發時可能要忽略，生產時要追蹤）
+# data/*.db
+# 如果使用 GitHub Actions，請註解掉上面這行以追蹤 .db 檔案
+
+# 測試
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 臨時檔案
+*.tmp
+*.bak

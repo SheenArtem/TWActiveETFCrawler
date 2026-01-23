@@ -1,0 +1,28 @@
+# HTTP 請求和網頁解析
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.1.0
+
+# 資料處理
+pandas>=2.2.0
+
+# Google Sheets API (可選，目前使用SQLite)
+# google-api-python-client>=2.115.0
+# google-auth>=2.27.0
+# google-auth-oauthlib>=1.2.0
+# google-auth-httplib2>=0.2.0
+
+# 排程工具 (本地使用，GitHub Actions不需要)
+# schedule>=1.2.0
+
+# 環境變數管理
+python-dotenv>=1.0.0
+
+# 日誌記錄
+loguru>=0.7.2
+
+# 防封鎖機制
+fake-useragent>=1.4.0
+
+# 資料庫
+# SQLite 是 Python 內建，無需額外安裝
