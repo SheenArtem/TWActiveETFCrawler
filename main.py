@@ -115,7 +115,7 @@ def daily_update_ezmoney():
     logger.info(f"Database statistics:")
     logger.info(f"  Total ETFs: {stats['total_etfs']}")
     logger.info(f"  Total holdings: {stats['total_holdings']}")
-    logger.info(f"  Date range: {stats['date_range']['start']} to {stats['date_range']['end']}"))
+    logger.info(f"  Date range: {stats['date_range']['start']} to {stats['date_range']['end']}")
 
 
 def daily_update_nomura():
