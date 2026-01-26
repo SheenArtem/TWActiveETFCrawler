@@ -2,17 +2,23 @@
 
 [![Daily ETF Scraper](https://github.com/YOUR_USERNAME/TWActiveETFCrawler/actions/workflows/daily-scraper.yml/badge.svg)](https://github.com/YOUR_USERNAME/TWActiveETFCrawler/actions/workflows/daily-scraper.yml)
 
-自動追蹤台灣主動式 ETF（股票代碼 A 結尾）的每日持股變化，使用 SQLite 本地資料庫儲存，並透過 GitHub Actions 實現雲端自動化執行。
+自動追蹤台灣主動式 ETF 的每日持股變化，直接從各家投信官網抓取數據，使用 SQLite 本地資料庫儲存，並透過 GitHub Actions 實現雲端自動化執行。
 
 ## 功能特色
 
-- ✅ 自動識別所有主動式 ETF（代碼 A 結尾）
+- ✅ 直接從各家投信官網爬取持股資料（更準確、更即時）
+- ✅ 支援多家投信：EZMoney + 野村投信
 - ✅ 每日自動抓取持股明細
 - ✅ SQLite 資料庫儲存，查詢快速
 - ✅ GitHub Actions 雲端執行，電腦不用開機
 - ✅ 自動清理 365 天前的舊資料
-- ✅ 完整的防封鎖機制（隨機延遲、User-Agent 輪換）
+- ✅ 完整的防封鎖機制（隨機延遲）
 - ✅ Git 版本控制，完整歷史記錄
+
+## 目前支援的 ETF
+
+- **00981A**: 主動統一台股增長 (EZMoney)
+- **00980A**: 野村台灣創新科技50 (野村投信)
 
 ## 系統需求
 
@@ -34,31 +40,62 @@ cd TWActiveETFCrawler
 pip install -r requirements.txt
 ```
 
-### 3. 初始化歷史資料
+### 3. 每日更新
 
-建立最近 6 個月的持股資料：
-
-```bash
-python main.py --init --months 6
-```
-
-### 4. 每日更新
-
-手動執行每日更新：
+手動執行 EZMoney ETF 更新（建議於晚上 18:00 後執行）：
 
 ```bash
-python main.py --daily-update
+python main.py --ezmoney
 ```
 
-### 5. 查看統計
+手動執行野村投信 ETF 更新：
+
+```bash
+python main.py --nomura
+```
+
+### 4. 查看統計
 
 ```bash
 python main.py --stats
 ```
 
+## 添加新的 ETF
+
+### 方法 1: EZMoney 網站的 ETF
+
+編輯 `src/ezmoney_scraper.py`：
+
+```python
+EZMONEY_ETF_CODES = {
+    '00981A': '49YTW',  # 主動統一台股增長
+    '00000X': 'XXXXX',  # 新的 ETF（需要找出對應的 fundCode）
+}
+```
+
+### 方法 2: 野村投信的 ETF
+
+編輯 `src/nomura_scraper.py`：
+
+```python
+NOMURA_ETF_CODES = {
+    '00980A': '00980A',  # 野村台灣創新科技50
+    '00000X': '00000X',  # 新的 ETF
+}
+```
+
+### 方法 3: 其他投信的 ETF
+
+參考 `src/ezmoney_scraper.py` 或 `src/nomura_scraper.py`，創建新的爬蟲模組：
+
+1. 探索該投信的網站 API
+2. 創建新的 scraper 檔案（例如：`src/yuanta_scraper.py`）
+3. 在 `main.py` 中添加對應的更新函數
+4. 在 GitHub Actions workflow 中添加執行步驟
+
 ## GitHub Actions 自動化設定
 
-本專案已配置 GitHub Actions，會在每天台灣時間 18:00 自動執行爬蟲並更新資料。
+本專案已配置 GitHub Actions，會在每天台灣時間 18:00 自動執行所有投信爬蟲並更新資料。
 
 ### 設定步驟
 
@@ -183,6 +220,61 @@ conn.close()
 - ✅ 隨機 User-Agent 輪換
 - ✅ 指數退避重試策略（最多 3 次）
 - ✅ Session 連線管理
+
+## EZMoney ETF 整合說明
+
+### 什麼是 EZMoney ETF？
+
+本系統支援從 EZMoney 網站抓取特定 ETF 的每日成分股資料。目前支援：
+- **00981A**: 主動統一台股增長
+
+### 為什麼需要 EZMoney？
+
+- 某些主動式 ETF 的資料在 EZMoney 網站上更新較快
+- 提供當日最新的持股明細（下午 6 點後更新）
+- 補充證交所資料來源
+
+### 如何添加新的 EZMoney ETF？
+
+編輯 `src/ezmoney_scraper.py`，在 `EZMONEY_ETF_CODES` 字典中添加新的對照：
+
+```python
+EZMONEY_ETF_CODES = {
+    '00981A': '49YTW',  # 主動統一台股增長
+    '00000X': 'XXXXX',  # 新的 ETF（需要找出對應的 fundCode）
+}
+```
+
+### 執行時間說明
+
+- **TWSE ETF**: 每日 18:00（資料通常 T+1 更新）
+- **EZMoney ETF**: 每日 18:00 之後（當日資料在下午 6 點後才會更新）
+- **GitHub Actions**: 統一在 UTC 10:00（台北時間 18:00）執行
+
+## 野村投信 ETF 整合說明
+
+### 什麼是野村投信 ETF？
+
+本系統支援從野村投信網站抓取特定 ETF 的每日成分股資料。目前支援：
+- **00980A**: 野村台灣創新科技50
+
+### 如何添加新的野村投信 ETF？
+
+編輯 `src/nomura_scraper.py`，在 `NOMURA_ETF_CODES` 字典中添加新的對照：
+
+```python
+NOMURA_ETF_CODES = {
+    '00980A': '00980A',  # 野村台灣創新科技50
+    '00000X': '00000X',  # 新的 ETF
+}
+```
+
+### 執行時間說明
+
+- **TWSE ETF**: 每日 18:00（資料通常 T+1 更新）
+- **EZMoney ETF**: 每日 18:00 之後（當日資料在下午 6 點後才會更新）
+- **野村投信 ETF**: 每日 18:00（資料通常 T+1 更新）
+- **GitHub Actions**: 統一在 UTC 10:00（台北時間 18:00）執行
 
 ## 常見問題
 

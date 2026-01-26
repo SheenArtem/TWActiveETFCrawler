@@ -18,16 +18,6 @@ DB_FULL_PATH = BASE_DIR / DB_PATH
 # 資料保留設定
 DATA_RETENTION_DAYS = int(os.getenv("DATA_RETENTION_DAYS", "365"))
 
-# 台灣證交所 API 端點
-TWSE_ETF_LIST_URL = os.getenv(
-    "TWSE_ETF_LIST_URL",
-    "https://www.twse.com.tw/zh/ETF/etfList"
-)
-TWSE_ETF_HOLDINGS_URL = os.getenv(
-    "TWSE_ETF_HOLDINGS_URL",
-    "https://www.twse.com.tw/rwd/zh/fund/etfHoldings"
-)
-
 # 爬蟲設定
 REQUEST_DELAY_MIN = float(os.getenv("REQUEST_DELAY_MIN", "1.0"))
 REQUEST_DELAY_MAX = float(os.getenv("REQUEST_DELAY_MAX", "3.0"))

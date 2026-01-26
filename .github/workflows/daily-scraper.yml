@@ -31,9 +31,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Run daily update
+      # TWSE 爬蟲已於 2026-01-26 移除，改為使用各家投信官網直接爬取
+      
+      - name: Run daily update (EZMoney ETFs)
         run: |
-          python main.py --daily-update
+          python main.py --ezmoney
+      
+      - name: Run daily update (Nomura ETFs)
+        run: |
+          python main.py --nomura
       
       - name: Show database statistics
         run: |
