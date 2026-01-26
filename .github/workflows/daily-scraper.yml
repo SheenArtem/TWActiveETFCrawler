@@ -1,9 +1,9 @@
 name: Daily ETF Scraper
 
 on:
-  # 每天 UTC 10:00 執行（台灣時間 18:00）
   schedule:
-    - cron: '0 10 * * *'
+    # 每天台北時間早上 06:00 執行（UTC 22:00 前一天）
+    - cron: '0 22 * * *'
   
   # 允許手動觸發
   workflow_dispatch:
