@@ -125,13 +125,10 @@ class HoldingsAnalyzer:
                 new_lots = self.shares_to_lots(new_shares)
                 lots_diff = new_lots - old_lots
                 
-                # 只要權重或股數有明顯變化就記錄
-                has_weight_change = abs(weight_diff) >= self.weight_threshold
-                has_shares_change = abs(lots_diff) >= 0.01  # 變動超過0.01張
-                
-                if has_weight_change or has_shares_change:
-                    # 決定變動類型
-                    if has_weight_change:
+                # 只要股數有任何變化就記錄（包括1股的變化）
+                if shares_diff != 0:
+                    # 決定變動類型：優先以股數變化判斷
+                    if abs(weight_diff) >= self.weight_threshold:
                         change_type = 'WEIGHT_UP' if weight_diff > 0 else 'WEIGHT_DOWN'
                     else:
                         change_type = 'SHARES_UP' if shares_diff > 0 else 'SHARES_DOWN'
