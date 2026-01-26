@@ -87,7 +87,7 @@ def daily_update_ezmoney():
     logger.info(f"EZMoney ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and total_inserted > 0:
+    if ENABLE_CHANGE_TRACKING:
         logger.info("Analyzing holdings changes...")
         analyzer = HoldingsAnalyzer(db, WEIGHT_CHANGE_THRESHOLD)
         changes_dict = analyzer.detect_all_changes(date_str)
@@ -103,7 +103,8 @@ def daily_update_ezmoney():
                     f.write(report)
                 logger.info(f"Change report saved to: {report_file}")
         else:
-            logger.info("No significant changes detected.")
+            logger.info("No significant changes detected (this may be the first time fetching data).")
+
     
     # 清理舊資料
     logger.info("Cleaning up old data...")
