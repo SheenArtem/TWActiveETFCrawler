@@ -30,6 +30,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          playwright install chromium
       
       # TWSE 爬蟲已於 2026-01-26 移除，改為使用各家投信官網直接爬取
       
@@ -40,6 +41,30 @@ jobs:
       - name: Run daily update (Nomura ETFs)
         run: |
           python main.py --nomura
+
+      - name: Run daily update (Capital ETFs)
+        run: |
+          python main.py --capital
+
+      - name: Run daily update (FHTrust ETFs)
+        run: |
+          python main.py --fhtrust
+
+      - name: Run daily update (CTBC ETFs)
+        run: |
+          python main.py --ctbc
+
+      - name: Run daily update (FSITC ETFs)
+        run: |
+          python main.py --fsitc
+
+      - name: Run daily update (TSIT ETFs)
+        run: |
+          python main.py --tsit
+
+      - name: Run daily update (Allianz ETFs)
+        run: |
+          python main.py --allianz
       
       - name: Show database statistics
         run: |

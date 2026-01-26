@@ -26,3 +26,7 @@ fake-useragent>=1.4.0
 
 # 資料庫
 # SQLite 是 Python 內建，無需額外安裝
+
+# 瀏覽器自動化 (Playwright)
+playwright>=1.41.0
+pytest-playwright>=0.4.4
