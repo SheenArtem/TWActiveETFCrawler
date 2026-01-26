@@ -8,9 +8,8 @@ on:
   # 允許手動觸發
   workflow_dispatch:
   
-  # Push 到 main 時也執行（用於測試）
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
 
 jobs:
   scrape:
