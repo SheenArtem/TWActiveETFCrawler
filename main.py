@@ -6,7 +6,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 
-from src.config import DB_FULL_PATH, LOG_PATH, LOG_LEVEL, DATA_RETENTION_DAYS, BASE_DIR
+from src.config import (
+    DB_FULL_PATH, 
+    LOG_PATH, 
+    LOG_LEVEL, 
+    DATA_RETENTION_DAYS, 
+    BASE_DIR,
+    ENABLE_CHANGE_TRACKING,
+    WEIGHT_CHANGE_THRESHOLD,
+    SAVE_CHANGE_REPORTS,
+    REPORTS_DIR
+)
 from src.database import Database
 # TWSE 爬蟲已移除，改為使用各家投信官網直接爬取
 from src.ezmoney_scraper import EZMoneyScraper
@@ -18,6 +28,7 @@ from src.fsitc_scraper import FSITCScraper
 from src.tsit_scraper import TSITScraper
 from src.allianz_scraper import AllianzScraper
 from src.utils import setup_logging, cleanup_old_data, get_trading_days
+from src.holdings_analyzer import HoldingsAnalyzer
 from loguru import logger
 
 
@@ -75,6 +86,25 @@ def daily_update_ezmoney():
     
     logger.info(f"EZMoney ETF daily update complete: {total_inserted} new holdings inserted")
     
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING and total_inserted > 0:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db, WEIGHT_CHANGE_THRESHOLD)
+        changes_dict = analyzer.detect_all_changes(date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                with open(report_file, 'w', encoding='utf-8') as f:
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
+    
     # 清理舊資料
     logger.info("Cleaning up old data...")
     cleanup_result = cleanup_old_data(str(DB_FULL_PATH), DATA_RETENTION_DAYS)
@@ -85,7 +115,7 @@ def daily_update_ezmoney():
     logger.info(f"Database statistics:")
     logger.info(f"  Total ETFs: {stats['total_etfs']}")
     logger.info(f"  Total holdings: {stats['total_holdings']}")
-    logger.info(f"  Date range: {stats['date_range']['start']} to {stats['date_range']['end']}")
+    logger.info(f"  Date range: {stats['date_range']['start']} to {stats['date_range']['end']}"))
 
 
 def daily_update_nomura():

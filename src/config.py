@@ -29,12 +29,20 @@ BATCH_DELAY_MAX = float(os.getenv("BATCH_DELAY_MAX", "10.0"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_PATH = BASE_DIR / os.getenv("LOG_PATH", "logs/etf_crawler.log")
 
+# 變動追蹤設定
+ENABLE_CHANGE_TRACKING = os.getenv("ENABLE_CHANGE_TRACKING", "True").lower() == "true"
+WEIGHT_CHANGE_THRESHOLD = float(os.getenv("WEIGHT_CHANGE_THRESHOLD", "0.5"))  # 權重變動閾值（%）
+SAVE_CHANGE_REPORTS = os.getenv("SAVE_CHANGE_REPORTS", "True").lower() == "true"
+REPORTS_DIR = BASE_DIR / os.getenv("REPORTS_DIR", "reports")
+
 # 確保必要目錄存在
 def ensure_directories():
     """確保必要的目錄存在"""
     (BASE_DIR / "data").mkdir(exist_ok=True)
     (BASE_DIR / "logs").mkdir(exist_ok=True)
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if SAVE_CHANGE_REPORTS:
+        REPORTS_DIR.mkdir(exist_ok=True)
 
 # 初始化時建立目錄
 ensure_directories()

@@ -227,6 +227,36 @@ class Database:
         
         return result
     
+    def get_previous_trading_date(self, current_date: str, etf_code: str = None) -> str:
+        """
+        獲取指定日期的前一個交易日
+        
+        Args:
+            current_date: 當前日期 (YYYY-MM-DD)
+            etf_code: ETF 代碼（可選）
+        
+        Returns:
+            str: 前一個交易日，若無則返回 None
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if etf_code:
+            cursor.execute("""
+                SELECT MAX(date) FROM holdings 
+                WHERE date < ? AND etf_code = ?
+            """, (current_date, etf_code))
+        else:
+            cursor.execute("""
+                SELECT MAX(date) FROM holdings 
+                WHERE date < ?
+            """, (current_date,))
+        
+        result = cursor.fetchone()[0]
+        conn.close()
+        
+        return result
+    
     def get_statistics(self) -> Dict[str, Any]:
         """
         獲取資料庫統計資訊
