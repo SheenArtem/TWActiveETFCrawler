@@ -44,10 +44,17 @@ def daily_update_ezmoney():
     db = Database(DB_FULL_PATH)
     scraper = EZMoneyScraper()
     
-    # 使用今天的日期（EZMoney 資料在當天下午 6 點後更新）
+    # EZMoney 的資料公告時間是 T+1（今天的資料明天才公告）
+    # 所以要用「明天」的日期來查詢，但資料實際上是「今天」的持股
     today = datetime.now()
-    date_str = today.strftime('%Y-%m-%d')
-    logger.info(f"Fetching EZMoney ETF data for {date_str}")
+    tomorrow = today + timedelta(days=1)
+    
+    # API 查詢用明天的日期
+    fetch_date_str = tomorrow.strftime('%Y-%m-%d')
+    # 資料庫儲存用今天的日期（因為是今天的持股資料）
+    storage_date_str = today.strftime('%Y-%m-%d')
+    
+    logger.info(f"Fetching EZMoney ETF data published on {fetch_date_str} (holdings for {storage_date_str})")
     
     # 取得所有已配置的 EZMoney ETF
     ezmoney_etfs = scraper.get_all_mappings()
@@ -72,8 +79,13 @@ def daily_update_ezmoney():
         logger.info(f"[{i}/{len(ezmoney_etfs)}] Updating {etf_code}")
         
         try:
-            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            # 用明天的日期查詢 API
+            holdings = scraper.get_etf_holdings(etf_code, fetch_date_str)
             if holdings:
+                # 將日期改回今天再存入資料庫
+                for holding in holdings:
+                    holding['date'] = storage_date_str
+                
                 inserted = db.insert_holdings(holdings)
                 total_inserted += inserted
                 logger.info(f"{etf_code}: Inserted {inserted} new holdings")
@@ -89,15 +101,16 @@ def daily_update_ezmoney():
     if ENABLE_CHANGE_TRACKING:
         logger.info("Analyzing holdings changes...")
         analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_all_changes(date_str)
+        # 只檢查 EZMoney 相關的 ETF 變動，避免檢查到其他尚未更新的 ETF
+        changes_dict = analyzer.detect_changes_batch(list(ezmoney_etfs.keys()), storage_date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = analyzer.generate_report(changes_dict, storage_date_str)
             logger.info(report)
             
             # 儲存報告到檔案
             if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                report_file = REPORTS_DIR / f"changes_{storage_date_str}.txt"
                 with open(report_file, 'w', encoding='utf-8') as f:
                     f.write(report)
                 logger.info(f"Change report saved to: {report_file}")
@@ -118,6 +131,7 @@ def daily_update_ezmoney():
     logger.info(f"  Date range: {stats['date_range']['start']} to {stats['date_range']['end']}")
 
 
+
 def daily_update_nomura():
     """每日更新野村投信ETF 作業"""
     logger.info("Starting Nomura Funds ETF daily update...")
@@ -126,12 +140,12 @@ def daily_update_nomura():
     db = Database(DB_FULL_PATH)
     scraper = NomuraScraper()
     
-    # 使用昨天的日期（資料通常 T+1 更新）
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期（資料通常在當晚更新）
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d')
+    date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Nomura ETF data for {date_str}")
     
     # 取得所有已配置的野村 ETF
@@ -179,12 +193,12 @@ def daily_update_capital():
     db = Database(DB_FULL_PATH)
     scraper = CapitalScraper()
     
-    # 使用昨天的日期
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d') # YYYY-MM-DD
+    date_str = target_date.strftime('%Y-%m-%d') # YYYY-MM-DD
     
     logger.info(f"Fetching Capital ETF data for {date_str}")
     
@@ -233,12 +247,12 @@ def daily_update_fhtrust():
     db = Database(DB_FULL_PATH)
     scraper = FHTrustScraper()
     
-    # 使用昨天的日期
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d')
+    date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching FHTrust ETF data for {date_str}")
     
     # 取得所有已配置的復華 ETF
@@ -286,11 +300,12 @@ def daily_update_ctbc():
     db = Database(DB_FULL_PATH)
     scraper = CTBCScraper()
     
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d')
+    date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching CTBC ETF data for {date_str}")
     
     # 取得所有已配置的中信 ETF
@@ -337,12 +352,12 @@ def daily_update_fsitc():
     db = Database(DB_FULL_PATH)
     scraper = FSITCScraper()
     
-    # 使用昨天的日期
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d')
+    date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching FSITC ETF data for {date_str}")
     
     # 取得所有已配置的第一金 ETF
@@ -389,12 +404,12 @@ def daily_update_tsit():
     db = Database(DB_FULL_PATH)
     scraper = TSITScraper()
     
-    # 使用昨天的日期
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d')
+    date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching TSIT ETF data for {date_str}")
     
     # 取得所有已配置的台新 ETF
@@ -442,17 +457,18 @@ def daily_update_allianz():
     db = Database(DB_FULL_PATH)
     scraper = AllianzScraper()
     
-    # 使用昨天的日期（資料通常 T+1 更新）
-    yesterday = datetime.now() - timedelta(days=1)
-    while yesterday.weekday() >= 5:  # 避免週末
-        yesterday -= timedelta(days=1)
+    # 使用今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
     
-    date_str = yesterday.strftime('%Y-%m-%d')
+    date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Allianz ETF data for {date_str}")
     
     # 取得所有已配置的安聯投信 ETF
     allianz_etfs = scraper.get_all_mappings()
     logger.info(f"Found {len(allianz_etfs)} Allianz ETFs to update")
+
     
     # 確保 ETF 存在於 etf_list 表中
     etf_list_data = []

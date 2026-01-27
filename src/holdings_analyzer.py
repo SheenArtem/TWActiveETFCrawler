@@ -161,6 +161,27 @@ class HoldingsAnalyzer:
         
         return changes if changes else None
     
+    def detect_changes_batch(self, etf_codes: List[str], current_date: str) -> Dict[str, List[HoldingChange]]:
+        """
+        偵測指定列表中 ETF 在指定日期的變動
+        
+        Args:
+            etf_codes: ETF 代碼列表
+            current_date: 當前日期 (YYYY-MM-DD)
+            
+        Returns:
+            Dict[str, List[HoldingChange]]: ETF代碼 -> 變動列表的字典
+        """
+        all_changes = {}
+        
+        for etf_code in etf_codes:
+            changes = self.detect_changes(etf_code, current_date)
+            
+            if changes:
+                all_changes[etf_code] = changes
+                
+        return all_changes
+
     def detect_all_changes(self, current_date: str) -> Dict[str, List[HoldingChange]]:
         """
         偵測所有ETF在指定日期的變動
@@ -171,19 +192,11 @@ class HoldingsAnalyzer:
         Returns:
             Dict[str, List[HoldingChange]]: ETF代碼 -> 變動列表的字典
         """
-        all_changes = {}
-        
         # 取得所有有資料的ETF
         etfs = self.db.get_active_etfs()
+        etf_codes = [etf['etf_code'] for etf in etfs]
         
-        for etf in etfs:
-            etf_code = etf['etf_code']
-            changes = self.detect_changes(etf_code, current_date)
-            
-            if changes:
-                all_changes[etf_code] = changes
-        
-        return all_changes
+        return self.detect_changes_batch(etf_codes, current_date)
     
     def generate_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str) -> str:
         """
