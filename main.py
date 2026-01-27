@@ -183,6 +183,29 @@ def daily_update_nomura():
             logger.exception(e)
             
     logger.info(f"Nomura ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(nomura_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
 
 
 def daily_update_capital():
@@ -237,6 +260,29 @@ def daily_update_capital():
             logger.exception(e)
             
     logger.info(f"Capital ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(capital_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
 
 
 def daily_update_fhtrust():
@@ -290,6 +336,29 @@ def daily_update_fhtrust():
             logger.exception(e)
             
     logger.info(f"FHTrust ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(fhtrust_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
 
 
 def daily_update_ctbc():
@@ -343,6 +412,29 @@ def daily_update_ctbc():
             logger.exception(e)
             
     logger.info(f"CTBC ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(ctbc_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
 
 def daily_update_fsitc():
     """每日更新第一金投信ETF 作業"""
@@ -395,6 +487,29 @@ def daily_update_fsitc():
             logger.exception(e)
             
     logger.info(f"FSITC ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(fsitc_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
 
 def daily_update_tsit():
     """每日更新台新投信ETF 作業"""
@@ -447,6 +562,29 @@ def daily_update_tsit():
             logger.exception(e)
             
     logger.info(f"TSIT ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(tsit_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
 
 
 def daily_update_allianz():
@@ -501,6 +639,29 @@ def daily_update_allianz():
             logger.exception(e)
     
     logger.info(f"Allianz ETF daily update complete: {total_inserted} new holdings inserted")
+    
+    # 變動追蹤：分析並顯示成分股變動
+    if ENABLE_CHANGE_TRACKING:
+        logger.info("Analyzing holdings changes...")
+        analyzer = HoldingsAnalyzer(db)
+        changes_dict = analyzer.detect_changes_batch(list(allianz_etfs.keys()), date_str)
+        
+        if changes_dict:
+            report = analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            
+            # 儲存報告到檔案
+            if SAVE_CHANGE_REPORTS:
+                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
+                # 如果檔案存在，追加內容
+                mode = 'a' if report_file.exists() else 'w'
+                with open(report_file, mode, encoding='utf-8') as f:
+                    if mode == 'a':
+                        f.write('\n')
+                    f.write(report)
+                logger.info(f"Change report saved to: {report_file}")
+        else:
+            logger.info("No significant changes detected.")
     
     # 清理舊資料
     logger.info("Cleaning up old data...")
