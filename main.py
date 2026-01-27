@@ -13,7 +13,6 @@ from src.config import (
     DATA_RETENTION_DAYS, 
     BASE_DIR,
     ENABLE_CHANGE_TRACKING,
-    WEIGHT_CHANGE_THRESHOLD,
     SAVE_CHANGE_REPORTS,
     REPORTS_DIR
 )
@@ -89,7 +88,7 @@ def daily_update_ezmoney():
     # 變動追蹤：分析並顯示成分股變動
     if ENABLE_CHANGE_TRACKING:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db, WEIGHT_CHANGE_THRESHOLD)
+        analyzer = HoldingsAnalyzer(db)
         changes_dict = analyzer.detect_all_changes(date_str)
         
         if changes_dict:
