@@ -9,14 +9,9 @@ from loguru import logger
 @dataclass
 class HoldingChange:
     """持股變動記錄"""
-    change_type: str  # ADDED, REMOVED, WEIGHT_UP, WEIGHT_DOWN, SHARES_UP, SHARES_DOWN
+    change_type: str  # ADDED, REMOVED, SHARES_UP, SHARES_DOWN
     stock_code: str
     stock_name: str
-    
-    # 權重相關
-    old_weight: Optional[float] = None
-    new_weight: Optional[float] = None
-    weight_diff: Optional[float] = None
     
     # 股數相關（股）
     old_shares: Optional[int] = None
@@ -32,16 +27,14 @@ class HoldingChange:
 class HoldingsAnalyzer:
     """持股變動分析器"""
     
-    def __init__(self, db, weight_threshold: float = 0.5):
+    def __init__(self, db):
         """
         初始化分析器
         
         Args:
             db: 資料庫實例
-            weight_threshold: 權重變動閾值（%），預設 0.5%
         """
         self.db = db
-        self.weight_threshold = weight_threshold
     
     @staticmethod
     def shares_to_lots(shares: int) -> float:
@@ -87,7 +80,6 @@ class HoldingsAnalyzer:
                     change_type='ADDED',
                     stock_code=code,
                     stock_name=holding.get('stock_name', ''),
-                    new_weight=holding.get('weight', 0),
                     new_shares=holding.get('shares', 0),
                     new_lots=lots
                 ))
@@ -102,20 +94,15 @@ class HoldingsAnalyzer:
                     change_type='REMOVED',
                     stock_code=code,
                     stock_name=holding.get('stock_name', ''),
-                    old_weight=holding.get('weight', 0),
                     old_shares=holding.get('shares', 0),
                     old_lots=lots
                 ))
         
-        # 3. 檢測權重與股數變動
+        # 3. 檢測股數變動
         for code in yesterday_stocks:
             if code in today_stocks:
                 old_holding = yesterday_stocks[code]
                 new_holding = today_stocks[code]
-                
-                old_weight = old_holding.get('weight', 0)
-                new_weight = new_holding.get('weight', 0)
-                weight_diff = new_weight - old_weight
                 
                 old_shares = old_holding.get('shares', 0)
                 new_shares = new_holding.get('shares', 0)
@@ -127,19 +114,12 @@ class HoldingsAnalyzer:
                 
                 # 只要股數有任何變化就記錄（包括1股的變化）
                 if shares_diff != 0:
-                    # 決定變動類型：優先以股數變化判斷
-                    if abs(weight_diff) >= self.weight_threshold:
-                        change_type = 'WEIGHT_UP' if weight_diff > 0 else 'WEIGHT_DOWN'
-                    else:
-                        change_type = 'SHARES_UP' if shares_diff > 0 else 'SHARES_DOWN'
+                    change_type = 'SHARES_UP' if shares_diff > 0 else 'SHARES_DOWN'
                     
                     changes.append(HoldingChange(
                         change_type=change_type,
                         stock_code=code,
                         stock_name=new_holding.get('stock_name', ''),
-                        old_weight=old_weight,
-                        new_weight=new_weight,
-                        weight_diff=weight_diff,
                         old_shares=old_shares,
                         new_shares=new_shares,
                         shares_diff=shares_diff,
@@ -246,7 +226,7 @@ class HoldingsAnalyzer:
                     prefix = "├─" if i < len(added) - 1 else "└─"
                     report_lines.append(
                         f"    {prefix} {change.stock_code} {change.stock_name} "
-                        f"(權重: {change.new_weight:.2f}%, 持股: {change.new_lots:.2f}張)"
+                        f"(持股: {change.new_lots:.2f}張)"
                     )
                 report_lines.append("")
             
@@ -257,37 +237,23 @@ class HoldingsAnalyzer:
                     prefix = "├─" if i < len(removed) - 1 else "└─"
                     report_lines.append(
                         f"    {prefix} {change.stock_code} {change.stock_name} "
-                        f"(昨日權重: {change.old_weight:.2f}%, 昨日持股: {change.old_lots:.2f}張)"
+                        f"(昨日持股: {change.old_lots:.2f}張)"
                     )
                 report_lines.append("")
             
-            # 權重與持股變動
+            # 持股變動
             if modified:
-                report_lines.append(f"  權重與持股變動 ({len(modified)}):")
+                report_lines.append(f"  持股變動 ({len(modified)}):")
                 for i, change in enumerate(modified):
-                    is_last = (i == len(modified) - 1)
-                    prefix = "└─" if is_last else "├─"
-                    continuation = "   " if is_last else "│  "
-                    
-                    # 第一行：股票代碼和名稱
-                    report_lines.append(f"    {prefix} {change.stock_code} {change.stock_name}")
-                    
-                    # 權重變動
-                    weight_arrow = "▲" if change.weight_diff > 0 else "▼"
-                    report_lines.append(
-                        f"    {continuation} 權重: {change.old_weight:.2f}% → {change.new_weight:.2f}% "
-                        f"({weight_arrow}{abs(change.weight_diff):.2f}%)"
-                    )
+                    prefix = "├─" if i < len(modified) - 1 else "└─"
                     
                     # 持股變動
                     lots_arrow = "▲" if change.lots_diff > 0 else "▼"
                     report_lines.append(
-                        f"    {continuation} 持股: {change.old_lots:.2f}張 → {change.new_lots:.2f}張 "
+                        f"    {prefix} {change.stock_code} {change.stock_name} "
+                        f"持股: {change.old_lots:.2f}張 → {change.new_lots:.2f}張 "
                         f"({lots_arrow}{abs(change.lots_diff):.2f}張)"
                     )
-                    
-                    if not is_last:
-                        report_lines.append(f"    │")
                 
                 report_lines.append("")
             
