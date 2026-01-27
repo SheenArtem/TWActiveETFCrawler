@@ -74,4 +74,5 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add data/etf_holdings.db
+          git add reports/
           git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Update ETF holdings data - $(date +'%Y-%m-%d')" && git push)
