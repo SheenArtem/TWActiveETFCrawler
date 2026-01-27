@@ -91,16 +91,16 @@ class FSITCScraper:
                         else:
                             try:
                                 inner_data = json.loads(result)
-                                holdings = self._parse_json_data(inner_data, date)
+                                holdings = self._parse_json_data(inner_data, date, etf_code)
                             except json.JSONDecodeError:
                                 # 嘗試直接當作 HTML
-                                holdings = self._parse_html_table(result, date)
+                                holdings = self._parse_html_table(result, date, etf_code)
                                 
                     except Exception as parse_e:
                         logger.error(f"Error parsing content: {parse_e}")
                 else:
                     # 已經是 dict/list
-                    holdings = self._parse_json_data(result, date)
+                    holdings = self._parse_json_data(result, date, etf_code)
 
                 logger.info(f"Parsed {len(holdings)} holdings for {etf_code}")
                 
@@ -113,7 +113,7 @@ class FSITCScraper:
             
         return holdings
     
-    def _parse_html_table(self, html_content: str, date: str) -> List[Dict[str, Any]]:
+    def _parse_html_table(self, html_content: str, date: str, etf_code: str = None) -> List[Dict[str, Any]]:
         """解析 HTML 表格數據"""
         from bs4 import BeautifulSoup
         
@@ -146,10 +146,12 @@ class FSITCScraper:
                         # 簡單驗證
                         if code.isdigit() and len(code) == 4:
                             holdings.append({
+                                'etf_code': etf_code,
                                 'stock_code': code,
                                 'stock_name': name,
                                 'shares': int(float(shares_str)) if shares_str else 0,
                                 'weight': float(weight_str) if weight_str else 0.0,
+                                'market_value': 0,
                                 'date': date
                             })
                     except Exception as e:
@@ -161,7 +163,7 @@ class FSITCScraper:
             
         return holdings
 
-    def _parse_json_data(self, data: List[Dict], date: str) -> List[Dict[str, Any]]:
+    def _parse_json_data(self, data: List[Dict], date: str, etf_code: str = None) -> List[Dict[str, Any]]:
         """解析 JSON 列表數據"""
         holdings = []
         # JSON keys mapping found:
@@ -195,10 +197,12 @@ class FSITCScraper:
                             pass
                             
                     holdings.append({
+                        'etf_code': etf_code,
                         'stock_code': str(code).strip(),
                         'stock_name': str(name).strip(),
                         'shares': shares,
                         'weight': weight,
+                        'market_value': 0,
                         'date': date
                     })
             except Exception as e:

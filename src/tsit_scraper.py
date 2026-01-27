@@ -66,7 +66,7 @@ class TSITScraper:
                     # 簡單檢查：如果請求的 date 和頁面 date 差距過大，可能需要 POST
                     pass
                 
-                holdings = self._parse_html_table(soup, date)
+                holdings = self._parse_html_table(soup, date, etf_code)
                 logger.info(f"Parsed {len(holdings)} holdings for {etf_code}")
                 
             else:
@@ -78,7 +78,7 @@ class TSITScraper:
             
         return holdings
     
-    def _parse_html_table(self, soup: BeautifulSoup, date: str) -> List[Dict[str, Any]]:
+    def _parse_html_table(self, soup: BeautifulSoup, date: str, etf_code: str = None) -> List[Dict[str, Any]]:
         """解析 HTML 表格數據"""
         holdings = []
         try:
@@ -141,11 +141,13 @@ class TSITScraper:
                         # 簡單驗證代碼格式 (4碼數字)
                         if code.isdigit() and len(code) == 4:
                             holdings.append({
+                                'etf_code': etf_code,  # 添加 etf_code
                                 'stock_code': code,
                                 'stock_name': name,
                                 'shares': shares,
                                 'weight': weight,
-                                'date': date # 這裡使用傳入的 date，雖然頁面可能是不同日期，但通常我們只跑最新
+                                'market_value': 0,  # 台新投信網站沒有提供市值
+                                'date': date # 這裡使用傳入的 date
                             })
                     except Exception as e:
                         logger.debug(f"Error parsing row: {e}")
