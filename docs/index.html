@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣主動式 ETF 持股追蹤系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f9fafb;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: var(--primary);
+            font-size: 3em;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .stat-card .icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .stat-card .label {
+            color: #666;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        
+        .reports-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+        
+        .reports-section h2 {
+            color: var(--primary);
+            font-size: 2em;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .reports-grid {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .report-item {
+            background: var(--light);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .report-item:hover {
+            background: #e5e7eb;
+            transform: translateX(5px);
+        }
+        
+        .report-item .date {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--dark);
+        }
+        
+        .report-item .summary {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .report-item .actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary);
+            transform: scale(1.05);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+            font-size: 1.2em;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+            border-bottom: 1px solid white;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        }
+        
+        body.dark-mode .header,
+        body.dark-mode .stat-card,
+        body.dark-mode .reports-section {
+            background: #1f2937;
+            color: #f9fafb;
+        }
+        
+        body.dark-mode .header h1 {
+            -webkit-text-fill-color: var(--primary);
+        }
+        
+        body.dark-mode .report-item {
+            background: #374151;
+            color: #f9fafb;
+        }
+        
+        body.dark-mode .report-item:hover {
+            background: #4b5563;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .report-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .report-item .actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+            
+            .btn {
+                flex: 1;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📊 台灣主動式 ETF 持股追蹤系統</h1>
+            <p>即時追蹤主動式 ETF 持股變動，掌握投資趨勢</p>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="icon">📈</div>
+                <div class="number" id="totalReports">-</div>
+                <div class="label">份報告</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📅</div>
+                <div class="number" id="latestDate">-</div>
+                <div class="label">最新日期</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🎯</div>
+                <div class="number" id="totalETFs">-</div>
+                <div class="label">追蹤 ETF</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🔄</div>
+                <div class="number" id="totalChanges">-</div>
+                <div class="label">總變動數</div>
+            </div>
+        </div>
+        
+        <div class="reports-section">
+            <h2>📋 歷史報告</h2>
+            <div id="reportsList" class="loading">
+                載入中...
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>資料來源：各投信公司官網 | 
+            <a href="https://github.com/yourusername/TWActiveETFCrawler" target="_blank">GitHub</a> | 
+            每日自動更新</p>
+        </div>
+    </div>
+    
+    <script>
+        // 深色模式切換
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            document.querySelector('.theme-toggle').textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark);
+        }
+        
+        // 載入深色模式設定
+        if (localStorage.getItem('darkMode') === 'true') {
+            toggleTheme();
+        }
+        
+        // 載入報告列表
+        async function loadReports() {
+            try {
+                // 嘗試載入報告索引
+                const response = await fetch('reports_index.json');
+                
+                if (!response.ok) {
+                    throw new Error('無法載入報告索引');
+                }
+                
+                const reports = await response.json();
+                
+                if (reports.length === 0) {
+                    document.getElementById('reportsList').innerHTML = 
+                        '<div class="no-data">目前沒有報告資料</div>';
+                    return;
+                }
+                
+                // 更新統計資訊
+                document.getElementById('totalReports').textContent = reports.length;
+                document.getElementById('latestDate').textContent = reports[0].date;
+                
+                // 計算總 ETF 數和總變動數
+                let totalETFs = new Set();
+                let totalChanges = 0;
+                
+                reports.forEach(report => {
+                    report.etfs.forEach(etf => totalETFs.add(etf));
+                    totalChanges += report.total_changes;
+                });
+                
+                document.getElementById('totalETFs').textContent = totalETFs.size;
+                document.getElementById('totalChanges').textContent = totalChanges;
+                
+                // 生成報告列表
+                const reportsHtml = reports.map(report => `
+                    <div class="report-item">
+                        <div>
+                            <div class="date">📅 ${report.date}</div>
+                            <div class="summary">
+                                ${report.etf_count} 檔 ETF，${report.total_changes} 筆變動
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <a href="report_${report.date}.html" class="btn btn-primary">查看報告</a>
+                            <a href="data_${report.date}.json" class="btn btn-secondary" download>下載資料</a>
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('reportsList').innerHTML = reportsHtml;
+                
+            } catch (error) {
+                console.error('載入報告失敗:', error);
+                document.getElementById('reportsList').innerHTML = `
+                    <div class="no-data">
+                        <p>📭 目前沒有報告資料</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">
+                            系統將在每日更新後自動生成報告
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        // 頁面載入時執行
+        loadReports();
+    </script>
+</body>
+</html>
