@@ -1,0 +1,110 @@
+{
+  "date": "2026-01-28",
+  "update_time": "2026-01-28 10:05:44",
+  "summary": {
+    "total_etfs": 1,
+    "total_changes": 7
+  },
+  "change_distribution": [
+    {
+      "etf_code": "00994A",
+      "etf_name": "FSITC ETF 00994A",
+      "count": 7
+    }
+  ],
+  "hot_stocks": [
+    {
+      "stock_code": "2360",
+      "stock_name": "致茂",
+      "total_adjustments": 1,
+      "net_change": -2.0
+    },
+    {
+      "stock_code": "3131",
+      "stock_name": "弘塑",
+      "total_adjustments": 1,
+      "net_change": -2.0
+    },
+    {
+      "stock_code": "2303",
+      "stock_name": "聯電",
+      "total_adjustments": 1,
+      "net_change": 50.0
+    },
+    {
+      "stock_code": "2368",
+      "stock_name": "金像電",
+      "total_adjustments": 1,
+      "net_change": 11.0
+    },
+    {
+      "stock_code": "2344",
+      "stock_name": "華邦電",
+      "total_adjustments": 1,
+      "net_change": 30.0
+    }
+  ],
+  "detailed_changes": [
+    {
+      "etf_code": "00994A",
+      "etf_name": "FSITC ETF 00994A",
+      "total_changes": 7,
+      "added": [
+        {
+          "stock_code": "3653",
+          "stock_name": "健策",
+          "lots": 3.0
+        }
+      ],
+      "removed": [
+        {
+          "stock_code": "2404",
+          "stock_name": "漢唐",
+          "lots": 11.0
+        }
+      ],
+      "modified": [
+        {
+          "stock_code": "2360",
+          "stock_name": "致茂",
+          "old_lots": 35.0,
+          "new_lots": 33.0,
+          "diff": -2.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "3131",
+          "stock_name": "弘塑",
+          "old_lots": 9.0,
+          "new_lots": 7.0,
+          "diff": -2.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2303",
+          "stock_name": "聯電",
+          "old_lots": 112.0,
+          "new_lots": 162.0,
+          "diff": 50.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2368",
+          "stock_name": "金像電",
+          "old_lots": 4.0,
+          "new_lots": 15.0,
+          "diff": 11.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2344",
+          "stock_name": "華邦電",
+          "old_lots": 0.0,
+          "new_lots": 30.0,
+          "diff": 30.0,
+          "direction": "up"
+        }
+      ]
+    }
+  ]
+}
