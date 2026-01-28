@@ -36,7 +36,7 @@ from loguru import logger
 # 系統現在完全基於各家投信官網的直接爬取
 # ============================================================
 
-def daily_update_ezmoney():
+def daily_update_ezmoney(generate_report=True):
     """每日更新 EZMoney ETF 作業"""
     logger.info("Starting EZMoney ETF daily update...")
     
@@ -97,8 +97,8 @@ def daily_update_ezmoney():
     
     logger.info(f"EZMoney ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(ezmoney_etfs.keys()), storage_date_str)
@@ -126,7 +126,7 @@ def daily_update_ezmoney():
 
 
 
-def daily_update_nomura():
+def daily_update_nomura(generate_report=True):
     """每日更新野村投信ETF 作業"""
     logger.info("Starting Nomura Funds ETF daily update...")
     
@@ -178,8 +178,8 @@ def daily_update_nomura():
             
     logger.info(f"Nomura ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(nomura_etfs.keys()), date_str)
@@ -193,7 +193,7 @@ def daily_update_nomura():
             logger.info("No significant changes detected.")
 
 
-def daily_update_capital():
+def daily_update_capital(generate_report=True):
     """每日更新群益投信ETF 作業"""
     logger.info("Starting Capital Funds ETF daily update...")
     
@@ -246,8 +246,8 @@ def daily_update_capital():
             
     logger.info(f"Capital ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(capital_etfs.keys()), date_str)
@@ -261,7 +261,7 @@ def daily_update_capital():
             logger.info("No significant changes detected.")
 
 
-def daily_update_fhtrust():
+def daily_update_fhtrust(generate_report=True):
     """每日更新復華投信ETF 作業"""
     logger.info("Starting FHTrust Funds ETF daily update...")
     
@@ -313,8 +313,8 @@ def daily_update_fhtrust():
             
     logger.info(f"FHTrust ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(fhtrust_etfs.keys()), date_str)
@@ -328,7 +328,7 @@ def daily_update_fhtrust():
             logger.info("No significant changes detected.")
 
 
-def daily_update_ctbc():
+def daily_update_ctbc(generate_report=True):
     """每日更新中信投信ETF 作業"""
     logger.info("Starting CTBC Funds ETF daily update...")
     
@@ -380,8 +380,8 @@ def daily_update_ctbc():
             
     logger.info(f"CTBC ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(ctbc_etfs.keys()), date_str)
@@ -394,7 +394,7 @@ def daily_update_ctbc():
         else:
             logger.info("No significant changes detected.")
 
-def daily_update_fsitc():
+def daily_update_fsitc(generate_report=True):
     """每日更新第一金投信ETF 作業"""
     logger.info("Starting FSITC Funds ETF daily update...")
     
@@ -446,8 +446,8 @@ def daily_update_fsitc():
             
     logger.info(f"FSITC ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(fsitc_etfs.keys()), date_str)
@@ -460,7 +460,7 @@ def daily_update_fsitc():
         else:
             logger.info("No significant changes detected.")
 
-def daily_update_tsit():
+def daily_update_tsit(generate_report=True):
     """每日更新台新投信ETF 作業"""
     logger.info("Starting TSIT Funds ETF daily update...")
     
@@ -512,8 +512,8 @@ def daily_update_tsit():
             
     logger.info(f"TSIT ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(tsit_etfs.keys()), date_str)
@@ -527,7 +527,7 @@ def daily_update_tsit():
             logger.info("No significant changes detected.")
 
 
-def daily_update_allianz():
+def daily_update_allianz(generate_report=True):
     """每日更新安聯投信 ETF 作業（使用 Playwright DOM 提取）"""
     logger.info("Starting Allianz ETF daily update (Playwright DOM extraction)...")
     
@@ -580,8 +580,8 @@ def daily_update_allianz():
     
     logger.info(f"Allianz ETF daily update complete: {total_inserted} new holdings inserted")
     
-    # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+    # 變動追蹤：分析並顯示成分股變動（僅在單獨執行時生成報告）
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(allianz_etfs.keys()), date_str)
@@ -620,6 +620,44 @@ def show_stats():
     for item in stats['latest_updates']:
         print(f"  {item['etf_code']}: {item['date']}")
     print()
+
+
+def generate_consolidated_reports():
+    """
+    在所有投信更新完成後，統一生成完整的報告
+    這樣可以確保 HTML、JSON 和 Markdown 報告包含當天所有 ETF 的變動
+    """
+    logger.info("=" * 60)
+    logger.info("Generating consolidated reports for all ETFs...")
+    logger.info("=" * 60)
+    
+    db = Database(DB_FULL_PATH)
+    
+    # 取得今天的日期
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:  # 避免週末
+        target_date -= timedelta(days=1)
+    date_str = target_date.strftime('%Y-%m-%d')
+    
+    # 取得所有活躍的 ETF
+    active_etfs = db.get_active_etfs()
+    etf_codes = [etf['etf_code'] for etf in active_etfs]
+    
+    logger.info(f"Analyzing changes for {len(etf_codes)} ETFs on {date_str}")
+    
+    # 分析所有 ETF 的變動
+    report_mgr = ReportManager(db, REPORTS_DIR)
+    all_changes_dict = report_mgr.analyzer.detect_changes_batch(etf_codes, date_str)
+    
+    if all_changes_dict:
+        total_changes = sum(len(changes) for changes in all_changes_dict.values())
+        logger.info(f"Found {len(all_changes_dict)} ETFs with {total_changes} total changes")
+        
+        # 生成所有格式的報告（覆蓋模式，包含完整數據）
+        report_mgr.generate_all_reports(all_changes_dict, date_str, append_txt=False)
+        logger.info("Consolidated reports generated successfully")
+    else:
+        logger.info("No changes detected across all ETFs")
 
 
 def main():
@@ -709,29 +747,36 @@ def main():
             logger.info("No arguments provided, running default scrapers (EZMoney)")
             daily_update_ezmoney()
         else:
+            # 在 --all 模式下，個別更新不生成報告，最後統一生成
+            skip_individual_reports = args.all
+            
             if args.ezmoney or args.all:
-                daily_update_ezmoney()
+                daily_update_ezmoney(generate_report=not skip_individual_reports)
                 
             if args.nomura or args.all:
-                daily_update_nomura()
+                daily_update_nomura(generate_report=not skip_individual_reports)
 
             if args.capital or args.all:
-                daily_update_capital()
+                daily_update_capital(generate_report=not skip_individual_reports)
 
             if args.fhtrust or args.all:
-                daily_update_fhtrust()
+                daily_update_fhtrust(generate_report=not skip_individual_reports)
                 
             if args.ctbc or args.all:
-                daily_update_ctbc()
+                daily_update_ctbc(generate_report=not skip_individual_reports)
                 
             if args.fsitc or args.all:
-                daily_update_fsitc()
+                daily_update_fsitc(generate_report=not skip_individual_reports)
 
             if args.tsit or args.all:
-                daily_update_tsit()
+                daily_update_tsit(generate_report=not skip_individual_reports)
 
             if args.allianz or args.all:
-                daily_update_allianz()
+                daily_update_allianz(generate_report=not skip_individual_reports)
+            
+            # 當使用 --all 時，在所有更新完成後生成完整報告
+            if args.all:
+                generate_consolidated_reports()
             
         logger.info("Main program finished")
     

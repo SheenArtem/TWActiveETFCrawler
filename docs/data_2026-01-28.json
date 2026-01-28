@@ -1,11 +1,21 @@
 {
   "date": "2026-01-28",
-  "update_time": "2026-01-28 18:30:41",
+  "update_time": "2026-01-28 20:35:36",
   "summary": {
-    "total_etfs": 1,
-    "total_changes": 7
+    "total_etfs": 3,
+    "total_changes": 23
   },
   "change_distribution": [
+    {
+      "etf_code": "00981A",
+      "etf_name": "00981A (EZMoney)",
+      "count": 5
+    },
+    {
+      "etf_code": "00985A",
+      "etf_name": "Nomura ETF 00985A",
+      "count": 11
+    },
     {
       "etf_code": "00994A",
       "etf_name": "FSITC ETF 00994A",
@@ -14,37 +24,213 @@
   ],
   "hot_stocks": [
     {
-      "stock_code": "2360",
-      "stock_name": "致茂",
-      "total_adjustments": 1,
-      "net_change": -2.0
+      "stock_code": "2313",
+      "stock_name": "華通",
+      "total_adjustments": 2,
+      "net_change": -2778.0
     },
     {
-      "stock_code": "3131",
-      "stock_name": "弘塑",
+      "stock_code": "3653",
+      "stock_name": "健策",
       "total_adjustments": 1,
-      "net_change": -2.0
+      "net_change": 141.0
     },
     {
-      "stock_code": "2303",
-      "stock_name": "聯電",
+      "stock_code": "6415",
+      "stock_name": "矽力*-KY",
       "total_adjustments": 1,
-      "net_change": 50.0
+      "net_change": -660.0
     },
     {
-      "stock_code": "2368",
-      "stock_name": "金像電",
+      "stock_code": "5269",
+      "stock_name": "祥碩",
       "total_adjustments": 1,
-      "net_change": 11.0
+      "net_change": -90.0
     },
     {
-      "stock_code": "2344",
-      "stock_name": "華邦電",
+      "stock_code": "6139",
+      "stock_name": "亞翔",
       "total_adjustments": 1,
-      "net_change": 30.0
+      "net_change": 942.0
+    },
+    {
+      "stock_code": "2330",
+      "stock_name": "台灣積體電路製造",
+      "total_adjustments": 1,
+      "net_change": 4.0
+    },
+    {
+      "stock_code": "1605",
+      "stock_name": "華新麗華",
+      "total_adjustments": 1,
+      "net_change": 621.0
+    },
+    {
+      "stock_code": "2412",
+      "stock_name": "中華電信",
+      "total_adjustments": 1,
+      "net_change": 169.0
+    },
+    {
+      "stock_code": "3036",
+      "stock_name": "文曄科技",
+      "total_adjustments": 1,
+      "net_change": 387.0
+    },
+    {
+      "stock_code": "4904",
+      "stock_name": "遠傳電信",
+      "total_adjustments": 1,
+      "net_change": 410.0
     }
   ],
   "detailed_changes": [
+    {
+      "etf_code": "00981A",
+      "etf_name": "00981A (EZMoney)",
+      "total_changes": 5,
+      "added": [],
+      "removed": [],
+      "modified": [
+        {
+          "stock_code": "3653",
+          "stock_name": "健策",
+          "old_lots": 767.0,
+          "new_lots": 908.0,
+          "diff": 141.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2313",
+          "stock_name": "華通",
+          "old_lots": 5013.0,
+          "new_lots": 1473.0,
+          "diff": -3540.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6415",
+          "stock_name": "矽力*-KY",
+          "old_lots": 1474.0,
+          "new_lots": 814.0,
+          "diff": -660.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "5269",
+          "stock_name": "祥碩",
+          "old_lots": 262.0,
+          "new_lots": 172.0,
+          "diff": -90.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6139",
+          "stock_name": "亞翔",
+          "old_lots": 668.0,
+          "new_lots": 1610.0,
+          "diff": 942.0,
+          "direction": "up"
+        }
+      ]
+    },
+    {
+      "etf_code": "00985A",
+      "etf_name": "Nomura ETF 00985A",
+      "total_changes": 11,
+      "added": [],
+      "removed": [],
+      "modified": [
+        {
+          "stock_code": "2330",
+          "stock_name": "台灣積體電路製造",
+          "old_lots": 871.0,
+          "new_lots": 875.0,
+          "diff": 4.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "1605",
+          "stock_name": "華新麗華",
+          "old_lots": 6760.0,
+          "new_lots": 7381.0,
+          "diff": 621.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2412",
+          "stock_name": "中華電信",
+          "old_lots": 1600.0,
+          "new_lots": 1769.0,
+          "diff": 169.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3036",
+          "stock_name": "文曄科技",
+          "old_lots": 1045.0,
+          "new_lots": 1432.0,
+          "diff": 387.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "4904",
+          "stock_name": "遠傳電信",
+          "old_lots": 1815.0,
+          "new_lots": 2225.0,
+          "diff": 410.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3711",
+          "stock_name": "日月光投資控股",
+          "old_lots": 498.0,
+          "new_lots": 505.0,
+          "diff": 7.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2313",
+          "stock_name": "華通電腦",
+          "old_lots": 814.0,
+          "new_lots": 1576.0,
+          "diff": 762.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3037",
+          "stock_name": "欣興電子",
+          "old_lots": 312.0,
+          "new_lots": 386.0,
+          "diff": 74.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "4749",
+          "stock_name": "新應材",
+          "old_lots": 108.0,
+          "new_lots": 166.0,
+          "diff": 58.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3533",
+          "stock_name": "嘉澤端子工業",
+          "old_lots": 53.0,
+          "new_lots": 93.0,
+          "diff": 40.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "6781",
+          "stock_name": "AES Holding Co Ltd",
+          "old_lots": 9.0,
+          "new_lots": 77.0,
+          "diff": 68.0,
+          "direction": "up"
+        }
+      ]
+    },
     {
       "etf_code": "00994A",
       "etf_name": "FSITC ETF 00994A",
