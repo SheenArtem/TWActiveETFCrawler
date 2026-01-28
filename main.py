@@ -27,7 +27,7 @@ from src.fsitc_scraper import FSITCScraper
 from src.tsit_scraper import TSITScraper
 from src.allianz_scraper import AllianzScraper
 from src.utils import setup_logging, cleanup_old_data, get_trading_days
-from src.holdings_analyzer import HoldingsAnalyzer
+from src.report_manager import ReportManager
 from loguru import logger
 
 
@@ -98,22 +98,16 @@ def daily_update_ezmoney():
     logger.info(f"EZMoney ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        # 只檢查 EZMoney 相關的 ETF 變動，避免檢查到其他尚未更新的 ETF
-        changes_dict = analyzer.detect_changes_batch(list(ezmoney_etfs.keys()), storage_date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(ezmoney_etfs.keys()), storage_date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, storage_date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, storage_date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{storage_date_str}.txt"
-                with open(report_file, 'w', encoding='utf-8') as f:
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, storage_date_str, append_txt=False)
         else:
             logger.info("No significant changes detected (this may be the first time fetching data).")
 
@@ -185,25 +179,16 @@ def daily_update_nomura():
     logger.info(f"Nomura ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(nomura_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(nomura_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 
@@ -262,25 +247,16 @@ def daily_update_capital():
     logger.info(f"Capital ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(capital_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(capital_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 
@@ -338,25 +314,16 @@ def daily_update_fhtrust():
     logger.info(f"FHTrust ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(fhtrust_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(fhtrust_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 
@@ -414,25 +381,16 @@ def daily_update_ctbc():
     logger.info(f"CTBC ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(ctbc_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(ctbc_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 
@@ -489,25 +447,16 @@ def daily_update_fsitc():
     logger.info(f"FSITC ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(fsitc_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(fsitc_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 
@@ -564,25 +513,16 @@ def daily_update_tsit():
     logger.info(f"TSIT ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(tsit_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(tsit_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 
@@ -641,25 +581,16 @@ def daily_update_allianz():
     logger.info(f"Allianz ETF daily update complete: {total_inserted} new holdings inserted")
     
     # 變動追蹤：分析並顯示成分股變動
-    if ENABLE_CHANGE_TRACKING:
+    if ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
-        analyzer = HoldingsAnalyzer(db)
-        changes_dict = analyzer.detect_changes_batch(list(allianz_etfs.keys()), date_str)
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(allianz_etfs.keys()), date_str)
         
         if changes_dict:
-            report = analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
             logger.info(report)
-            
-            # 儲存報告到檔案
-            if SAVE_CHANGE_REPORTS:
-                report_file = REPORTS_DIR / f"changes_{date_str}.txt"
-                # 如果檔案存在，追加內容
-                mode = 'a' if report_file.exists() else 'w'
-                with open(report_file, mode, encoding='utf-8') as f:
-                    if mode == 'a':
-                        f.write('\n')
-                    f.write(report)
-                logger.info(f"Change report saved to: {report_file}")
+            # 生成所有格式的報告（TXT, Markdown, HTML）
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
         else:
             logger.info("No significant changes detected.")
     

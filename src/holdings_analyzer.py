@@ -277,3 +277,88 @@ class HoldingsAnalyzer:
         report_lines.append(f"{'='*60}\n")
         
         return "\n".join(report_lines)
+
+    def generate_markdown_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str) -> str:
+        """
+        生成 Markdown 格式的變動報告（提案 A：簡潔列表式）
+        
+        Args:
+            changes_dict: ETF代碼 -> 變動列表的字典
+            date: 報告日期
+            
+        Returns:
+            str: Markdown 格式的報告
+        """
+        from datetime import datetime
+        
+        if not changes_dict:
+            return f"# ETF 持股變動追蹤 📊\n\n> 最後更新：{date}\n\n## {date} 變動摘要\n\n**本日無變動**\n"
+        
+        total_changes = sum(len(changes) for changes in changes_dict.values())
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        md_lines = [
+            "# ETF 持股變動追蹤 📊\n",
+            f"> 最後更新：{current_time}\n",
+            f"## {date} 變動摘要\n",
+            f"**本日共 {len(changes_dict)} 檔 ETF 發生 {total_changes} 筆變動**\n"
+        ]
+        
+        for etf_code, changes in sorted(changes_dict.items()):
+            # 取得ETF名稱
+            etf_info = self.db.get_active_etfs()
+            etf_name = next((e['etf_name'] for e in etf_info if e['etf_code'] == etf_code), etf_code)
+            
+            # 分類變動
+            added = [c for c in changes if c.change_type == 'ADDED']
+            removed = [c for c in changes if c.change_type == 'REMOVED']
+            modified = [c for c in changes if c.change_type not in ['ADDED', 'REMOVED']]
+            
+            # 使用折疊區塊
+            md_lines.append(f'<details open>')
+            md_lines.append(f'<summary><b>{etf_code}</b> {etf_name} ({len(changes)} 筆變動)</summary>\n')
+            
+            # 新增成分股
+            if added:
+                md_lines.append("### ➕ 新增成分股\n")
+                md_lines.append("| 股票代碼 | 股票名稱 | 持股張數 |")
+                md_lines.append("|---------|---------|---------|")
+                for change in added:
+                    md_lines.append(f"| {change.stock_code} | {change.stock_name} | {change.new_lots:.2f}張 |")
+                md_lines.append("")
+            
+            # 移除成分股
+            if removed:
+                md_lines.append("### ➖ 移除成分股\n")
+                md_lines.append("| 股票代碼 | 股票名稱 | 原持股張數 |")
+                md_lines.append("|---------|---------|----------|")
+                for change in removed:
+                    md_lines.append(f"| {change.stock_code} | {change.stock_name} | {change.old_lots:.2f}張 |")
+                md_lines.append("")
+            
+            # 持股變動
+            if modified:
+                md_lines.append("### 📊 持股變動\n")
+                md_lines.append("| 股票代碼 | 股票名稱 | 變動 | 原持股 | 新持股 | 增減 |")
+                md_lines.append("|---------|---------|-----|--------|--------|------|")
+                for change in modified:
+                    emoji = "📈" if change.lots_diff > 0 else "📉"
+                    sign = "+" if change.lots_diff > 0 else ""
+                    md_lines.append(
+                        f"| {change.stock_code} | {change.stock_name} | {emoji} | "
+                        f"{change.old_lots:,.0f}張 | {change.new_lots:,.0f}張 | "
+                        f"{sign}{change.lots_diff:,.0f}張 |"
+                    )
+                md_lines.append("")
+            
+            md_lines.append("</details>\n")
+        
+        # 添加說明
+        md_lines.append("---\n")
+        md_lines.append("### 📝 說明\n")
+        md_lines.append("- 📈 表示持股增加\n")
+        md_lines.append("- 📉 表示持股減少\n")
+        md_lines.append("- 資料來源：各投信公司官網\n")
+        md_lines.append(f"- 報告生成時間：{current_time}\n")
+        
+        return "\n".join(md_lines)
