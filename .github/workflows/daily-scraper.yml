@@ -2,12 +2,8 @@ name: Daily ETF Scraper
 
 on:
   schedule:
-    # 每天台北時間早上 06:00 執行（UTC 22:00 前一天）
     - cron: '0 22 * * *'
-  
-  # 允許手動觸發
   workflow_dispatch:
-  
   push:
     branches: [ main ]
 
@@ -31,39 +27,10 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
       
-      # TWSE 爬蟲已於 2026-01-26 移除，改為使用各家投信官網直接爬取
-      
-      - name: Run daily update (EZMoney ETFs)
+      # 修改 1: 使用 --all 參數
+      - name: Run daily update (All ETFs)
         run: |
-          python main.py --ezmoney
-      
-      - name: Run daily update (Nomura ETFs)
-        run: |
-          python main.py --nomura
-
-      - name: Run daily update (Capital ETFs)
-        run: |
-          python main.py --capital
-
-      - name: Run daily update (FHTrust ETFs)
-        run: |
-          python main.py --fhtrust
-
-      - name: Run daily update (CTBC ETFs)
-        run: |
-          python main.py --ctbc
-
-      - name: Run daily update (FSITC ETFs)
-        run: |
-          python main.py --fsitc
-
-      - name: Run daily update (TSIT ETFs)
-        run: |
-          python main.py --tsit
-
-      - name: Run daily update (Allianz ETFs)
-        run: |
-          python main.py --allianz
+          python main.py --all
       
       - name: Show database statistics
         run: |
@@ -75,4 +42,5 @@ jobs:
           git config user.email "actions@github.com"
           git add data/etf_holdings.db
           git add reports/
+          git add docs/    # 修改 2: 添加 docs/ 目錄
           git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Update ETF holdings data - $(date +'%Y-%m-%d')" && git push)
