@@ -1,0 +1,452 @@
+{
+  "date": "2026-01-29",
+  "update_time": "2026-01-29 23:42:01",
+  "summary": {
+    "total_etfs": 4,
+    "total_changes": 47
+  },
+  "change_distribution": [
+    {
+      "etf_code": "00981A",
+      "etf_name": "00981A (EZMoney)",
+      "count": 10
+    },
+    {
+      "etf_code": "00985A",
+      "etf_name": "Nomura ETF 00985A",
+      "count": 24
+    },
+    {
+      "etf_code": "00987A",
+      "etf_name": "TSIT ETF 00987A",
+      "count": 4
+    },
+    {
+      "etf_code": "00994A",
+      "etf_name": "FSITC ETF 00994A",
+      "count": 9
+    }
+  ],
+  "hot_stocks": [
+    {
+      "stock_code": "2313",
+      "stock_name": "華通",
+      "total_adjustments": 2,
+      "net_change": -1496.0
+    },
+    {
+      "stock_code": "3711",
+      "stock_name": "日月光投資控股",
+      "total_adjustments": 2,
+      "net_change": -22.0
+    },
+    {
+      "stock_code": "8299",
+      "stock_name": "群聯",
+      "total_adjustments": 1,
+      "net_change": 60.0
+    },
+    {
+      "stock_code": "3653",
+      "stock_name": "健策",
+      "total_adjustments": 1,
+      "net_change": 8.0
+    },
+    {
+      "stock_code": "5274",
+      "stock_name": "信驊",
+      "total_adjustments": 1,
+      "net_change": 32.0
+    },
+    {
+      "stock_code": "3533",
+      "stock_name": "嘉澤",
+      "total_adjustments": 1,
+      "net_change": -113.0
+    },
+    {
+      "stock_code": "2059",
+      "stock_name": "川湖",
+      "total_adjustments": 1,
+      "net_change": -77.0
+    },
+    {
+      "stock_code": "6415",
+      "stock_name": "矽力*-KY",
+      "total_adjustments": 1,
+      "net_change": -813.0
+    },
+    {
+      "stock_code": "6510",
+      "stock_name": "精測",
+      "total_adjustments": 1,
+      "net_change": 20.0
+    },
+    {
+      "stock_code": "2330",
+      "stock_name": "台灣積體電路製造",
+      "total_adjustments": 1,
+      "net_change": 12.0
+    }
+  ],
+  "detailed_changes": [
+    {
+      "etf_code": "00981A",
+      "etf_name": "00981A (EZMoney)",
+      "total_changes": 10,
+      "added": [
+        {
+          "stock_code": "1326",
+          "stock_name": "台化",
+          "lots": 3398.0
+        },
+        {
+          "stock_code": "4979",
+          "stock_name": "華星光",
+          "lots": 329.0
+        }
+      ],
+      "removed": [],
+      "modified": [
+        {
+          "stock_code": "8299",
+          "stock_name": "群聯",
+          "old_lots": 1848.0,
+          "new_lots": 1908.0,
+          "diff": 60.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3653",
+          "stock_name": "健策",
+          "old_lots": 908.0,
+          "new_lots": 916.0,
+          "diff": 8.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "5274",
+          "stock_name": "信驊",
+          "old_lots": 142.0,
+          "new_lots": 174.0,
+          "diff": 32.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3533",
+          "stock_name": "嘉澤",
+          "old_lots": 376.0,
+          "new_lots": 263.0,
+          "diff": -113.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2059",
+          "stock_name": "川湖",
+          "old_lots": 117.0,
+          "new_lots": 40.0,
+          "diff": -77.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2313",
+          "stock_name": "華通",
+          "old_lots": 1473.0,
+          "new_lots": 1.0,
+          "diff": -1472.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6415",
+          "stock_name": "矽力*-KY",
+          "old_lots": 814.0,
+          "new_lots": 1.0,
+          "diff": -813.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6510",
+          "stock_name": "精測",
+          "old_lots": 47.0,
+          "new_lots": 67.0,
+          "diff": 20.0,
+          "direction": "up"
+        }
+      ]
+    },
+    {
+      "etf_code": "00985A",
+      "etf_name": "Nomura ETF 00985A",
+      "total_changes": 24,
+      "added": [
+        {
+          "stock_code": "2395",
+          "stock_name": "研華",
+          "lots": 580.0
+        },
+        {
+          "stock_code": "6415",
+          "stock_name": "矽力杰",
+          "lots": 73.0
+        },
+        {
+          "stock_code": "3105",
+          "stock_name": "穩懋半導體",
+          "lots": 63.0
+        },
+        {
+          "stock_code": "7769",
+          "stock_name": "鴻勁精密",
+          "lots": 4.0
+        },
+        {
+          "stock_code": "6239",
+          "stock_name": "力成科技",
+          "lots": 53.0
+        },
+        {
+          "stock_code": "3529",
+          "stock_name": "力旺電子",
+          "lots": 7.0
+        },
+        {
+          "stock_code": "3264",
+          "stock_name": "欣銓科技",
+          "lots": 74.0
+        }
+      ],
+      "removed": [
+        {
+          "stock_code": "6409",
+          "stock_name": "旭隼科技",
+          "lots": 106.0
+        },
+        {
+          "stock_code": "2884",
+          "stock_name": "玉山金融控股",
+          "lots": 2046.0
+        },
+        {
+          "stock_code": "2357",
+          "stock_name": "華碩電腦",
+          "lots": 133.0
+        },
+        {
+          "stock_code": "3231",
+          "stock_name": "緯創資通",
+          "lots": 291.0
+        },
+        {
+          "stock_code": "8046",
+          "stock_name": "南亞電路板",
+          "lots": 23.0
+        },
+        {
+          "stock_code": "2379",
+          "stock_name": "瑞昱半導體",
+          "lots": 17.0
+        }
+      ],
+      "modified": [
+        {
+          "stock_code": "2330",
+          "stock_name": "台灣積體電路製造",
+          "old_lots": 875.0,
+          "new_lots": 887.0,
+          "diff": 12.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2454",
+          "stock_name": "聯發科技",
+          "old_lots": 146.0,
+          "new_lots": 140.0,
+          "diff": -6.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "3293",
+          "stock_name": "鈊象電子",
+          "old_lots": 326.0,
+          "new_lots": 202.0,
+          "diff": -124.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6515",
+          "stock_name": "穎崴科技",
+          "old_lots": 47.0,
+          "new_lots": 44.0,
+          "diff": -3.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2308",
+          "stock_name": "台達電子工業",
+          "old_lots": 142.0,
+          "new_lots": 139.0,
+          "diff": -3.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2345",
+          "stock_name": "智邦科技",
+          "old_lots": 137.0,
+          "new_lots": 131.0,
+          "diff": -6.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "3711",
+          "stock_name": "日月光投資控股",
+          "old_lots": 505.0,
+          "new_lots": 491.0,
+          "diff": -14.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2317",
+          "stock_name": "鴻海精密工業",
+          "old_lots": 649.0,
+          "new_lots": 630.0,
+          "diff": -19.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2383",
+          "stock_name": "台光電子材料",
+          "old_lots": 68.0,
+          "new_lots": 66.0,
+          "diff": -2.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2408",
+          "stock_name": "南亞科技",
+          "old_lots": 333.0,
+          "new_lots": 314.0,
+          "diff": -19.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2344",
+          "stock_name": "華邦電子",
+          "old_lots": 708.0,
+          "new_lots": 661.0,
+          "diff": -47.0,
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "etf_code": "00987A",
+      "etf_name": "TSIT ETF 00987A",
+      "total_changes": 4,
+      "added": [],
+      "removed": [
+        {
+          "stock_code": "6446",
+          "stock_name": "藥華藥",
+          "lots": 76.0
+        },
+        {
+          "stock_code": "5234",
+          "stock_name": "達興材料",
+          "lots": 67.0
+        },
+        {
+          "stock_code": "3661",
+          "stock_name": "世芯-KY",
+          "lots": 6.0
+        }
+      ],
+      "modified": [
+        {
+          "stock_code": "3443",
+          "stock_name": "創意",
+          "old_lots": 20.0,
+          "new_lots": 23.0,
+          "diff": 3.0,
+          "direction": "up"
+        }
+      ]
+    },
+    {
+      "etf_code": "00994A",
+      "etf_name": "FSITC ETF 00994A",
+      "total_changes": 9,
+      "added": [
+        {
+          "stock_code": "3260",
+          "stock_name": "威剛",
+          "lots": 20.0
+        }
+      ],
+      "removed": [
+        {
+          "stock_code": "3045",
+          "stock_name": "台灣大",
+          "lots": 0.0
+        }
+      ],
+      "modified": [
+        {
+          "stock_code": "2313",
+          "stock_name": "華通",
+          "old_lots": 179.0,
+          "new_lots": 155.0,
+          "diff": -24.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "3711",
+          "stock_name": "日月光投控",
+          "old_lots": 83.0,
+          "new_lots": 75.0,
+          "diff": -8.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6488",
+          "stock_name": "環球晶",
+          "old_lots": 43.0,
+          "new_lots": 38.0,
+          "diff": -5.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "8210",
+          "stock_name": "勤誠",
+          "old_lots": 21.0,
+          "new_lots": 17.0,
+          "diff": -4.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6274",
+          "stock_name": "台燿",
+          "old_lots": 37.0,
+          "new_lots": 44.0,
+          "diff": 7.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "7769",
+          "stock_name": "鴻勁",
+          "old_lots": 4.0,
+          "new_lots": 2.0,
+          "diff": -2.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2368",
+          "stock_name": "金像電",
+          "old_lots": 15.0,
+          "new_lots": 25.0,
+          "diff": 10.0,
+          "direction": "up"
+        }
+      ]
+    }
+  ]
+}
