@@ -1,9 +1,9 @@
 {
   "date": "2026-01-30",
-  "update_time": "2026-01-30 11:37:52",
+  "update_time": "2026-01-30 19:33:52",
   "summary": {
     "total_etfs": 8,
-    "total_changes": 135
+    "total_changes": 132
   },
   "change_distribution": [
     {
@@ -24,7 +24,7 @@
     {
       "etf_code": "00987A",
       "etf_name": "TSIT ETF 00987A",
-      "count": 4
+      "count": 1
     },
     {
       "etf_code": "00991A",
@@ -364,25 +364,9 @@
     {
       "etf_code": "00987A",
       "etf_name": "TSIT ETF 00987A",
-      "total_changes": 4,
+      "total_changes": 1,
       "added": [],
-      "removed": [
-        {
-          "stock_code": "6139",
-          "stock_name": "亞翔",
-          "lots": 70.0
-        },
-        {
-          "stock_code": "3455",
-          "stock_name": "由田",
-          "lots": 332.0
-        },
-        {
-          "stock_code": "8112",
-          "stock_name": "至上",
-          "lots": 375.0
-        }
-      ],
+      "removed": [],
       "modified": [
         {
           "stock_code": "2330",
