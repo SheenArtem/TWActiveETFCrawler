@@ -44,17 +44,12 @@ def daily_update_ezmoney(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = EZMoneyScraper()
     
-    # EZMoney 的資料公告時間是 T+1（今天的資料明天才公告）
-    # 所以要用「明天」的日期來查詢，但資料實際上是「今天」的持股
+    # EZMoney 使用網頁下載 Excel 的方式獲取最新持股資料
+    # 網頁上會顯示最新的日期，直接用今天的日期即可
     today = datetime.now()
-    tomorrow = today + timedelta(days=1)
-    
-    # API 查詢用明天的日期
-    fetch_date_str = tomorrow.strftime('%Y-%m-%d')
-    # 資料庫儲存用今天的日期（因為是今天的持股資料）
     storage_date_str = today.strftime('%Y-%m-%d')
     
-    logger.info(f"Fetching EZMoney ETF data published on {fetch_date_str} (holdings for {storage_date_str})")
+    logger.info(f"Fetching EZMoney ETF data for holdings date: {storage_date_str}")
     
     # 取得所有已配置的 EZMoney ETF
     ezmoney_etfs = scraper.get_all_mappings()
@@ -79,13 +74,10 @@ def daily_update_ezmoney(generate_report=True):
         logger.info(f"[{i}/{len(ezmoney_etfs)}] Updating {etf_code}")
         
         try:
-            # 用明天的日期查詢 API
-            holdings = scraper.get_etf_holdings(etf_code, fetch_date_str)
+            # 使用 Excel 下載方式獲取持股（自動從網頁獲取最新日期）
+            holdings = scraper.get_etf_holdings(etf_code, storage_date_str, use_excel=True)
+            
             if holdings:
-                # 將日期改回今天再存入資料庫
-                for holding in holdings:
-                    holding['date'] = storage_date_str
-                
                 inserted = db.insert_holdings(holdings)
                 total_inserted += inserted
                 logger.info(f"{etf_code}: Inserted {inserted} new holdings")

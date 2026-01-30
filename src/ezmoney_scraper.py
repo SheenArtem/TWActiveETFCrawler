@@ -1,15 +1,21 @@
 """
 EZMoney ETF 爬蟲模組
-專門處理 EZMoney 網站的 ETF PCF (申購買回清單) 資料抓取
+專門處理 EZMoney 網站的 ETF 持股資料抓取
+支援兩種方式：
+1. Playwright 網頁下載 Excel (主要方式，更可靠)
+2. API 直接抓取 PCF 數據 (備用方式)
 """
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from playwright.sync_api import sync_playwright
 import time
 import random
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
 from loguru import logger
+import pandas as pd
 
 from .config import (
     REQUEST_DELAY_MIN,
@@ -29,11 +35,15 @@ class EZMoneyScraper:
     """EZMoney 網站 ETF 爬蟲"""
     
     API_URL = "https://www.ezmoney.com.tw/ETF/Transaction/GetPCF"
+    INFO_URL = "https://www.ezmoney.com.tw/ETF/Fund/Info"
     
     def __init__(self):
         """初始化爬蟲"""
         self.session = self._create_session()
         self.request_count = 0
+        # 建立下載目錄
+        self.download_dir = Path('downloads/ezmoney')
+        self.download_dir.mkdir(parents=True, exist_ok=True)
     
     def _create_session(self) -> requests.Session:
         """
@@ -208,10 +218,224 @@ class EZMoneyScraper:
                 logger.error(f"Response text: {response.text[:500]}")
             return None
     
+    def download_portfolio_excel(
+        self,
+        fund_code: str,
+        date: str
+    ) -> Optional[Path]:
+        """
+        使用 Playwright 下載基金投資組合 Excel
+        
+        Args:
+            fund_code: EZMoney 基金代碼 (例如: 49YTW)
+            date: 日期 (YYYY-MM-DD)，僅用於檔名
+        
+        Returns:
+            Optional[Path]: 下載的檔案路徑，失敗則返回 None
+        """
+        logger.info(f"Downloading portfolio Excel for fund {fund_code}")
+        
+        downloaded_file = None
+        
+        try:
+            with sync_playwright() as p:
+                # 使用無頭模式（CI 環境需要）
+                browser = p.chromium.launch(headless=True)
+                
+                # 設定下載路徑
+                context = browser.new_context(
+                    accept_downloads=True,
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                )
+                
+                page = context.new_page()
+                
+                # 訪問基金資訊頁面
+                url = f"{self.INFO_URL}?fundCode={fund_code}"
+                logger.debug(f"Navigating to {url}")
+                page.goto(url, timeout=30000)
+                
+                # 等待頁面加載
+                time.sleep(2)
+                
+                # 點擊「基金投資組合」標籤
+                logger.debug("Clicking '基金投資組合' tab")
+                try:
+                    # 嘗試多種選擇器
+                    selectors = [
+                        'text="基金投資組合"',
+                        'a:has-text("基金投資組合")',
+                        '#tab-portfolio',
+                        '.nav-tabs a:has-text("基金投資組合")'
+                    ]
+                    
+                    for selector in selectors:
+                        try:
+                            page.click(selector, timeout=5000)
+                            logger.debug(f"Clicked tab using selector: {selector}")
+                            break
+                        except:
+                            continue
+                    
+                    time.sleep(2)
+                except Exception as e:
+                    logger.warning(f"Could not click portfolio tab: {e}")
+                    # 繼續執行，可能預設就在投資組合頁
+                
+                # 查找並點擊「匯出XLSX」按鈕
+                logger.debug("Looking for Excel export button")
+                
+                # 開始下載監聽
+                with page.expect_download(timeout=30000) as download_info:
+                    # 嘗試多種按鈕選擇器
+                    button_selectors = [
+                        'text="匯出XLSX"',
+                        'button:has-text("匯出")',
+                        'a:has-text("匯出XLSX")',
+                        '.btn:has-text("匯出")',
+                        'input[value*="匯出"]'
+                    ]
+                    
+                    clicked = False
+                    for selector in button_selectors:
+                        try:
+                            page.click(selector, timeout=5000)
+                            logger.debug(f"Clicked export button using selector: {selector}")
+                            clicked = True
+                            break
+                        except:
+                            continue
+                    
+                    if not clicked:
+                        logger.error("Could not find export button")
+                        browser.close()
+                        return None
+                
+                download = download_info.value
+                
+                # 儲存檔案
+                filename = f"{fund_code}_{date.replace('-', '')}.xlsx"
+                save_path = self.download_dir / filename
+                download.save_as(save_path)
+                
+                logger.info(f"Downloaded file: {save_path}")
+                downloaded_file = save_path
+                
+                browser.close()
+        
+        except Exception as e:
+            logger.error(f"Error downloading Excel: {e}")
+            logger.exception(e)
+        
+        return downloaded_file
+    
+    def parse_excel_file(
+        self,
+        excel_path: Path,
+        etf_code: str,
+        date: str
+    ) -> List[Dict[str, Any]]:
+        """
+        解析下載的 Excel 檔案
+        
+        Args:
+            excel_path: Excel 檔案路徑
+            etf_code: ETF 代碼
+            date: 日期 (YYYY-MM-DD)
+        
+        Returns:
+            List[Dict]: 持股明細列表
+        """
+        logger.info(f"Parsing Excel file: {excel_path}")
+        
+        holdings = []
+        
+        try:
+            # EZMoney 的 Excel 格式特殊：
+            # - 前面有基金資訊（淨資產、單位淨值等）
+            # - 第 18 行（索引 18）是表頭：股票代號、股票名稱、股數、持股權重
+            # - 第 19 行開始是股票數據
+            
+            # 直接跳過前 19 行，手動指定列名
+            df = pd.read_excel(
+                excel_path, 
+                skiprows=19,
+                names=['股票代號', '股票名稱', '股數', '持股權重']
+            )
+            
+            logger.debug(f"Loaded {len(df)} rows from Excel")
+            
+            logger.debug(f"Excel columns: {df.columns.tolist()}")
+            logger.debug(f"Excel shape: {df.shape}")
+            
+            # 欄位名稱對照
+            col_mapping = {
+                'code': None,
+                'name': None,
+                'shares': None,
+                'weight': None
+            }
+            
+            for col in df.columns:
+                col_str = str(col)
+                if '股票代號' in col_str or '股票代碼' in col_str or '代碼' in col_str:
+                    col_mapping['code'] = col
+                elif '股票名稱' in col_str or '名稱' in col_str:
+                    col_mapping['name'] = col
+                elif '股數' in col_str:
+                    col_mapping['shares'] = col
+                elif '權重' in col_str or '比例' in col_str or '持股權重' in col_str:
+                    col_mapping['weight'] = col
+            
+            logger.debug(f"Column mapping: {col_mapping}")
+            
+            if not col_mapping['code'] or not col_mapping['name']:
+                logger.error("Cannot find required columns in Excel file")
+                return []
+            
+            # 解析每一行
+            for idx, row in df.iterrows():
+                try:
+                    stock_code = str(row[col_mapping['code']]).strip()
+                    stock_name = str(row[col_mapping['name']]).strip()
+                    
+                    # 跳過空白行或非股票行
+                    if not stock_code or stock_code == 'nan':
+                        continue
+                    
+                    # 只處理4位數字的台股代碼
+                    if not stock_code.isdigit() or len(stock_code) != 4:
+                        continue
+                    
+                    holding = {
+                        'etf_code': etf_code,
+                        'stock_code': stock_code,
+                        'stock_name': stock_name,
+                        'shares': self._parse_number(row[col_mapping['shares']]) if col_mapping['shares'] else 0,
+                        'market_value': 0,  # Excel 檔案中沒有市值欄位
+                        'weight': self._parse_percentage(row[col_mapping['weight']]) if col_mapping['weight'] else 0.0,
+                        'date': date
+                    }
+                    
+                    holdings.append(holding)
+                    
+                except Exception as e:
+                    logger.debug(f"Skipping row {idx}: {e}")
+                    continue
+            
+            logger.info(f"Parsed {len(holdings)} holdings from Excel")
+        
+        except Exception as e:
+            logger.error(f"Error parsing Excel file: {e}")
+            logger.exception(e)
+        
+        return holdings
+    
     def get_etf_holdings(
         self, 
         etf_code: str, 
-        date: str
+        date: str,
+        use_excel: bool = True
     ) -> List[Dict[str, Any]]:
         """
         獲取指定 ETF 在特定日期的持股明細
@@ -219,6 +443,7 @@ class EZMoneyScraper:
         Args:
             etf_code: ETF 代碼 (例如: 00981A)
             date: 日期 (YYYY-MM-DD)
+            use_excel: 是否使用 Excel 下載方式（預設 True），False 則使用 API
         
         Returns:
             List[Dict]: 持股明細列表
@@ -229,6 +454,41 @@ class EZMoneyScraper:
             logger.error(f"Cannot fetch holdings: ETF {etf_code} not in mapping")
             return []
         
+        # 方法1: 使用 Excel 下載 (主要方式)
+        if use_excel:
+            logger.info(f"Using Excel download method for {etf_code}")
+            excel_path = self.download_portfolio_excel(fund_code, date)
+            
+            if excel_path and excel_path.exists():
+                holdings = self.parse_excel_file(excel_path, etf_code, date)
+                if holdings:
+                    return holdings
+                else:
+                    logger.warning("Excel parsing returned no holdings, falling back to API")
+            else:
+                logger.warning("Excel download failed, falling back to API")
+        
+        # 方法2: 使用 API (備用方式)
+        logger.info(f"Using API method for {etf_code}")
+        return self._get_holdings_from_api(etf_code, fund_code, date)
+    
+    def _get_holdings_from_api(
+        self,
+        etf_code: str,
+        fund_code: str,
+        date: str
+    ) -> List[Dict[str, Any]]:
+        """
+        從 API 獲取持股數據（原有方法）
+        
+        Args:
+            etf_code: ETF 代碼
+            fund_code: 基金代碼
+            date: 日期
+        
+        Returns:
+            List[Dict]: 持股明細列表
+        """
         # 抓取 PCF 數據
         data = self.get_pcf_data(fund_code, date)
         if not data:
@@ -239,7 +499,6 @@ class EZMoneyScraper:
         
         try:
             # 解析 API 數據結構
-            # 成分股在 asset 陣列中（直接在根層級，不在 data 下）
             asset_list = data.get('asset', [])
             
             logger.debug(f"Found {len(asset_list)} asset categories")

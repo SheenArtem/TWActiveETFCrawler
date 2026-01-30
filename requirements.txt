@@ -5,6 +5,7 @@ lxml>=5.1.0
 
 # 資料處理
 pandas>=2.2.0
+openpyxl>=3.1.0  # Excel file support for pandas
 
 # Google Sheets API (可選，目前使用SQLite)
 # google-api-python-client>=2.115.0

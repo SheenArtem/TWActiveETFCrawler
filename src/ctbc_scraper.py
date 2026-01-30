@@ -80,9 +80,9 @@ class CTBCScraper:
             logger.info(f"Fetching holdings from {url} via Excel download")
             
             with sync_playwright() as p:
-                # 使用有頭模式並添加反爬蟲參數
+                # 使用無頭模式並添加反爬蟲參數（CI 環境需要 headless）
                 browser = p.chromium.launch(
-                    headless=False,
+                    headless=True,
                     args=[
                         '--disable-blink-features=AutomationControlled',
                         '--no-sandbox',
