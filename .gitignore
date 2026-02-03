@@ -61,3 +61,5 @@ downloads/**/*.xlsx
 
 # 但保留 docs/ 目錄下的 HTML 報告（用於 GitHub Pages）
 !docs/*.html
+
+.cursor/
