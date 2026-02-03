@@ -711,7 +711,7 @@ class HTMLReportGenerator:
         for etf in etf_holdings:
             # 生成持股表格
             holdings_rows = []
-            for holding in etf.get('holdings', [])[:20]:  # 最多顯示前 20 筆
+            for holding in etf.get('holdings', []):  # 顯示所有持股
                 weight_str = f"{holding.get('weight', 0):.2f}%" if holding.get('weight') else '-'
                 lots_str = f"{holding.get('lots', 0):,.0f}張" if holding.get('lots') else '-'
                 holdings_rows.append(
@@ -723,7 +723,7 @@ class HTMLReportGenerator:
             
             holdings_table = '\n'.join(holdings_rows) if holdings_rows else '<tr><td colspan="4">無持股資料</td></tr>'
             total_count = len(etf.get('holdings', []))
-            show_more = f'<tr><td colspan="4" style="text-align:center;color:#666;">... 還有 {total_count - 20} 檔成分股</td></tr>' if total_count > 20 else ''
+
             
             cards_html.append(f"""
             <div class="etf-holdings-card">
@@ -736,7 +736,6 @@ class HTMLReportGenerator:
                         <table>
                             <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
                             {holdings_table}
-                            {show_more}
                         </table>
                     </div>
                 </div>
