@@ -45,11 +45,11 @@ def daily_update_ezmoney(generate_report=True):
     scraper = EZMoneyScraper()
     
     # EZMoney 使用網頁下載 Excel 的方式獲取最新持股資料
-    # 網頁上會顯示最新的日期，直接用今天的日期即可
+    # 注意：實際資料日期會從 Excel 檔案中自動提取，這裡的日期僅作為檔名和備用
     today = datetime.now()
     storage_date_str = today.strftime('%Y-%m-%d')
     
-    logger.info(f"Fetching EZMoney ETF data for holdings date: {storage_date_str}")
+    logger.info(f"Downloading EZMoney ETF data (actual date will be extracted from Excel)")
     
     # 取得所有已配置的 EZMoney ETF
     ezmoney_etfs = scraper.get_all_mappings()

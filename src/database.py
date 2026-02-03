@@ -111,40 +111,82 @@ class Database:
     
     def insert_holdings(self, holdings: List[Dict[str, Any]]):
         """
-        插入持股明細（忽略重複）
+        插入或更新持股明細
+        
+        當同一 ETF、股票、日期的記錄已存在時，會更新為最新資料。
+        這允許一天內多次執行爬蟲時能夠更新資料。
         
         Args:
             holdings: 持股明細列表
+        
+        Returns:
+            int: 新插入或更新的記錄數
         """
         conn = self.get_connection()
         cursor = conn.cursor()
         
         inserted_count = 0
+        updated_count = 0
+        
         for holding in holdings:
             try:
+                etf_code = holding.get('etf_code')
+                stock_code = holding.get('stock_code')
+                date = holding.get('date')
+                
+                # 檢查記錄是否已存在
                 cursor.execute("""
-                    INSERT OR IGNORE INTO holdings 
+                    SELECT shares, weight FROM holdings 
+                    WHERE etf_code=? AND stock_code=? AND date=?
+                """, (etf_code, stock_code, date))
+                
+                existing = cursor.fetchone()
+                
+                # 使用 REPLACE (等同於 DELETE + INSERT)
+                cursor.execute("""
+                    INSERT OR REPLACE INTO holdings 
                     (etf_code, stock_code, stock_name, shares, market_value, weight, date)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    holding.get('etf_code'),
-                    holding.get('stock_code'),
+                    etf_code,
+                    stock_code,
                     holding.get('stock_name'),
                     holding.get('shares'),
                     holding.get('market_value'),
                     holding.get('weight'),
-                    holding.get('date')
+                    date
                 ))
-                if cursor.rowcount > 0:
+                
+                if existing:
+                    # 記錄已存在，檢查是否有實質變化
+                    old_shares, old_weight = existing
+                    new_shares = holding.get('shares')
+                    new_weight = holding.get('weight', 0)
+                    
+                    if (old_shares != new_shares or abs(old_weight - new_weight) > 0.01):
+                        updated_count += 1
+                        logger.debug(f"Updated {etf_code} {stock_code} on {date}: "
+                                   f"shares {old_shares}→{new_shares}, "
+                                   f"weight {old_weight:.2f}%→{new_weight:.2f}%")
+                else:
+                    # 新記錄
                     inserted_count += 1
-            except sqlite3.IntegrityError as e:
-                logger.warning(f"Duplicate holding skipped: {holding.get('etf_code')} - {holding.get('stock_code')} on {holding.get('date')}")
+                    
+            except sqlite3.Error as e:
+                logger.error(f"Error inserting/updating holding: {e}")
         
         conn.commit()
         conn.close()
         
-        logger.info(f"Inserted {inserted_count} new holdings (total processed: {len(holdings)})")
-        return inserted_count
+        if updated_count > 0:
+            logger.info(f"Inserted {inserted_count} new holdings, "
+                       f"Updated {updated_count} existing holdings "
+                       f"(total processed: {len(holdings)})")
+        else:
+            logger.info(f"Inserted {inserted_count} new holdings "
+                       f"(total processed: {len(holdings)})")
+        
+        return inserted_count + updated_count
     
     def get_active_etfs(self) -> List[Dict[str, Any]]:
         """

@@ -341,7 +341,7 @@ class EZMoneyScraper:
         Args:
             excel_path: Excel 檔案路徑
             etf_code: ETF 代碼
-            date: 日期 (YYYY-MM-DD)
+            date: 日期 (YYYY-MM-DD) - 僅作為備用，優先使用 Excel 中的實際日期
         
         Returns:
             List[Dict]: 持股明細列表
@@ -349,8 +349,34 @@ class EZMoneyScraper:
         logger.info(f"Parsing Excel file: {excel_path}")
         
         holdings = []
+        actual_date = date  # 預設使用傳入的日期
         
         try:
+            # ===== 步驟 1: 從 Excel 第一行提取實際資料日期 =====
+            df_header = pd.read_excel(excel_path, header=None, nrows=1)
+            first_cell = df_header.iloc[0, 0] if len(df_header) > 0 else None
+            
+            if first_cell and isinstance(first_cell, str):
+                # 嘗試解析民國日期格式 (例如: "資料日期：115/02/03")
+                import re
+                match = re.search(r'(\d{3})/(\d{2})/(\d{2})', first_cell)
+                if match:
+                    roc_year = int(match.group(1))
+                    month = int(match.group(2))
+                    day = int(match.group(3))
+                    west_year = roc_year + 1911
+                    actual_date = f"{west_year}-{month:02d}-{day:02d}"
+                    
+                    if actual_date != date:
+                        logger.info(f"Excel actual date: {actual_date} (expected: {date})")
+                    else:
+                        logger.info(f"Excel date confirmed: {actual_date}")
+                else:
+                    logger.warning(f"Could not parse date from Excel header: {first_cell}")
+            else:
+                logger.warning(f"Excel header is empty or invalid, using passed date: {date}")
+            
+            # ===== 步驟 2: 解析持股資料 =====
             # EZMoney 的 Excel 格式特殊：
             # - 前面有基金資訊（淨資產、單位淨值等）
             # - 第 18 行（索引 18）是表頭：股票代號、股票名稱、股數、持股權重
@@ -414,7 +440,7 @@ class EZMoneyScraper:
                         'shares': self._parse_number(row[col_mapping['shares']]) if col_mapping['shares'] else 0,
                         'market_value': 0,  # Excel 檔案中沒有市值欄位
                         'weight': self._parse_percentage(row[col_mapping['weight']]) if col_mapping['weight'] else 0.0,
-                        'date': date
+                        'date': actual_date  # 使用從 Excel 提取的實際日期
                     }
                     
                     holdings.append(holding)
