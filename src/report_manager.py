@@ -79,10 +79,30 @@ class ReportManager:
         logger.info(f"Markdown report saved to: {md_file}")
         
         # 3. 生成 HTML 報告（GitHub Pages）
+        # 獲取 ETF 持股資料
+        etf_holdings = []
+        for etf_code in etf_info_dict.keys():
+            holdings = self.db.get_holdings_by_date(date, etf_code)
+            if holdings:
+                etf_holdings.append({
+                    'etf_code': etf_code,
+                    'etf_name': etf_info_dict.get(etf_code, etf_code),
+                    'holdings': [
+                        {
+                            'stock_code': h.get('stock_code', ''),
+                            'stock_name': h.get('stock_name', ''),
+                            'weight': h.get('weight', 0),
+                            'lots': h.get('shares', 0) / 1000 if h.get('shares') else 0
+                        }
+                        for h in holdings
+                    ]
+                })
+        
         html_file = self.html_generator.generate_daily_report(
             changes_dict, 
             date, 
-            etf_info_dict
+            etf_info_dict,
+            etf_holdings
         )
         logger.info(f"HTML report saved to: {html_file}")
         
