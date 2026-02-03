@@ -2,8 +2,8 @@ name: Daily ETF Scraper
 
 on:
   schedule:
-  # 台灣時間 22:00 (即 UTC 14:00)
-    - cron: '0 14 * * *'
+  # 台灣時間 18:00 (即 UTC 10:00)
+    - cron: '0 10 * * *'
   workflow_dispatch:
   push:
     branches: [ main ]
@@ -45,6 +45,7 @@ jobs:
           git add reports/
           git add docs/    # 修改 2: 添加 docs/ 目錄
           git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Update ETF holdings data - $(date +'%Y-%m-%d')" && git push)
+
 
 
 
