@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,28 +13,33 @@
             padding: 20px;
             background: #f5f5f5;
         }
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 40px;
             border-radius: 12px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         h1 {
             margin: 0 0 10px 0;
             font-size: 2.5em;
         }
+
         .subtitle {
             opacity: 0.9;
             font-size: 1.1em;
         }
+
         .content {
             background: white;
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         .info-box {
             background: #e3f2fd;
             border-left: 4px solid #2196f3;
@@ -41,10 +47,12 @@
             margin: 20px 0;
             border-radius: 4px;
         }
+
         .info-box h3 {
             margin-top: 0;
             color: #1976d2;
         }
+
         .status {
             display: inline-block;
             padding: 6px 12px;
@@ -54,13 +62,16 @@
             font-size: 0.9em;
             font-weight: 500;
         }
+
         a {
             color: #667eea;
             text-decoration: none;
         }
+
         a:hover {
             text-decoration: underline;
         }
+
         .footer {
             text-align: center;
             margin-top: 40px;
@@ -70,13 +81,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>🏦 台灣主動型 ETF 持倉追蹤系統</h1>
         <p class="subtitle">Taiwan Active ETF Holdings Tracker</p>
         <p class="subtitle"><span class="status">運行中</span></p>
     </div>
-    
+
     <div class="content">
         <h2>🔗 相關連結</h2>
         <ul>
@@ -88,6 +100,11 @@
             <h3>💡 使用說明</h3>
             <p>HTML 報告將會在系統運行後自動生成於此目錄。請稍候...</p>
         </div>
+
+        <h2>📊 每日報告</h2>
+        <div id="reports-list">
+            <p>載入報告中...</p>
+        </div>
     </div>
 
     <div class="footer">
@@ -97,7 +114,57 @@
 
     <script>
         document.getElementById('datetime').textContent = new Date().toLocaleString('zh-TW');
+
+        // Load and display reports
+        async function loadReports() {
+            try {
+                const response = await fetch('reports_index.json');
+                const reports = await response.json();
+
+                const reportsListDiv = document.getElementById('reports-list');
+
+                if (reports.length === 0) {
+                    reportsListDiv.innerHTML = '<p>尚無可用報告</p>';
+                    return;
+                }
+
+                let html = '<ul style="list-style: none; padding: 0;">';
+
+                reports.forEach(report => {
+                    const date = new Date(report.date);
+                    const formattedDate = date.toLocaleDateString('zh-TW', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+
+                    html += `
+                        <li style="margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <strong>📅 ${formattedDate}</strong>
+                            <br>
+                            <small style="color: #666;">
+                                追蹤 ETF 數量: ${report.etf_count} | 
+                                總變動: ${report.total_changes} 筆
+                            </small>
+                            <br>
+                            <a href="report_${report.date}.html" style="display: inline-block; margin-top: 8px; padding: 8px 16px; background: #667eea; color: white; border-radius: 4px; text-decoration: none;">
+                                查看報告 →
+                            </a>
+                        </li>
+                    `;
+                });
+
+                html += '</ul>';
+                reportsListDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('載入報告失敗:', error);
+                document.getElementById('reports-list').innerHTML = '<p style="color: #f44336;">載入報告失敗，請稍後再試</p>';
+            }
+        }
+
+        loadReports();
     </script>
 </body>
-</html>
 
+</html>
