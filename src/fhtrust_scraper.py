@@ -129,7 +129,8 @@ class FHTrustScraper:
             # - 第 10 行（index 9）是欄位標題：證券代號、證券名稱、股數、金額、權重(%)
             # - 從第 11 行開始是實際數據
             
-            df = pd.read_excel(excel_path, skiprows=10)
+            # 指定 engine='openpyxl' 以支援 .xlsx 格式
+            df = pd.read_excel(excel_path, skiprows=10, engine='openpyxl')
             
             logger.debug(f"Excel columns: {df.columns.tolist()}")
             logger.debug(f"Excel shape: {df.shape}")
