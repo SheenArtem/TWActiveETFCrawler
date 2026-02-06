@@ -4,7 +4,7 @@
 from typing import Dict, List
 from pathlib import Path
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from .holdings_analyzer import HoldingChange
 
 
@@ -132,7 +132,7 @@ class HTMLReportGenerator:
         
         return {
             'date': date,
-            'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'update_time': (datetime.now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),  # 台北时间 (UTC+8)
             'summary': {
                 'total_etfs': len(changes_dict),
                 'total_changes': total_changes
@@ -534,7 +534,7 @@ class HTMLReportGenerator:
         <div class="header">
             <div class="header-content">
                 <h1>📊 ETF 持股變動追蹤系統</h1>
-                <div class="date">報告日期：{date} | 更新時間：{data['update_time']}</div>
+                <div class="date">報告日期：{date} | 更新時間：{data['update_time']} (台北時間)</div>
             </div>
             <a href="index.html" class="btn-home">🏠 回到主頁</a>
         </div>

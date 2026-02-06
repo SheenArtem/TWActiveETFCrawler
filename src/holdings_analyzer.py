@@ -289,13 +289,14 @@ class HoldingsAnalyzer:
         Returns:
             str: Markdown 格式的報告
         """
-        from datetime import datetime
+        from datetime import datetime, timedelta
         
         if not changes_dict:
             return f"# ETF 持股變動追蹤 📊\n\n> 最後更新：{date}\n\n## {date} 變動摘要\n\n**本日無變動**\n"
         
         total_changes = sum(len(changes) for changes in changes_dict.values())
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # 台北时间 (UTC+8)
+        current_time = (datetime.utcnow() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S')
         
         md_lines = [
             "# ETF 持股變動追蹤 📊\n",
