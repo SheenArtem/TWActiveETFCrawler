@@ -440,11 +440,21 @@ def daily_update_fsitc(generate_report=True):
         
         try:
             holdings, actual_date = scraper.get_etf_holdings(etf_code, date_str)
-            actual_dates[etf_code] = actual_date  # 記錄實際日期
+            
+            # 强制使用我们计算的target_date，不信任API的sdate
+            # 原因：API的sdate可能在台北时间11点就更新为当天，导致日期不一致
             if holdings:
+                # 记录API日期与我们计算日期的差异
+                if actual_date != date_str:
+                    logger.warning(f"{etf_code}: API date ({actual_date}) differs from target date ({date_str}), using target date")
+                
+                # 强制覆盖所有holdings的date为target_date
+                for holding in holdings:
+                    holding['date'] = date_str
+                
                 inserted = db.insert_holdings(holdings)
                 total_inserted += inserted
-                logger.info(f"{etf_code}: Inserted {inserted} new holdings (actual date: {actual_date})")
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (using target date: {date_str})")
             else:
                 logger.warning(f"{etf_code}: No holdings data found")
         except Exception as e:
@@ -458,14 +468,9 @@ def daily_update_fsitc(generate_report=True):
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         
-        # 使用實際數據日期生成報告（如果所有ETF的日期一致，使用該日期；否則使用最常見的日期）
-        if actual_dates:
-            from collections import Counter
-            date_counter = Counter(actual_dates.values())
-            report_date = date_counter.most_common(1)[0][0]  # 使用最常見的日期
-            logger.info(f"Using {report_date} for report generation (requested: {date_str})")
-        else:
-            report_date = date_str
+        # 使用target_date生成報告，確保與數據日期一致
+        report_date = date_str
+        logger.info(f"Generating report for {report_date}")
         
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(fsitc_etfs.keys()), report_date)
         
