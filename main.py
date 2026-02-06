@@ -655,9 +655,21 @@ def generate_consolidated_reports():
     
     db = Database(DB_FULL_PATH)
     
-    # 取得今天的日期
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
+    # 使用與 daily_update_fsitc 相同的時間判斷邏輯
+    # 檢查當前時間（UTC），決定使用哪一天的數據
+    current_time = datetime.now()  # GitHub Actions uses UTC time
+    
+    if current_time.hour < 10:  # UTC 10:00 = 台北18:00
+        # 在收盤整理時間前，使用前一個交易日
+        target_date = current_time - timedelta(days=1)
+        logger.info(f"Current time (UTC): {current_time.strftime('%H:%M')}, using previous trading day for reports")
+    else:
+        # 收盤後，使用當天（如果是交易日）
+        target_date = current_time
+        logger.info(f"Current time (UTC): {current_time.strftime('%H:%M')}, using current day for reports")
+    
+    # 避免週末
+    while target_date.weekday() >= 5:
         target_date -= timedelta(days=1)
     date_str = target_date.strftime('%Y-%m-%d')
     
