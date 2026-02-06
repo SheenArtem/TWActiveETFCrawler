@@ -19,6 +19,7 @@ from .config import (
 # 安聯投信 ETF 基金代碼對照表
 ALLIANZ_ETF_CODES = {
     '00984A': 'E0001',  # 安聯台灣高息成長主動式ETF
+    '00993A': 'E0002',  # 安聯台灣主動式 ETF
     # 未來可以新增其他安聯投信 ETF
 }
 
