@@ -421,15 +421,17 @@ def daily_update_fsitc(generate_report=True):
     
     # 逐一抓取持股明細
     total_inserted = 0
+    actual_dates = {}  # 記錄每個ETF的實際數據日期
     for i, etf_code in enumerate(fsitc_etfs.keys(), 1):
         logger.info(f"[{i}/{len(fsitc_etfs)}] Updating {etf_code}")
         
         try:
-            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            holdings, actual_date = scraper.get_etf_holdings(etf_code, date_str)
+            actual_dates[etf_code] = actual_date  # 記錄實際日期
             if holdings:
                 inserted = db.insert_holdings(holdings)
                 total_inserted += inserted
-                logger.info(f"{etf_code}: Inserted {inserted} new holdings")
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (actual date: {actual_date})")
             else:
                 logger.warning(f"{etf_code}: No holdings data found")
         except Exception as e:
@@ -442,13 +444,23 @@ def daily_update_fsitc(generate_report=True):
     if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
-        changes_dict = report_mgr.analyzer.detect_changes_batch(list(fsitc_etfs.keys()), date_str)
+        
+        # 使用實際數據日期生成報告（如果所有ETF的日期一致，使用該日期；否則使用最常見的日期）
+        if actual_dates:
+            from collections import Counter
+            date_counter = Counter(actual_dates.values())
+            report_date = date_counter.most_common(1)[0][0]  # 使用最常見的日期
+            logger.info(f"Using {report_date} for report generation (requested: {date_str})")
+        else:
+            report_date = date_str
+        
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(fsitc_etfs.keys()), report_date)
         
         if changes_dict:
-            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
+            report = report_mgr.analyzer.generate_report(changes_dict, report_date)
             logger.info(report)
             # 生成所有格式的報告（TXT, Markdown, HTML）
-            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
+            report_mgr.generate_all_reports(changes_dict, report_date, append_txt=True)
         else:
             logger.info("No significant changes detected.")
 

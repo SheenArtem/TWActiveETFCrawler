@@ -31,7 +31,7 @@ class FSITCScraper:
             'Referer': 'https://www.fsitc.com.tw/FundDetail.aspx'
         })
 
-    def get_etf_holdings(self, etf_code: str, date: str) -> List[Dict[str, Any]]:
+    def get_etf_holdings(self, etf_code: str, date: str) -> tuple[List[Dict[str, Any]], str]:
         """
         獲取 ETF 持股明細
         
@@ -40,14 +40,15 @@ class FSITCScraper:
             date: 日期 (YYYY-MM-DD)
             
         Returns:
-            List[Dict]: 持股明細列表
+            tuple: (持股明細列表, 實際數據日期)
         """
         fund_id = self.FUND_ID_MAP.get(etf_code)
         if not fund_id:
             logger.error(f"Unknown ETF code for FSITC: {etf_code}")
-            return []
+            return [], date
             
         holdings = []
+        actual_date = date  # 默認使用請求日期
         try:
             # 準備請求數據
             payload = {
@@ -67,7 +68,7 @@ class FSITCScraper:
                     data = response.json()
                 except Exception as e:
                     logger.error(f"Failed to parse JSON: {response.text[:200]}")
-                    return []
+                    return [], date
                 
                 # 預期返回 {"d": "JSON string or HTML"} 或者直接是 JSON 結構
                 result = data.get('d')
@@ -79,7 +80,7 @@ class FSITCScraper:
                         result = data
                     else:
                         logger.warning(f"Unexpected JSON structure: {data.keys() if isinstance(data, dict) else type(data)}")
-                        return []
+                        return [], date
                 
                 # 如果 "d" 是 JSON 字串，需要再次解析
                 import json
@@ -88,10 +89,11 @@ class FSITCScraper:
                         # 嘗試解析 d 內容
                         if result.strip().startswith('<'): # HTML
                             holdings = self._parse_html_table(result, date)
+                            # HTML格式無法提取實際日期，使用請求日期
                         else:
                             try:
                                 inner_data = json.loads(result)
-                                holdings = self._parse_json_data(inner_data, date, etf_code)
+                                holdings, actual_date = self._parse_json_data(inner_data, date, etf_code)
                             except json.JSONDecodeError:
                                 # 嘗試直接當作 HTML
                                 holdings = self._parse_html_table(result, date, etf_code)
@@ -100,9 +102,9 @@ class FSITCScraper:
                         logger.error(f"Error parsing content: {parse_e}")
                 else:
                     # 已經是 dict/list
-                    holdings = self._parse_json_data(result, date, etf_code)
+                    holdings, actual_date = self._parse_json_data(result, date, etf_code)
 
-                logger.info(f"Parsed {len(holdings)} holdings for {etf_code}")
+                logger.info(f"Parsed {len(holdings)} holdings for {etf_code} (actual date: {actual_date})")
                 
             else:
                 logger.error(f"Failed to fetch data: HTTP {response.status_code}")
@@ -111,7 +113,7 @@ class FSITCScraper:
             logger.error(f"Error fetching FSITC holdings: {e}")
             logger.exception(e)
             
-        return holdings
+        return holdings, actual_date
     
     def _parse_html_table(self, html_content: str, date: str, etf_code: str = None) -> List[Dict[str, Any]]:
         """解析 HTML 表格數據"""
@@ -163,7 +165,7 @@ class FSITCScraper:
             
         return holdings
 
-    def _parse_json_data(self, data: List[Dict], date: str, etf_code: str = None) -> List[Dict[str, Any]]:
+    def _parse_json_data(self, data: List[Dict], date: str, etf_code: str = None) -> tuple[List[Dict[str, Any]], str]:
         """解析 JSON 列表數據"""
         holdings = []
         # JSON keys mapping found:
@@ -171,6 +173,15 @@ class FSITCScraper:
         # B: StockName
         # C: Weight (%)
         # D: Shares (with commas)
+        # sdate: 實際數據日期 (YYYY-MM-DD)
+        
+        # 嘗試從第一筆數據中提取實際日期
+        actual_date = date  # 默認使用傳入的日期
+        if data and len(data) > 0:
+            first_item = data[0]
+            if 'sdate' in first_item and first_item['sdate']:
+                actual_date = first_item['sdate']
+                logger.info(f"Using actual date from API: {actual_date} (requested: {date})")
         
         for item in data:
             try:
@@ -203,12 +214,12 @@ class FSITCScraper:
                         'shares': shares,
                         'weight': weight,
                         'market_value': 0,
-                        'date': date
+                        'date': actual_date  # 使用從API提取的實際日期
                     })
             except Exception as e:
                 logger.warning(f"Error parsing JSON item: {e}")
                 
-        return holdings
+        return holdings, actual_date  # 返回holdings和實際使用的日期
 
     def get_all_mappings(self) -> Dict[str, str]:
         """獲取所有支持的 ETF 代碼映射"""
