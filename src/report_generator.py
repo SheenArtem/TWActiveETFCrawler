@@ -52,9 +52,10 @@ class HTMLReportGenerator:
             })
         
         # 2. 熱門調整股票統計
-        stock_changes = {}  # stock_code -> {name, up_count, down_count, net_change}
+        stock_changes = {}  # stock_code -> {name, up_count, down_count, net_change, etf_details}
         
         for etf_code, changes in changes_dict.items():
+            etf_name = etf_info_dict.get(etf_code, etf_code)
             for change in changes:
                 if change.change_type in ['SHARES_UP', 'SHARES_DOWN']:
                     code = change.stock_code
@@ -63,8 +64,18 @@ class HTMLReportGenerator:
                             'name': change.stock_name,
                             'up_count': 0,
                             'down_count': 0,
-                            'net_change': 0
+                            'net_change': 0,
+                            'etf_details': []
                         }
+                    
+                    # 記錄 ETF 調整詳情
+                    etf_detail = {
+                        'etf_code': etf_code,
+                        'etf_name': etf_name,
+                        'adjustment': round(change.lots_diff, 2),
+                        'new_lots': round(change.new_lots, 2)
+                    }
+                    stock_changes[code]['etf_details'].append(etf_detail)
                     
                     if change.change_type == 'SHARES_UP':
                         stock_changes[code]['up_count'] += 1
@@ -73,13 +84,30 @@ class HTMLReportGenerator:
                         stock_changes[code]['down_count'] += 1
                         stock_changes[code]['net_change'] += change.lots_diff
         
+        # 補充權重資訊
+        if etf_holdings:
+            for stock_code, stock_data in stock_changes.items():
+                for etf_detail in stock_data['etf_details']:
+                    etf_code = etf_detail['etf_code']
+                    # 在 etf_holdings 中找到對應的 ETF
+                    for etf in etf_holdings:
+                        if etf['etf_code'] == etf_code:
+                            # 在該 ETF 的持股中找到對應的股票
+                            for holding in etf.get('holdings', []):
+                                if holding.get('stock_code') == stock_code:
+                                    etf_detail['weight'] = holding.get('weight', 0)
+                                    etf_detail['lots'] = holding.get('lots', 0)
+                                    break
+                            break
+        
         # 排序：按調整次數
         hot_stocks = [
             {
                 'stock_code': code,
                 'stock_name': data['name'],
                 'total_adjustments': data['up_count'] + data['down_count'],
-                'net_change': round(data['net_change'], 2)
+                'net_change': round(data['net_change'], 2),
+                'etf_details': data['etf_details']
             }
             for code, data in stock_changes.items()
         ]
@@ -509,6 +537,84 @@ class HTMLReportGenerator:
             color: #065f46;
         }}
         
+        /* 熱門股票可展開項目 */
+        .hot-stock-item {{
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }}
+        
+        .hot-stock-header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }}
+        
+        .hot-stock-header:hover {{
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }}
+        
+        .hot-stock-info {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }}
+        
+        .hot-stock-rank {{
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-right: 5px;
+        }}
+        
+        .hot-stock-name {{
+            font-size: 1.1em;
+            font-weight: bold;
+        }}
+        
+        .hot-stock-stats {{
+            display: flex;
+            gap: 15px;
+            font-size: 0.95em;
+        }}
+        
+        .hot-stock-content {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #f9fafb;
+        }}
+        
+        .hot-stock-content.expanded {{
+            max-height: 600px;
+            overflow-y: auto;
+        }}
+        
+        .etf-adjustments-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }}
+        
+        .etf-adjustments-table th {{
+            background: #e5e7eb;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 2px solid #d1d5db;
+            font-weight: 600;
+        }}
+        
+        .etf-adjustments-table td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        
         @media (max-width: 768px) {{
             .charts-grid {{
                 grid-template-columns: 1fr;
@@ -559,7 +665,7 @@ class HTMLReportGenerator:
             </div>
             <div class="chart-card">
                 <h2>🔥 熱門調整股票 TOP 10</h2>
-                <canvas id="hotStocksChart"></canvas>
+                <div id="hotStocksList"></div>
             </div>
         </div>
         
@@ -608,36 +714,84 @@ class HTMLReportGenerator:
             }}
         }});
         
-        // 熱門股票長條圖
-        const hotStocksCtx = document.getElementById('hotStocksChart').getContext('2d');
-        new Chart(hotStocksCtx, {{
-            type: 'bar',
-            data: {{
-                labels: data.hot_stocks.map(s => s.stock_code + ' ' + s.stock_name),
-                datasets: [{{
-                    label: '調整次數',
-                    data: data.hot_stocks.map(s => s.total_adjustments),
-                    backgroundColor: '#667eea'
-                }}]
-            }},
-            options: {{
-                responsive: true,
-                indexAxis: 'y',
-                plugins: {{
-                    legend: {{
-                        display: false
-                    }}
-                }},
-                scales: {{
-                    x: {{
-                        beginAtZero: true,
-                        ticks: {{
-                            stepSize: 1
-                        }}
-                    }}
+        // 生成熱門股票列表
+        function renderHotStocks() {{
+            const container = document.getElementById('hotStocksList');
+            let html = '';
+            
+            data.hot_stocks.forEach((stock, index) => {{
+                html += `
+                    <div class="hot-stock-item">
+                        <div class="hot-stock-header" onclick="toggleHotStock(this)">
+                            <div class="hot-stock-info">
+                                <span class="hot-stock-rank">#${{index + 1}}</span>
+                                <span class="hot-stock-name">${{stock.stock_code}} ${{stock.stock_name}}</span>
+                                <div class="hot-stock-stats">
+                                    <span>📊 ${{stock.total_adjustments}} 次調整</span>
+                                    <span>合計: ${{stock.net_change > 0 ? '+' : ''}}${{stock.net_change}} 張</span>
+                                </div>
+                            </div>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="hot-stock-content">
+                            <table class="etf-adjustments-table">
+                                <thead>
+                                    <tr>
+                                        <th>ETF代碼</th>
+                                        <th>ETF名稱</th>
+                                        <th>調整</th>
+                                        <th>持股張數</th>
+                                        <th>權重</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                // 添加 ETF 調整詳情
+                if (stock.etf_details && stock.etf_details.length > 0) {{
+                    stock.etf_details.forEach(detail => {{
+                        const adjClass = detail.adjustment > 0 ? 'up' : 'down';
+                        const adjArrow = detail.adjustment > 0 ? '▲' : '▼';
+                        const adjSign = detail.adjustment > 0 ? '+' : '';
+                        const weight = detail.weight ? `${{detail.weight.toFixed(2)}}%` : '-';
+                        const lots = detail.lots ? `${{detail.lots.toLocaleString()}} 張` : '-';
+                        
+                        html += `
+                            <tr>
+                                <td>${{detail.etf_code}}</td>
+                                <td>${{detail.etf_name}}</td>
+                                <td class="${{adjClass}}">${{adjArrow}} ${{adjSign}}${{detail.adjustment}} 張</td>
+                                <td>${{lots}}</td>
+                                <td>${{weight}}</td>
+                            </tr>
+                        `;
+                    }});
+                }} else {{
+                    html += '<tr><td colspan="5">無詳細資訊</td></tr>';
                 }}
-            }}
-        }});
+                
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }});
+            
+            container.innerHTML = html;
+        }}
+        
+        // 切換展開狀態
+        function toggleHotStock(header) {{
+            header.classList.toggle('expanded');
+            const content = header.nextElementSibling;
+            content.classList.toggle('expanded');
+            const icon = header.querySelector('.toggle-icon');
+            icon.style.transform = content.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }}
+        
+        // 執行渲染
+        renderHotStocks();
     </script>
 </body>
 </html>"""
