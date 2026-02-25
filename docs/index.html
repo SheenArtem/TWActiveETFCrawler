@@ -79,6 +79,211 @@
             color: #666;
             font-size: 0.9em;
         }
+
+        /* === Cross-ETF Buy/Sell Section === */
+        .cross-etf-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .cross-etf-section h2 {
+            margin-top: 0;
+        }
+
+        .cross-etf-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .cross-etf-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rank-card {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .rank-card-header {
+            padding: 14px 18px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .rank-card.buy .rank-card-header {
+            background: linear-gradient(135deg, #e53935 0%, #ff7043 100%);
+        }
+
+        .rank-card.sell .rank-card-header {
+            background: linear-gradient(135deg, #1e88e5 0%, #42a5f5 100%);
+        }
+
+        .rank-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .rank-item {
+            border-bottom: 1px solid #eee;
+        }
+
+        .rank-item:last-child {
+            border-bottom: none;
+        }
+
+        .rank-item-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            user-select: none;
+        }
+
+        .rank-item-header:hover {
+            background: #f5f5f5;
+        }
+
+        .rank-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85em;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .buy .rank-num {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .sell .rank-num {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .rank-stock-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rank-stock-name {
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .rank-stock-code {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 6px;
+        }
+
+        .rank-lots {
+            font-weight: 700;
+            font-size: 0.95em;
+            margin-left: 12px;
+            white-space: nowrap;
+        }
+
+        .buy .rank-lots {
+            color: #c62828;
+        }
+
+        .sell .rank-lots {
+            color: #1565c0;
+        }
+
+        .rank-arrow {
+            margin-left: 8px;
+            transition: transform 0.2s;
+            color: #999;
+            font-size: 0.8em;
+        }
+
+        .rank-item.expanded .rank-arrow {
+            transform: rotate(90deg);
+        }
+
+        .rank-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #fafafa;
+        }
+
+        .rank-item.expanded .rank-detail {
+            max-height: 800px;
+        }
+
+        .rank-detail-inner {
+            padding: 8px 16px 14px;
+        }
+
+        .rank-detail table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        .rank-detail th {
+            background: #eee;
+            padding: 6px 8px;
+            text-align: center;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .rank-detail td {
+            padding: 5px 8px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .rank-detail td:first-child,
+        .rank-detail th:first-child {
+            text-align: left;
+        }
+
+        .rank-detail .val-pos {
+            color: #c62828;
+            font-weight: 600;
+        }
+
+        .rank-detail .val-neg {
+            color: #1565c0;
+            font-weight: 600;
+        }
+
+        .rank-etf-count {
+            font-size: 0.78em;
+            color: #999;
+            display: block;
+        }
+
+        .cross-date-range {
+            font-size: 0.88em;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .cross-loading {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
     </style>
 </head>
 
@@ -89,13 +294,16 @@
         <p class="subtitle"><span class="status">運行中</span></p>
     </div>
 
-    <div class="content">
-        <h2>🔗 相關連結</h2>
-        <ul>
-            <li><a href="https://github.com/SheenArtem/TWActiveETFCrawler">GitHub 專案頁面</a></li>
-            <li><a href="reports_index.json">報告索引 (JSON)</a></li>
-        </ul>
+    <!-- Cross-ETF Buy/Sell Section -->
+    <div class="cross-etf-section" id="cross-etf-section">
+        <h2>🔥 近五日 ETF 同步買賣超 TOP 10</h2>
+        <div class="cross-date-range" id="cross-date-range"></div>
+        <div id="cross-etf-content">
+            <div class="cross-loading">載入資料中...</div>
+        </div>
+    </div>
 
+    <div class="content">
         <div class="info-box">
             <h3>💡 使用說明</h3>
             <p>HTML 報告將會在系統運行後自動生成於此目錄。請稍候...</p>
@@ -115,7 +323,7 @@
     <script>
         document.getElementById('datetime').textContent = new Date().toLocaleString('zh-TW');
 
-        // Load and display reports
+        // ====== Load and display reports ======
         async function loadReports() {
             try {
                 const response = await fetch('reports_index.json');
@@ -163,7 +371,242 @@
             }
         }
 
+        // ====== Cross-ETF Buy/Sell TOP 10 ======
+        async function loadCrossETFData() {
+            try {
+                // 1. Get the 5 most recent trading dates from reports_index.json
+                const idxResp = await fetch('reports_index.json');
+                const reportsIndex = await idxResp.json();
+                const recentDates = reportsIndex.slice(0, 5).map(r => r.date);
+
+                if (recentDates.length === 0) {
+                    document.getElementById('cross-etf-content').innerHTML = '<p>尚無可用資料</p>';
+                    return;
+                }
+
+                // Show date range
+                const fmtDate = d => {
+                    const dt = new Date(d);
+                    return dt.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+                };
+                document.getElementById('cross-date-range').textContent =
+                    `統計期間：${fmtDate(recentDates[recentDates.length - 1])} ~ ${fmtDate(recentDates[0])}（共 ${recentDates.length} 個交易日）`;
+
+                // 2. Load all data files in parallel
+                const dataPromises = recentDates.map(date =>
+                    fetch(`data_${date}.json`).then(r => r.json()).catch(() => null)
+                );
+                const allData = (await Promise.all(dataPromises)).filter(Boolean);
+
+                // 3. Aggregate: stock_code -> { name, totalLots, etfMap: { etf_code -> { name, perDay: { date -> lots }, totalLots } } }
+                const stockAgg = {};
+
+                allData.forEach(dayData => {
+                    const date = dayData.date;
+                    if (!dayData.detailed_changes) return;
+
+                    dayData.detailed_changes.forEach(etfEntry => {
+                        const etfCode = etfEntry.etf_code;
+                        const etfName = etfEntry.etf_name;
+
+                        // Process modified stocks
+                        (etfEntry.modified || []).forEach(stock => {
+                            const code = stock.stock_code;
+                            if (!stockAgg[code]) {
+                                stockAgg[code] = {
+                                    name: stock.stock_name,
+                                    totalLots: 0,
+                                    etfMap: {}
+                                };
+                            }
+                            stockAgg[code].totalLots += (stock.diff || 0);
+
+                            if (!stockAgg[code].etfMap[etfCode]) {
+                                stockAgg[code].etfMap[etfCode] = {
+                                    name: etfName,
+                                    perDay: {},
+                                    totalLots: 0
+                                };
+                            }
+                            stockAgg[code].etfMap[etfCode].perDay[date] = (stock.diff || 0);
+                            stockAgg[code].etfMap[etfCode].totalLots += (stock.diff || 0);
+                        });
+
+                        // Process added stocks (new positions = buy)
+                        (etfEntry.added || []).forEach(stock => {
+                            const code = stock.stock_code;
+                            const lots = stock.lots || 0;
+                            if (!stockAgg[code]) {
+                                stockAgg[code] = {
+                                    name: stock.stock_name,
+                                    totalLots: 0,
+                                    etfMap: {}
+                                };
+                            }
+                            stockAgg[code].totalLots += lots;
+
+                            if (!stockAgg[code].etfMap[etfCode]) {
+                                stockAgg[code].etfMap[etfCode] = {
+                                    name: etfName,
+                                    perDay: {},
+                                    totalLots: 0
+                                };
+                            }
+                            stockAgg[code].etfMap[etfCode].perDay[date] = (stockAgg[code].etfMap[etfCode].perDay[date] || 0) + lots;
+                            stockAgg[code].etfMap[etfCode].totalLots += lots;
+                        });
+
+                        // Process removed stocks (removed positions = sell)
+                        (etfEntry.removed || []).forEach(stock => {
+                            const code = stock.stock_code;
+                            const lots = -(stock.lots || 0);
+                            if (!stockAgg[code]) {
+                                stockAgg[code] = {
+                                    name: stock.stock_name,
+                                    totalLots: 0,
+                                    etfMap: {}
+                                };
+                            }
+                            stockAgg[code].totalLots += lots;
+
+                            if (!stockAgg[code].etfMap[etfCode]) {
+                                stockAgg[code].etfMap[etfCode] = {
+                                    name: etfName,
+                                    perDay: {},
+                                    totalLots: 0
+                                };
+                            }
+                            stockAgg[code].etfMap[etfCode].perDay[date] = (stockAgg[code].etfMap[etfCode].perDay[date] || 0) + lots;
+                            stockAgg[code].etfMap[etfCode].totalLots += lots;
+                        });
+                    });
+                });
+
+                // 4. Split into buyers and sellers
+                const entries = Object.entries(stockAgg).map(([code, data]) => ({
+                    code, ...data,
+                    etfCount: Object.keys(data.etfMap).length
+                }));
+
+                const buyers = entries.filter(e => e.totalLots > 0)
+                    .sort((a, b) => b.totalLots - a.totalLots)
+                    .slice(0, 10);
+
+                const sellers = entries.filter(e => e.totalLots < 0)
+                    .sort((a, b) => a.totalLots - b.totalLots)
+                    .slice(0, 10);
+
+                // 5. Render
+                const container = document.getElementById('cross-etf-content');
+                container.innerHTML = `
+                    <div class="cross-etf-columns">
+                        <div class="rank-card buy">
+                            <div class="rank-card-header">📈 買超 TOP 10</div>
+                            <ul class="rank-list" id="buy-rank-list">
+                                ${buyers.length === 0 ? '<li style="padding:16px;color:#999;">無買超資料</li>' : ''}
+                            </ul>
+                        </div>
+                        <div class="rank-card sell">
+                            <div class="rank-card-header">📉 賣超 TOP 10</div>
+                            <ul class="rank-list" id="sell-rank-list">
+                                ${sellers.length === 0 ? '<li style="padding:16px;color:#999;">無賣超資料</li>' : ''}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+
+                renderRankList('buy-rank-list', buyers, recentDates, 'buy');
+                renderRankList('sell-rank-list', sellers, recentDates, 'sell');
+
+            } catch (error) {
+                console.error('載入同步買賣超資料失敗:', error);
+                document.getElementById('cross-etf-content').innerHTML =
+                    '<p style="color:#f44336;">載入同步買賣超資料失敗</p>';
+            }
+        }
+
+        function renderRankList(containerId, stocks, dates, type) {
+            const ul = document.getElementById(containerId);
+            if (stocks.length === 0) return;
+
+            stocks.forEach((stock, idx) => {
+                const li = document.createElement('li');
+                li.className = 'rank-item';
+
+                const lotsDisplay = type === 'sell'
+                    ? `${stock.totalLots.toFixed(1)} 張`
+                    : `+${stock.totalLots.toFixed(1)} 張`;
+
+                // Build detail table
+                const etfEntries = Object.entries(stock.etfMap)
+                    .sort((a, b) => type === 'buy'
+                        ? b[1].totalLots - a[1].totalLots
+                        : a[1].totalLots - b[1].totalLots
+                    );
+
+                // Date columns (most recent first)
+                const sortedDates = [...dates];
+                const dateHeaders = sortedDates.map(d => {
+                    const dt = new Date(d);
+                    return `<th>${dt.getMonth() + 1}/${dt.getDate()}</th>`;
+                }).join('');
+
+                let tableRows = '';
+                etfEntries.forEach(([etfCode, etfData]) => {
+                    const dayCells = sortedDates.map(d => {
+                        const val = etfData.perDay[d];
+                        if (val === undefined || val === 0) return '<td>—</td>';
+                        const cls = val > 0 ? 'val-pos' : 'val-neg';
+                        const prefix = val > 0 ? '+' : '';
+                        return `<td class="${cls}">${prefix}${val.toFixed(1)}</td>`;
+                    }).join('');
+
+                    const totalCls = etfData.totalLots > 0 ? 'val-pos' : 'val-neg';
+                    const totalPrefix = etfData.totalLots > 0 ? '+' : '';
+
+                    tableRows += `
+                        <tr>
+                            <td>${etfData.name}<br><small style="color:#aaa">${etfCode}</small></td>
+                            ${dayCells}
+                            <td class="${totalCls}" style="font-weight:700">${totalPrefix}${etfData.totalLots.toFixed(1)}</td>
+                        </tr>`;
+                });
+
+                li.innerHTML = `
+                    <div class="rank-item-header" onclick="this.parentElement.classList.toggle('expanded')">
+                        <span class="rank-num">${idx + 1}</span>
+                        <div class="rank-stock-info">
+                            <span class="rank-stock-name">${stock.name}</span>
+                            <span class="rank-stock-code">${stock.code}</span>
+                            <span class="rank-etf-count">${stock.etfCount} 檔 ETF 參與</span>
+                        </div>
+                        <span class="rank-lots">${lotsDisplay}</span>
+                        <span class="rank-arrow">▶</span>
+                    </div>
+                    <div class="rank-detail">
+                        <div class="rank-detail-inner">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ETF</th>
+                                        ${dateHeaders}
+                                        <th>合計</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tableRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                ul.appendChild(li);
+            });
+        }
+
         loadReports();
+        loadCrossETFData();
     </script>
 </body>
 
