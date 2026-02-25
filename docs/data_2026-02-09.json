@@ -1,9 +1,9 @@
 {
   "date": "2026-02-09",
-  "update_time": "2026-02-09 18:51:31",
+  "update_time": "2026-02-09 19:22:50",
   "summary": {
-    "total_etfs": 6,
-    "total_changes": 27
+    "total_etfs": 7,
+    "total_changes": 31
   },
   "change_distribution": [
     {
@@ -15,6 +15,11 @@
       "etf_code": "00982A",
       "etf_name": "Capital ETF 00982A",
       "count": 2
+    },
+    {
+      "etf_code": "00987A",
+      "etf_name": "TSIT ETF 00987A",
+      "count": 4
     },
     {
       "etf_code": "00991A",
@@ -40,63 +45,219 @@
   "hot_stocks": [
     {
       "stock_code": "2330",
-      "stock_name": "台灣積體",
+      "stock_name": "台積電",
+      "total_adjustments": 3,
+      "net_change": 11.0,
+      "etf_details": [
+        {
+          "etf_code": "00987A",
+          "etf_name": "TSIT ETF 00987A",
+          "adjustment": -1.0,
+          "new_lots": 75.0,
+          "weight": 9.3773,
+          "lots": 75.0
+        },
+        {
+          "etf_code": "00991A",
+          "etf_name": "FHTrust ETF 00991A",
+          "adjustment": 20.0,
+          "new_lots": 2350.0,
+          "weight": 18.454,
+          "lots": 2350.0
+        },
+        {
+          "etf_code": "00995A",
+          "etf_name": "CTBC ETF 00995A",
+          "adjustment": -8.0,
+          "new_lots": 194.0,
+          "weight": 9.46,
+          "lots": 194.0
+        }
+      ]
+    },
+    {
+      "stock_code": "3017",
+      "stock_name": "奇鋐",
       "total_adjustments": 2,
-      "net_change": 12.0
+      "net_change": 18.0,
+      "etf_details": [
+        {
+          "etf_code": "00987A",
+          "etf_name": "TSIT ETF 00987A",
+          "adjustment": -2.0,
+          "new_lots": 53.0,
+          "weight": 5.8417,
+          "lots": 53.0
+        },
+        {
+          "etf_code": "00991A",
+          "etf_name": "FHTrust ETF 00991A",
+          "adjustment": 20.0,
+          "new_lots": 360.0,
+          "weight": 2.492,
+          "lots": 360.0
+        }
+      ]
+    },
+    {
+      "stock_code": "2308",
+      "stock_name": "台達電",
+      "total_adjustments": 2,
+      "net_change": 27.0,
+      "etf_details": [
+        {
+          "etf_code": "00987A",
+          "etf_name": "TSIT ETF 00987A",
+          "adjustment": -3.0,
+          "new_lots": 48.0,
+          "weight": 3.9018,
+          "lots": 48.0
+        },
+        {
+          "etf_code": "00991A",
+          "etf_name": "FHTrust ETF 00991A",
+          "adjustment": 30.0,
+          "new_lots": 1060.0,
+          "weight": 5.412,
+          "lots": 1060.0
+        }
+      ]
     },
     {
       "stock_code": "2408",
       "stock_name": "南亞科技",
       "total_adjustments": 2,
-      "net_change": 876.0
+      "net_change": 876.0,
+      "etf_details": [
+        {
+          "etf_code": "00991A",
+          "etf_name": "FHTrust ETF 00991A",
+          "adjustment": 200.0,
+          "new_lots": 7200.0,
+          "weight": 8.551,
+          "lots": 7200.0
+        },
+        {
+          "etf_code": "00992A",
+          "etf_name": "Capital ETF 00992A",
+          "adjustment": 676.0,
+          "new_lots": 1394.0,
+          "weight": 2.93,
+          "lots": 1394.0
+        }
+      ]
     },
     {
       "stock_code": "3037",
       "stock_name": "欣興電子",
       "total_adjustments": 2,
-      "net_change": 220.0
+      "net_change": 220.0,
+      "etf_details": [
+        {
+          "etf_code": "00991A",
+          "etf_name": "FHTrust ETF 00991A",
+          "adjustment": 200.0,
+          "new_lots": 2700.0,
+          "weight": 4.059,
+          "lots": 2700.0
+        },
+        {
+          "etf_code": "00995A",
+          "etf_name": "CTBC ETF 00995A",
+          "adjustment": 20.0,
+          "new_lots": 204.0,
+          "weight": 1.9,
+          "lots": 204.0
+        }
+      ]
     },
     {
       "stock_code": "2345",
       "stock_name": "智邦科技",
       "total_adjustments": 2,
-      "net_change": 66.0
+      "net_change": 66.0,
+      "etf_details": [
+        {
+          "etf_code": "00991A",
+          "etf_name": "FHTrust ETF 00991A",
+          "adjustment": 60.0,
+          "new_lots": 480.0,
+          "weight": 2.71,
+          "lots": 480.0
+        },
+        {
+          "etf_code": "00994A",
+          "etf_name": "FSITC ETF 00994A",
+          "adjustment": 6.0,
+          "new_lots": 22.0,
+          "weight": 2.98,
+          "lots": 22.0
+        }
+      ]
     },
     {
       "stock_code": "3661",
       "stock_name": "世芯-KY",
       "total_adjustments": 1,
-      "net_change": 24.0
+      "net_change": 24.0,
+      "etf_details": [
+        {
+          "etf_code": "00981A",
+          "etf_name": "00981A (EZMoney)",
+          "adjustment": 24.0,
+          "new_lots": 540.0,
+          "weight": 3.02,
+          "lots": 540.0
+        }
+      ]
     },
     {
       "stock_code": "3324",
       "stock_name": "雙鴻",
       "total_adjustments": 1,
-      "net_change": 444.0
+      "net_change": 444.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "Capital ETF 00982A",
+          "adjustment": 444.0,
+          "new_lots": 552.0,
+          "weight": 2.04,
+          "lots": 552.0
+        }
+      ]
     },
     {
       "stock_code": "8210",
       "stock_name": "勤誠",
       "total_adjustments": 1,
-      "net_change": 100.0
+      "net_change": 100.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "Capital ETF 00982A",
+          "adjustment": 100.0,
+          "new_lots": 202.0,
+          "weight": 0.63,
+          "lots": 202.0
+        }
+      ]
     },
     {
-      "stock_code": "8299",
-      "stock_name": "群聯電子",
+      "stock_code": "6683",
+      "stock_name": "雍智科技",
       "total_adjustments": 1,
-      "net_change": 50.0
-    },
-    {
-      "stock_code": "2308",
-      "stock_name": "台達電子",
-      "total_adjustments": 1,
-      "net_change": 30.0
-    },
-    {
-      "stock_code": "3665",
-      "stock_name": "貿聯-KY",
-      "total_adjustments": 1,
-      "net_change": -120.0
+      "net_change": -8.0,
+      "etf_details": [
+        {
+          "etf_code": "00987A",
+          "etf_name": "TSIT ETF 00987A",
+          "adjustment": -8.0,
+          "new_lots": 45.0,
+          "weight": 2.2289,
+          "lots": 45.0
+        }
+      ]
     }
   ],
   "detailed_changes": [
@@ -139,6 +300,47 @@
           "new_lots": 202.0,
           "diff": 100.0,
           "direction": "up"
+        }
+      ]
+    },
+    {
+      "etf_code": "00987A",
+      "etf_name": "TSIT ETF 00987A",
+      "total_changes": 4,
+      "added": [],
+      "removed": [],
+      "modified": [
+        {
+          "stock_code": "2330",
+          "stock_name": "台積電",
+          "old_lots": 76.0,
+          "new_lots": 75.0,
+          "diff": -1.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "3017",
+          "stock_name": "奇鋐",
+          "old_lots": 55.0,
+          "new_lots": 53.0,
+          "diff": -2.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "2308",
+          "stock_name": "台達電",
+          "old_lots": 51.0,
+          "new_lots": 48.0,
+          "diff": -3.0,
+          "direction": "down"
+        },
+        {
+          "stock_code": "6683",
+          "stock_name": "雍智科技",
+          "old_lots": 53.0,
+          "new_lots": 45.0,
+          "diff": -8.0,
+          "direction": "down"
         }
       ]
     },
@@ -2381,6 +2583,168 @@
           "stock_name": "川湖科技",
           "weight": 0.15,
           "lots": 4.0
+        }
+      ]
+    },
+    {
+      "etf_code": "00987A",
+      "etf_name": "TSIT ETF 00987A",
+      "holdings": [
+        {
+          "stock_code": "2330",
+          "stock_name": "台積電",
+          "weight": 9.3773,
+          "lots": 75.0
+        },
+        {
+          "stock_code": "8299",
+          "stock_name": "群聯",
+          "weight": 6.3652,
+          "lots": 48.0
+        },
+        {
+          "stock_code": "3017",
+          "stock_name": "奇鋐",
+          "weight": 5.8417,
+          "lots": 53.0
+        },
+        {
+          "stock_code": "7769",
+          "stock_name": "鴻勁",
+          "weight": 5.8348,
+          "lots": 22.0
+        },
+        {
+          "stock_code": "3324",
+          "stock_name": "雙鴻",
+          "weight": 4.7956,
+          "lots": 63.0
+        },
+        {
+          "stock_code": "3653",
+          "stock_name": "健策",
+          "weight": 4.333,
+          "lots": 20.0
+        },
+        {
+          "stock_code": "2345",
+          "stock_name": "智邦",
+          "weight": 4.0454,
+          "lots": 45.0
+        },
+        {
+          "stock_code": "2308",
+          "stock_name": "台達電",
+          "weight": 3.9018,
+          "lots": 48.0
+        },
+        {
+          "stock_code": "3443",
+          "stock_name": "創意",
+          "weight": 3.8739,
+          "lots": 23.0
+        },
+        {
+          "stock_code": "2344",
+          "stock_name": "華邦電",
+          "weight": 3.7027,
+          "lots": 500.0
+        },
+        {
+          "stock_code": "8358",
+          "stock_name": "金居",
+          "weight": 3.4616,
+          "lots": 201.0
+        },
+        {
+          "stock_code": "2368",
+          "stock_name": "金像電",
+          "weight": 3.2942,
+          "lots": 60.0
+        },
+        {
+          "stock_code": "3529",
+          "stock_name": "力旺",
+          "weight": 3.2291,
+          "lots": 25.0
+        },
+        {
+          "stock_code": "2455",
+          "stock_name": "全新",
+          "weight": 3.0747,
+          "lots": 258.0
+        },
+        {
+          "stock_code": "3363",
+          "stock_name": "上詮",
+          "weight": 3.0194,
+          "lots": 99.729
+        },
+        {
+          "stock_code": "2454",
+          "stock_name": "聯發科",
+          "weight": 2.8995,
+          "lots": 23.0
+        },
+        {
+          "stock_code": "6274",
+          "stock_name": "台燿",
+          "weight": 2.8371,
+          "lots": 78.0
+        },
+        {
+          "stock_code": "3211",
+          "stock_name": "順達",
+          "weight": 2.7727,
+          "lots": 140.0
+        },
+        {
+          "stock_code": "6510",
+          "stock_name": "精測",
+          "weight": 2.7486,
+          "lots": 10.0
+        },
+        {
+          "stock_code": "3665",
+          "stock_name": "貿聯 -KY",
+          "weight": 2.4207,
+          "lots": 28.0
+        },
+        {
+          "stock_code": "3037",
+          "stock_name": "欣興",
+          "weight": 2.3938,
+          "lots": 100.0
+        },
+        {
+          "stock_code": "6683",
+          "stock_name": "雍智科技",
+          "weight": 2.2289,
+          "lots": 45.0
+        },
+        {
+          "stock_code": "2383",
+          "stock_name": "台光電",
+          "weight": 2.1493,
+          "lots": 15.0
+        },
+        {
+          "stock_code": "6805",
+          "stock_name": "富世達",
+          "weight": 2.1355,
+          "lots": 20.0
+        },
+        {
+          "stock_code": "2337",
+          "stock_name": "旺宏",
+          "weight": 2.0799,
+          "lots": 340.0
+        },
+        {
+          "stock_code": "6415",
+          "stock_name": "矽力*-KY",
+          "weight": 1.3351,
+          "lots": 73.0
         }
       ]
     },
