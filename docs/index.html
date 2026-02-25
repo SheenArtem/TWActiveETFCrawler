@@ -488,11 +488,11 @@
                     etfCount: Object.keys(data.etfMap).length
                 }));
 
-                const buyers = entries.filter(e => e.totalLots > 0)
+                const buyers = entries.filter(e => e.totalLots > 0 && e.etfCount >= 2)
                     .sort((a, b) => b.totalLots - a.totalLots)
                     .slice(0, 10);
 
-                const sellers = entries.filter(e => e.totalLots < 0)
+                const sellers = entries.filter(e => e.totalLots < 0 && e.etfCount >= 2)
                     .sort((a, b) => a.totalLots - b.totalLots)
                     .slice(0, 10);
 
