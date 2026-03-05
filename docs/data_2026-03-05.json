@@ -1,9 +1,9 @@
 {
   "date": "2026-03-05",
-  "update_time": "2026-03-05 18:32:23",
+  "update_time": "2026-03-05 21:05:15",
   "summary": {
-    "total_etfs": 6,
-    "total_changes": 84
+    "total_etfs": 7,
+    "total_changes": 86
   },
   "change_distribution": [
     {
@@ -14,7 +14,7 @@
     {
       "etf_code": "00982A",
       "etf_name": "Capital ETF 00982A",
-      "count": 27
+      "count": 28
     },
     {
       "etf_code": "00985A",
@@ -30,6 +30,11 @@
       "etf_code": "00991A",
       "etf_name": "FHTrust ETF 00991A",
       "count": 9
+    },
+    {
+      "etf_code": "00993A",
+      "etf_name": "00993A (安聯投信)",
+      "count": 1
     },
     {
       "etf_code": "00995A",
@@ -468,7 +473,7 @@
     {
       "etf_code": "00982A",
       "etf_name": "Capital ETF 00982A",
-      "total_changes": 27,
+      "total_changes": 28,
       "added": [
         {
           "stock_code": "6510",
@@ -476,7 +481,13 @@
           "lots": 1.0
         }
       ],
-      "removed": [],
+      "removed": [
+        {
+          "stock_code": "7722",
+          "stock_name": "LINEPAY",
+          "lots": 1.0
+        }
+      ],
       "modified": [
         {
           "stock_code": "2330",
@@ -1000,6 +1011,20 @@
           "direction": "up"
         }
       ]
+    },
+    {
+      "etf_code": "00993A",
+      "etf_name": "00993A (安聯投信)",
+      "total_changes": 1,
+      "added": [],
+      "removed": [
+        {
+          "stock_code": "3357",
+          "stock_name": "臺慶科",
+          "lots": 724.0
+        }
+      ],
+      "modified": []
     },
     {
       "etf_code": "00995A",
@@ -2058,12 +2083,6 @@
           "stock_code": "3443",
           "stock_name": "創意",
           "weight": 0.01,
-          "lots": 1.0
-        },
-        {
-          "stock_code": "7722",
-          "stock_name": "LINEPAY",
-          "weight": 0.0,
           "lots": 1.0
         },
         {
@@ -4159,12 +4178,6 @@
           "stock_name": "國精化學",
           "weight": 0.89,
           "lots": 684.0
-        },
-        {
-          "stock_code": "3357",
-          "stock_name": "臺慶科",
-          "weight": 0.87,
-          "lots": 724.0
         },
         {
           "stock_code": "3491",
