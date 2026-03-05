@@ -321,6 +321,10 @@
         }
         
         @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
             .charts-grid {
                 grid-template-columns: 1fr;
             }
@@ -328,14 +332,84 @@
             .header {
                 flex-direction: column;
                 text-align: center;
+                padding: 20px 16px;
             }
             
             .header h1 {
-                font-size: 1.8em;
+                font-size: 1.5em;
+            }
+
+            .header .date {
+                font-size: 0.95em;
             }
             
             .etf-holdings-grid {
                 grid-template-columns: 1fr;
+            }
+
+            /* 詳細變動明細 - 手機版 */
+            .details-section {
+                padding: 16px 12px;
+            }
+
+            .etf-card-header {
+                padding: 12px 14px;
+            }
+
+            .etf-card-header h3 {
+                font-size: 0.95em;
+            }
+
+            /* 讓卡片內容可以橫向捲動 */
+            .etf-card-content.expanded {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 12px 10px;
+            }
+
+            .changes-table {
+                min-width: 380px;
+                font-size: 0.82em;
+            }
+
+            .changes-table th,
+            .changes-table td {
+                padding: 7px 8px;
+                white-space: nowrap;
+            }
+
+            /* 熱門股票 - 手機版 */
+            .hot-stock-header {
+                padding: 12px 14px;
+            }
+
+            .hot-stock-info {
+                gap: 8px;
+            }
+
+            .hot-stock-name {
+                font-size: 0.95em;
+            }
+
+            .hot-stock-stats {
+                font-size: 0.82em;
+                gap: 8px;
+            }
+
+            .hot-stock-content.expanded {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .etf-adjustments-table {
+                min-width: 380px;
+                font-size: 0.82em;
+            }
+
+            .etf-adjustments-table th,
+            .etf-adjustments-table td {
+                padding: 7px 8px;
+                white-space: nowrap;
             }
         }
     </style>
