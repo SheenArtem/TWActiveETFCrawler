@@ -284,6 +284,62 @@
             padding: 30px;
             color: #999;
         }
+
+        /* ===== Mobile Responsive ===== */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px 16px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .subtitle {
+                font-size: 0.95em;
+            }
+
+            .cross-etf-section,
+            .content {
+                padding: 16px 12px;
+            }
+
+            /* 讓詳細表格可以水平捲動，不被截斷 */
+            .rank-detail-inner {
+                padding: 6px 4px 10px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .rank-detail table {
+                min-width: 320px;
+                font-size: 0.78em;
+            }
+
+            .rank-detail th,
+            .rank-detail td {
+                padding: 4px 6px;
+                white-space: nowrap;
+            }
+
+            /* 讓排名列表 header 在窄螢幕更緊湊 */
+            .rank-item-header {
+                padding: 10px 10px;
+            }
+
+            .rank-stock-name {
+                font-size: 0.88em;
+            }
+
+            .rank-lots {
+                font-size: 0.85em;
+                margin-left: 6px;
+            }
+        }
     </style>
 </head>
 
