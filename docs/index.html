@@ -8,7 +8,7 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft JhengHei', sans-serif;
-            max-width: 1200px;
+            max-width: 1500px;
             margin: 0 auto;
             padding: 20px;
             background: #f5f5f5;
@@ -31,6 +31,186 @@
         .subtitle {
             opacity: 0.9;
             font-size: 1.1em;
+        }
+
+        /* === Main Layout with Sidebar === */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* === Sidebar === */
+        .sidebar {
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 20px;
+            font-weight: 700;
+            font-size: 1.05em;
+        }
+
+        .sidebar-update-time {
+            padding: 8px 16px;
+            font-size: 0.75em;
+            color: #999;
+            background: #fafafa;
+            border-bottom: 1px solid #eee;
+        }
+
+        .etf-market-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .etf-market-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+
+        .etf-market-item:last-child {
+            border-bottom: none;
+        }
+
+        .etf-market-item:hover {
+            background: #f8f9ff;
+        }
+
+        .etf-market-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .etf-market-rank {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75em;
+            flex-shrink: 0;
+            background: #e8eaf6;
+            color: #3949ab;
+        }
+
+        .etf-market-rank.top3 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .etf-market-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .etf-market-name {
+            font-weight: 600;
+            font-size: 0.88em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .etf-market-code {
+            font-size: 0.75em;
+            color: #888;
+        }
+
+        .etf-market-aum {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .etf-market-aum-value {
+            font-weight: 700;
+            font-size: 0.95em;
+            color: #333;
+        }
+
+        .etf-market-aum-unit {
+            font-size: 0.7em;
+            color: #999;
+        }
+
+        .etf-market-details {
+            display: flex;
+            gap: 12px;
+            margin-top: 6px;
+            font-size: 0.75em;
+            color: #888;
+        }
+
+        .etf-market-nav,
+        .etf-market-price {
+            white-space: nowrap;
+        }
+
+        .etf-market-discount {
+            white-space: nowrap;
+        }
+
+        .discount-positive {
+            color: #c62828;
+        }
+
+        .discount-negative {
+            color: #1565c0;
+        }
+
+        .sidebar-loading {
+            padding: 30px;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .sidebar-error {
+            padding: 20px 16px;
+            color: #f44336;
+            font-size: 0.85em;
+        }
+
+        .sidebar-total {
+            padding: 12px 16px;
+            background: #f8f9ff;
+            border-top: 2px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.88em;
+        }
+
+        .sidebar-total-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .sidebar-total-value {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        /* === Main Content === */
+        .main-content {
+            min-width: 0;
         }
 
         .content {
@@ -97,12 +277,6 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 24px;
-        }
-
-        @media (max-width: 768px) {
-            .cross-etf-columns {
-                grid-template-columns: 1fr;
-            }
         }
 
         .rank-card {
@@ -285,7 +459,23 @@
             color: #999;
         }
 
-        /* ===== Mobile Responsive ===== */
+        /* ===== Mobile / Tablet Responsive ===== */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cross-etf-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -308,7 +498,6 @@
                 padding: 16px 12px;
             }
 
-            /* 讓詳細表格可以水平捲動，不被截斷 */
             .rank-detail-inner {
                 padding: 6px 4px 10px;
                 overflow-x: auto;
@@ -326,7 +515,6 @@
                 white-space: nowrap;
             }
 
-            /* 讓排名列表 header 在窄螢幕更緊湊 */
             .rank-item-header {
                 padding: 10px 10px;
             }
@@ -339,6 +527,166 @@
                 font-size: 0.85em;
                 margin-left: 6px;
             }
+
+            .etf-market-item {
+                padding: 10px 12px;
+            }
+
+            .etf-market-details {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .per-etf-section {
+                padding: 16px 12px;
+            }
+
+            .per-etf-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .per-etf-table {
+                min-width: 340px;
+                font-size: 0.8em;
+            }
+
+            .per-etf-table th,
+            .per-etf-table td {
+                padding: 5px 6px;
+            }
+        }
+
+        /* === Per-ETF Buy/Sell Section === */
+        .per-etf-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .per-etf-section h2 {
+            margin-top: 0;
+        }
+
+        .per-etf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+            gap: 16px;
+        }
+
+        .per-etf-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .per-etf-header {
+            background: #f5f5f5;
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s;
+            user-select: none;
+        }
+
+        .per-etf-header:hover {
+            background: #ececec;
+        }
+
+        .per-etf-header h3 {
+            margin: 0;
+            font-size: 1.05em;
+            color: #333;
+        }
+
+        .per-etf-header .per-etf-summary {
+            display: flex;
+            gap: 12px;
+            font-size: 0.85em;
+        }
+
+        .per-etf-header .per-etf-buy {
+            color: #c62828;
+            font-weight: 600;
+        }
+
+        .per-etf-header .per-etf-sell {
+            color: #1565c0;
+            font-weight: 600;
+        }
+
+        .per-etf-header .per-etf-arrow {
+            color: #999;
+            font-size: 0.8em;
+            transition: transform 0.2s;
+            margin-left: 8px;
+        }
+
+        .per-etf-card.expanded .per-etf-arrow {
+            transform: rotate(90deg);
+        }
+
+        .per-etf-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .per-etf-card.expanded .per-etf-body {
+            max-height: 2000px;
+        }
+
+        .per-etf-body-inner {
+            padding: 12px 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .per-etf-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+        }
+
+        .per-etf-table th {
+            background: #f5f5f5;
+            padding: 7px 10px;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+            white-space: nowrap;
+        }
+
+        .per-etf-table th:first-child,
+        .per-etf-table td:first-child {
+            text-align: left;
+        }
+
+        .per-etf-table td {
+            padding: 6px 10px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+        }
+
+        .per-etf-table .val-pos {
+            color: #c62828;
+            font-weight: 600;
+        }
+
+        .per-etf-table .val-neg {
+            color: #1565c0;
+            font-weight: 600;
+        }
+
+        .per-etf-empty {
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -350,24 +698,49 @@
         <p class="subtitle"><span class="status">運行中</span></p>
     </div>
 
-    <!-- Cross-ETF Buy/Sell Section -->
-    <div class="cross-etf-section" id="cross-etf-section">
-        <h2>🔥 近五日 ETF 同步買賣超 TOP 10</h2>
-        <div class="cross-date-range" id="cross-date-range"></div>
-        <div id="cross-etf-content">
-            <div class="cross-loading">載入資料中...</div>
-        </div>
-    </div>
+    <div class="main-layout">
+        <!-- Sidebar: ETF Market Data -->
+        <aside class="sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-header">💰 追蹤 ETF 基金規模排行</div>
+                <div class="sidebar-update-time" id="market-update-time"></div>
+                <div id="etf-market-content">
+                    <div class="sidebar-loading">載入市場資料中...</div>
+                </div>
+            </div>
+        </aside>
 
-    <div class="content">
-        <div class="info-box">
-            <h3>💡 使用說明</h3>
-            <p>HTML 報告將會在系統運行後自動生成於此目錄。請稍候...</p>
-        </div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Cross-ETF Buy/Sell Section -->
+            <div class="cross-etf-section" id="cross-etf-section">
+                <h2>🔥 近五日 ETF 同步買賣超 TOP 10</h2>
+                <div class="cross-date-range" id="cross-date-range"></div>
+                <div id="cross-etf-content">
+                    <div class="cross-loading">載入資料中...</div>
+                </div>
+            </div>
 
-        <h2>📊 每日報告</h2>
-        <div id="reports-list">
-            <p>載入報告中...</p>
+            <!-- Per-ETF Buy/Sell Section -->
+            <div class="per-etf-section" id="per-etf-section">
+                <h2>📋 各 ETF 近五日買賣超明細</h2>
+                <div class="cross-date-range" id="per-etf-date-range"></div>
+                <div id="per-etf-content">
+                    <div class="cross-loading">載入資料中...</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="info-box">
+                    <h3>💡 使用說明</h3>
+                    <p>HTML 報告將會在系統運行後自動生成於此目錄。請稍候...</p>
+                </div>
+
+                <h2>📊 每日報告</h2>
+                <div id="reports-list">
+                    <p>載入報告中...</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -378,6 +751,97 @@
 
     <script>
         document.getElementById('datetime').textContent = new Date().toLocaleString('zh-TW');
+
+        // ====== Load ETF Market Data (Sidebar) ======
+        async function loadETFMarketData() {
+            const container = document.getElementById('etf-market-content');
+            const updateTimeEl = document.getElementById('market-update-time');
+
+            try {
+                const resp = await fetch('etf_market_data.json');
+                if (!resp.ok) throw new Error('No market data file');
+                const marketData = await resp.json();
+
+                // Show update time
+                if (marketData.update_time) {
+                    updateTimeEl.textContent = `更新時間：${marketData.update_time}`;
+                }
+
+                const etfs = marketData.data || [];
+                if (etfs.length === 0) {
+                    container.innerHTML = '<div class="sidebar-loading">尚無市場資料</div>';
+                    return;
+                }
+
+                // Calculate total AUM
+                const totalAUM = etfs.reduce((sum, etf) => sum + (etf.aum_billion || 0), 0);
+
+                let html = '<ul class="etf-market-list">';
+
+                etfs.forEach((etf, idx) => {
+                    const rankClass = idx < 3 ? 'etf-market-rank top3' : 'etf-market-rank';
+                    const aumDisplay = etf.aum_billion > 0
+                        ? etf.aum_billion.toFixed(2)
+                        : '-';
+                    const priceDisplay = etf.price > 0 ? etf.price.toFixed(2) : '-';
+
+                    // Change display
+                    let changeHtml = '';
+                    if (etf.change !== 0 && etf.change !== undefined) {
+                        const chgVal = etf.change;
+                        const chgPct = etf.change_pct || 0;
+                        const chgClass = chgVal > 0 ? 'discount-positive' : 'discount-negative';
+                        const chgArrow = chgVal > 0 ? '▲' : '▼';
+                        const chgSign = chgVal > 0 ? '+' : '';
+                        changeHtml = `<span class="etf-market-discount ${chgClass}">${chgArrow} ${chgSign}${chgPct.toFixed(2)}%</span>`;
+                    }
+
+                    // Trading value display
+                    const tvDisplay = etf.trade_value_billion > 0
+                        ? `成交 ${etf.trade_value_billion.toFixed(2)} 億`
+                        : '';
+
+                    html += `
+                        <li class="etf-market-item">
+                            <div class="etf-market-row">
+                                <span class="${rankClass}">${idx + 1}</span>
+                                <div class="etf-market-info">
+                                    <div class="etf-market-name">${etf.etf_code}</div>
+                                </div>
+                                <div class="etf-market-aum">
+                                    <div class="etf-market-aum-value">${aumDisplay}</div>
+                                    <div class="etf-market-aum-unit">億元</div>
+                                </div>
+                            </div>
+                            <div class="etf-market-details">
+                                <span>市價 ${priceDisplay}</span>
+                                ${changeHtml}
+                                ${tvDisplay ? `<span>${tvDisplay}</span>` : ''}
+                            </div>
+                        </li>
+                    `;
+                });
+
+                html += '</ul>';
+
+                // Total AUM
+                if (totalAUM > 0) {
+                    html += `
+                        <div class="sidebar-total">
+                            <span class="sidebar-total-label">合計規模</span>
+                            <span class="sidebar-total-value">${totalAUM.toFixed(2)} 億</span>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.warn('載入 ETF 市場資料失敗:', error);
+                container.innerHTML = '<div class="sidebar-error">尚無市場資料，請執行 --market-data 更新</div>';
+                updateTimeEl.textContent = '';
+            }
+        }
 
         // ====== Load and display reports ======
         async function loadReports() {
@@ -407,7 +871,7 @@
                             <strong>📅 ${formattedDate}</strong>
                             <br>
                             <small style="color: #666;">
-                                追蹤 ETF 數量: ${report.etf_count} | 
+                                追蹤 ETF 數量: ${report.etf_count} |
                                 總變動: ${report.total_changes} 筆
                             </small>
                             <br>
@@ -622,7 +1086,7 @@
 
                     tableRows += `
                         <tr>
-                            <td>${etfData.name}<br><small style="color:#aaa">${etfCode}</small></td>
+                            <td>${etfCode}</td>
                             ${dayCells}
                             <td class="${totalCls}" style="font-weight:700">${totalPrefix}${etfData.totalLots.toFixed(1)}</td>
                         </tr>`;
@@ -661,8 +1125,155 @@
             });
         }
 
+        // ====== Per-ETF Buy/Sell Details (last 5 days) ======
+        async function loadPerETFData() {
+            try {
+                const idxResp = await fetch('reports_index.json');
+                const reportsIndex = await idxResp.json();
+                const recentDates = reportsIndex.slice(0, 5).map(r => r.date);
+
+                if (recentDates.length === 0) {
+                    document.getElementById('per-etf-content').innerHTML = '<p>尚無可用資料</p>';
+                    return;
+                }
+
+                // Show date range
+                const fmtDate = d => {
+                    const dt = new Date(d);
+                    return dt.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+                };
+                document.getElementById('per-etf-date-range').textContent =
+                    `統計期間：${fmtDate(recentDates[recentDates.length - 1])} ~ ${fmtDate(recentDates[0])}（共 ${recentDates.length} 個交易日）`;
+
+                // Load all data files
+                const dataPromises = recentDates.map(date =>
+                    fetch(`data_${date}.json`).then(r => r.json()).catch(() => null)
+                );
+                const allData = (await Promise.all(dataPromises)).filter(Boolean);
+
+                // Aggregate per ETF: etfCode -> { stockCode -> { name, perDay: {date->diff}, total } }
+                const etfAgg = {};
+
+                allData.forEach(dayData => {
+                    const date = dayData.date;
+                    if (!dayData.detailed_changes) return;
+
+                    dayData.detailed_changes.forEach(etfEntry => {
+                        const etfCode = etfEntry.etf_code;
+                        if (!etfAgg[etfCode]) etfAgg[etfCode] = {};
+
+                        const processStock = (code, name, diff) => {
+                            if (!etfAgg[etfCode][code]) {
+                                etfAgg[etfCode][code] = { name, perDay: {}, total: 0 };
+                            }
+                            etfAgg[etfCode][code].perDay[date] =
+                                (etfAgg[etfCode][code].perDay[date] || 0) + diff;
+                            etfAgg[etfCode][code].total += diff;
+                        };
+
+                        (etfEntry.modified || []).forEach(s =>
+                            processStock(s.stock_code, s.stock_name, s.diff || 0));
+                        (etfEntry.added || []).forEach(s =>
+                            processStock(s.stock_code, s.stock_name, s.lots || 0));
+                        (etfEntry.removed || []).forEach(s =>
+                            processStock(s.stock_code, s.stock_name, -(s.lots || 0)));
+                    });
+                });
+
+                // Sort ETF codes
+                const etfCodes = Object.keys(etfAgg).sort();
+                if (etfCodes.length === 0) {
+                    document.getElementById('per-etf-content').innerHTML = '<p>尚無可用資料</p>';
+                    return;
+                }
+
+                // Render
+                let html = '<div class="per-etf-grid">';
+
+                etfCodes.forEach(etfCode => {
+                    const stocks = Object.entries(etfAgg[etfCode])
+                        .map(([code, data]) => ({ code, ...data }))
+                        .filter(s => Math.abs(s.total) >= 0.1)
+                        .sort((a, b) => b.total - a.total);
+
+                    const buyCount = stocks.filter(s => s.total > 0).length;
+                    const sellCount = stocks.filter(s => s.total < 0).length;
+                    const totalBuy = stocks.filter(s => s.total > 0)
+                        .reduce((sum, s) => sum + s.total, 0);
+                    const totalSell = stocks.filter(s => s.total < 0)
+                        .reduce((sum, s) => sum + s.total, 0);
+
+                    // Date headers
+                    const sortedDates = [...recentDates];
+                    const dateHeaders = sortedDates.map(d => {
+                        const dt = new Date(d);
+                        return `<th>${dt.getMonth() + 1}/${dt.getDate()}</th>`;
+                    }).join('');
+
+                    // Build table rows
+                    let rows = '';
+                    stocks.forEach(stock => {
+                        const dayCells = sortedDates.map(d => {
+                            const val = stock.perDay[d];
+                            if (val === undefined || val === 0) return '<td>—</td>';
+                            const cls = val > 0 ? 'val-pos' : 'val-neg';
+                            const prefix = val > 0 ? '+' : '';
+                            return `<td class="${cls}">${prefix}${val.toFixed(1)}</td>`;
+                        }).join('');
+
+                        const totalCls = stock.total > 0 ? 'val-pos' : 'val-neg';
+                        const totalPrefix = stock.total > 0 ? '+' : '';
+
+                        rows += `<tr>
+                            <td>${stock.name}<br><small style="color:#aaa">${stock.code}</small></td>
+                            ${dayCells}
+                            <td class="${totalCls}" style="font-weight:700">${totalPrefix}${stock.total.toFixed(1)}</td>
+                        </tr>`;
+                    });
+
+                    const buyLabel = totalBuy > 0
+                        ? `<span class="per-etf-buy">買 ${buyCount} 檔 +${totalBuy.toFixed(0)}張</span>` : '';
+                    const sellLabel = totalSell < 0
+                        ? `<span class="per-etf-sell">賣 ${sellCount} 檔 ${totalSell.toFixed(0)}張</span>` : '';
+
+                    html += `
+                    <div class="per-etf-card">
+                        <div class="per-etf-header" onclick="this.parentElement.classList.toggle('expanded')">
+                            <h3>${etfCode}</h3>
+                            <div class="per-etf-summary">
+                                ${buyLabel}${sellLabel}
+                                <span class="per-etf-arrow">▶</span>
+                            </div>
+                        </div>
+                        <div class="per-etf-body">
+                            <div class="per-etf-body-inner">
+                                ${stocks.length > 0 ? `
+                                <table class="per-etf-table">
+                                    <thead>
+                                        <tr><th>股票</th>${dateHeaders}<th>合計</th></tr>
+                                    </thead>
+                                    <tbody>${rows}</tbody>
+                                </table>` : '<div class="per-etf-empty">無變動資料</div>'}
+                            </div>
+                        </div>
+                    </div>`;
+                });
+
+                html += '</div>';
+                document.getElementById('per-etf-content').innerHTML = html;
+
+            } catch (error) {
+                console.error('載入各 ETF 買賣超資料失敗:', error);
+                document.getElementById('per-etf-content').innerHTML =
+                    '<p style="color:#f44336;">載入各 ETF 買賣超資料失敗</p>';
+            }
+        }
+
+        // Launch all data loaders
+        loadETFMarketData();
         loadReports();
         loadCrossETFData();
+        loadPerETFData();
     </script>
 </body>
 

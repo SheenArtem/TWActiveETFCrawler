@@ -769,7 +769,7 @@ class HTMLReportGenerator:
         new Chart(distributionCtx, {{
             type: 'pie',
             data: {{
-                labels: data.change_distribution.map(d => d.etf_code + ' ' + d.etf_name),
+                labels: data.change_distribution.map(d => d.etf_code),
                 datasets: [{{
                     data: data.change_distribution.map(d => d.count),
                     backgroundColor: [
@@ -812,7 +812,6 @@ class HTMLReportGenerator:
                                 <thead>
                                     <tr>
                                         <th>ETF代碼</th>
-                                        <th>ETF名稱</th>
                                         <th>調整</th>
                                         <th>持股張數</th>
                                         <th>權重</th>
@@ -833,7 +832,6 @@ class HTMLReportGenerator:
                         html += `
                             <tr>
                                 <td>${{detail.etf_code}}</td>
-                                <td>${{detail.etf_name}}</td>
                                 <td class="${{adjClass}}">${{adjArrow}} ${{adjSign}}${{detail.adjustment}} 張</td>
                                 <td>${{lots}}</td>
                                 <td>${{weight}}</td>
@@ -841,7 +839,7 @@ class HTMLReportGenerator:
                         `;
                     }});
                 }} else {{
-                    html += '<tr><td colspan="5">無詳細資訊</td></tr>';
+                    html += '<tr><td colspan="4">無詳細資訊</td></tr>';
                 }}
                 
                 html += `
@@ -919,7 +917,7 @@ class HTMLReportGenerator:
             html_parts.append(f"""
             <div class="etf-card">
                 <div class="etf-card-header">
-                    <h3>{etf_data['etf_code']} - {etf_data['etf_name']} ({etf_data['total_changes']} 筆變動)</h3>
+                    <h3>{etf_data['etf_code']} ({etf_data['total_changes']} 筆變動)</h3>
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="etf-card-content">
@@ -956,7 +954,7 @@ class HTMLReportGenerator:
             cards_html.append(f"""
             <div class="etf-holdings-card">
                 <div class="etf-holdings-header">
-                    <h4>{etf.get('etf_code', '')} {etf.get('etf_name', '')} ({total_count} 檔成分股)</h4>
+                    <h4>{etf.get('etf_code', '')} ({total_count} 檔成分股)</h4>
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="etf-holdings-content">

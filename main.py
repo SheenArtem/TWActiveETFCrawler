@@ -28,6 +28,7 @@ from src.tsit_scraper import TSITScraper
 from src.allianz_scraper import AllianzScraper
 from src.utils import setup_logging, cleanup_old_data, get_trading_days
 from src.report_manager import ReportManager
+from src.etf_market_data import ETFMarketDataFetcher
 from loguru import logger
 
 
@@ -644,6 +645,33 @@ def show_stats():
     print()
 
 
+def update_etf_market_data(db=None):
+    """更新 ETF 市場資料（基金規模、淨值、市價等）"""
+    logger.info("Updating ETF market data (AUM, NAV, price)...")
+
+    if db is None:
+        db = Database(DB_FULL_PATH)
+
+    try:
+        fetcher = ETFMarketDataFetcher(output_dir=Path("docs"))
+
+        # 取得所有追蹤的 ETF 代碼和名稱
+        active_etfs = db.get_active_etfs()
+        etf_codes = [etf['etf_code'] for etf in active_etfs]
+        etf_info_dict = {etf['etf_code']: etf['etf_name'] for etf in active_etfs}
+
+        if not etf_codes:
+            logger.warning("No active ETFs found in database")
+            return
+
+        output_file = fetcher.save_market_data(etf_codes, etf_info_dict)
+        logger.info(f"ETF market data updated: {output_file}")
+
+    except Exception as e:
+        logger.error(f"Failed to update ETF market data: {e}")
+        logger.exception(e)
+
+
 def generate_consolidated_reports():
     """
     在所有投信更新完成後，統一生成完整的報告
@@ -686,12 +714,15 @@ def generate_consolidated_reports():
     if all_changes_dict:
         total_changes = sum(len(changes) for changes in all_changes_dict.values())
         logger.info(f"Found {len(all_changes_dict)} ETFs with {total_changes} total changes")
-        
+
         # 生成所有格式的報告（覆蓋模式，包含完整數據）
         report_mgr.generate_all_reports(all_changes_dict, date_str, append_txt=False)
         logger.info("Consolidated reports generated successfully")
     else:
         logger.info("No changes detected across all ETFs")
+
+    # 更新 ETF 市場資料（基金規模、淨值等）
+    update_etf_market_data(db)
 
 
 def main():
@@ -754,6 +785,12 @@ def main():
         action='store_true',
         help='每日更新模式：抓取所有投信 ETF 最新資料'
     )
+
+    parser.add_argument(
+        '--market-data',
+        action='store_true',
+        help='更新 ETF 市場資料（基金規模、淨值、市價）'
+    )
     
     parser.add_argument(
         '--stats',
@@ -777,6 +814,10 @@ def main():
             return
 
         # 檢查是否有參數，如果沒有則預設只跑 EZMoney (向後兼容)
+        if args.market_data:
+            update_etf_market_data()
+            return
+
         if not (args.ezmoney or args.nomura or args.capital or args.fhtrust or args.ctbc or args.fsitc or args.tsit or args.allianz or args.all):
             logger.info("No arguments provided, running default scrapers (EZMoney)")
             daily_update_ezmoney()
