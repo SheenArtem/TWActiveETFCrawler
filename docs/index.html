@@ -632,11 +632,7 @@
         .per-etf-body {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-
-        .per-etf-card.expanded .per-etf-body {
-            max-height: 2000px;
+            transition: max-height 0.4s ease;
         }
 
         .per-etf-body-inner {
@@ -1126,6 +1122,28 @@
         }
 
         // ====== Per-ETF Buy/Sell Details (last 5 days) ======
+        function togglePerEtfCard(card) {
+            const body = card.querySelector('.per-etf-body');
+            if (card.classList.contains('expanded')) {
+                // Collapse: animate from current height to 0
+                body.style.maxHeight = body.scrollHeight + 'px';
+                requestAnimationFrame(() => {
+                    body.style.maxHeight = '0';
+                });
+                card.classList.remove('expanded');
+            } else {
+                // Expand: animate from 0 to scrollHeight, then remove limit
+                card.classList.add('expanded');
+                body.style.maxHeight = body.scrollHeight + 'px';
+                body.addEventListener('transitionend', function handler() {
+                    if (card.classList.contains('expanded')) {
+                        body.style.maxHeight = 'none';
+                    }
+                    body.removeEventListener('transitionend', handler);
+                }, { once: true });
+            }
+        }
+
         async function loadPerETFData() {
             try {
                 const idxResp = await fetch('reports_index.json');
@@ -1238,7 +1256,7 @@
 
                     html += `
                     <div class="per-etf-card">
-                        <div class="per-etf-header" onclick="this.parentElement.classList.toggle('expanded')">
+                        <div class="per-etf-header" onclick="togglePerEtfCard(this.parentElement)">
                             <h3>${etfCode}</h3>
                             <div class="per-etf-summary">
                                 ${buyLabel}${sellLabel}
