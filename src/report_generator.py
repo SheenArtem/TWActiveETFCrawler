@@ -479,12 +479,11 @@ class HTMLReportGenerator:
         .etf-card-content {{
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
+            transition: max-height 0.4s ease;
             padding: 0 20px;
         }}
-        
+
         .etf-card-content.expanded {{
-            max-height: 2000px;
             padding: 20px;
         }}
         
@@ -752,16 +751,42 @@ class HTMLReportGenerator:
     <script>
         const data = {json.dumps(data, ensure_ascii=False)};
         
-        // 摺疊功能
-        function toggleCard(header) {{
+        // 持股總覽摺疊（有 max-height 捲動，用 CSS 切換即可）
+        function toggleHoldingsCard(header) {{
             header.classList.toggle('expanded');
             const content = header.nextElementSibling;
             content.classList.toggle('expanded');
         }}
-        
-        // 綁定所有摺疊卡片的點擊事件
-        document.querySelectorAll('.etf-card-header, .etf-holdings-header').forEach(header => {{
-            header.addEventListener('click', () => toggleCard(header));
+
+        // 變動明細摺疊（動態計算高度，避免內容被截斷）
+        function toggleDetailCard(header) {{
+            const content = header.nextElementSibling;
+            if (header.classList.contains('expanded')) {{
+                content.style.maxHeight = content.scrollHeight + 'px';
+                requestAnimationFrame(() => {{
+                    content.style.maxHeight = '0';
+                }});
+                header.classList.remove('expanded');
+                content.classList.remove('expanded');
+            }} else {{
+                header.classList.add('expanded');
+                content.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.addEventListener('transitionend', function handler() {{
+                    if (header.classList.contains('expanded')) {{
+                        content.style.maxHeight = 'none';
+                    }}
+                    content.removeEventListener('transitionend', handler);
+                }}, {{ once: true }});
+            }}
+        }}
+
+        // 綁定摺疊事件
+        document.querySelectorAll('.etf-holdings-header').forEach(header => {{
+            header.addEventListener('click', () => toggleHoldingsCard(header));
+        }});
+        document.querySelectorAll('.etf-card-header').forEach(header => {{
+            header.addEventListener('click', () => toggleDetailCard(header));
         }});
         
         // 變動分布圓餅圖
