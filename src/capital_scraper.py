@@ -88,10 +88,15 @@ class CapitalScraper:
                 # 訪問頁面
                 logger.debug("Navigating to page...")
                 page.goto(url, timeout=60000)
-                
-                # 等待頁面加載
-                logger.debug("Waiting for page to load...")
-                time.sleep(5)
+
+                # 等待 SPA 渲染出下載按鈕（取代固定 sleep，避免 CI 環境載入較慢時錯過）
+                logger.debug("Waiting for download button to render...")
+                try:
+                    page.wait_for_selector('text="下載資料"', state='visible', timeout=45000)
+                except Exception as e:
+                    logger.warning(f"Download button not visible within 45s, retrying after reload: {e}")
+                    page.reload(timeout=60000)
+                    page.wait_for_selector('text="下載資料"', state='visible', timeout=45000)
                 
                 # 選擇日期（如果有日期選擇器的話)
                 # 這部分可能需要根據實際情況調整
@@ -107,29 +112,22 @@ class CapitalScraper:
                 except Exception as e:
                     logger.debug(f"Could not set date (may not be needed): {e}")
                 
-                # 點擊下載按鈕
-                logger.debug("Looking for download button...")
-                
-                # 嘗試找到並點擊下載按鈕
+                # 點擊下載按鈕（到此 wait_for_selector 已確保按鈕可見）
+                logger.debug("Clicking download button...")
                 download_button = page.locator('text="下載資料"').first
-                if download_button.count() > 0:
-                    logger.info("Found download button, clicking...")
-                    
-                    # 正確的下載方式：使用 expect_download
-                    with page.expect_download(timeout=30000) as download_info:
-                        download_button.click()
-                    
-                    download = download_info.value
-                    
-                    # 儲存文件
-                    filename = f"{fund_id}_{date.replace('-', '')}.xlsx"
-                    save_path = self.download_dir / filename
-                    download.save_as(save_path)
-                    
-                    logger.info(f"Downloaded file: {save_path}")
-                    downloaded_file = save_path
-                else:
-                    logger.error("Download button not found")
+
+                with page.expect_download(timeout=30000) as download_info:
+                    download_button.click()
+
+                download = download_info.value
+
+                # 儲存文件
+                filename = f"{fund_id}_{date.replace('-', '')}.xlsx"
+                save_path = self.download_dir / filename
+                download.save_as(save_path)
+
+                logger.info(f"Downloaded file: {save_path}")
+                downloaded_file = save_path
                 
                 browser.close()
         
