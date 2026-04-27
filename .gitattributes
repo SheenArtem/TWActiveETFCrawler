@@ -1,0 +1,35 @@
+# Default: treat as text, normalize to LF in repo
+* text=auto eol=lf
+
+# Source / config: explicitly LF (CI runs on Linux)
+*.py    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.sh    text eol=lf
+
+# Windows-only scripts: keep CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# GitHub workflow files: skip line-ending normalization
+# (current credentials lack `workflow` scope; remove this exception when upgraded)
+.github/workflows/*.yml  -text
+
+# Binaries
+*.db     binary
+*.xlsx   binary
+*.xls    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.zip    binary
