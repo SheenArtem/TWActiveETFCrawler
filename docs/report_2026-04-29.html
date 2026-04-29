@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF 持股變動報告 - 2026-04-29</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header-content {
+            flex: 1;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header .date {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .btn-home {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+        
+        /* ETF 持股總覽區塊 */
+        .holdings-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .holdings-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .etf-holdings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .etf-holdings-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .etf-holdings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .etf-holdings-header:hover {
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }
+        
+        .etf-holdings-header h4 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+        
+        .etf-holdings-header .toggle-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s;
+        }
+        
+        .etf-holdings-header.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .etf-holdings-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #f9fafb;
+        }
+        
+        .etf-holdings-content.expanded {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .holdings-list {
+            padding: 15px;
+        }
+        
+        .holdings-list table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        .holdings-list th {
+            background: #e5e7eb;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #d1d5db;
+        }
+        
+        .holdings-list td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .chart-card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .details-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .details-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        /* 可摺疊的 ETF 卡片 */
+        .etf-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .etf-card-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .etf-card-header:hover {
+            background: #e8e8e8;
+        }
+        
+        .etf-card-header h3 {
+            color: #764ba2;
+            margin: 0;
+            font-size: 1.1em;
+        }
+        
+        .etf-card-header .toggle-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s;
+            color: #764ba2;
+        }
+        
+        .etf-card-header.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .etf-card-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+            padding: 0 20px;
+        }
+
+        .etf-card-content.expanded {
+            padding: 20px;
+        }
+        
+        .changes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .changes-table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .changes-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        /* 顏色調整：紅色=增加，綠色=減少（台股慣例）*/
+        .up {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        
+        .down {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        /* 新增成分股：紅色 */
+        .badge-add {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        /* 移除成分股：綠色 */
+        .badge-remove {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        /* 熱門股票可展開項目 */
+        .hot-stock-item {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .hot-stock-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .hot-stock-header:hover {
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }
+        
+        .hot-stock-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .hot-stock-rank {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .hot-stock-name {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .hot-stock-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.95em;
+        }
+        
+        .hot-stock-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #f9fafb;
+        }
+        
+        .hot-stock-content.expanded {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .etf-adjustments-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .etf-adjustments-table th {
+            background: #e5e7eb;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 2px solid #d1d5db;
+            font-weight: 600;
+        }
+        
+        .etf-adjustments-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+                padding: 20px 16px;
+            }
+            
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header .date {
+                font-size: 0.95em;
+            }
+            
+            .etf-holdings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* 詳細變動明細 - 手機版 */
+            .details-section {
+                padding: 16px 12px;
+            }
+
+            .etf-card-header {
+                padding: 12px 14px;
+            }
+
+            .etf-card-header h3 {
+                font-size: 0.95em;
+            }
+
+            /* 讓卡片內容可以橫向捲動 */
+            .etf-card-content.expanded {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 12px 10px;
+            }
+
+            .changes-table {
+                min-width: 380px;
+                font-size: 0.82em;
+            }
+
+            .changes-table th,
+            .changes-table td {
+                padding: 7px 8px;
+                white-space: nowrap;
+            }
+
+            /* 熱門股票 - 手機版 */
+            .hot-stock-header {
+                padding: 12px 14px;
+            }
+
+            .hot-stock-info {
+                gap: 8px;
+            }
+
+            .hot-stock-name {
+                font-size: 0.95em;
+            }
+
+            .hot-stock-stats {
+                font-size: 0.82em;
+                gap: 8px;
+            }
+
+            .hot-stock-content.expanded {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .etf-adjustments-table {
+                min-width: 380px;
+                font-size: 0.82em;
+            }
+
+            .etf-adjustments-table th,
+            .etf-adjustments-table td {
+                padding: 7px 8px;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>📊 ETF 持股變動追蹤系統</h1>
+                <div class="date">報告日期：2026-04-29 | 更新時間：2026-04-29 19:26:00 (台北時間)</div>
+            </div>
+            <a href="index.html" class="btn-home">🏠 回到主頁</a>
+        </div>
+        
+        
+        <div class="holdings-section">
+            <h2>📋 追蹤 ETF 持股總覽</h2>
+            <div class="etf-holdings-grid">
+                
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00980A (50 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台灣積體電路製造</td><td>8.70%</td><td>583張</td></tr>
+<tr><td>2308</td><td>台達電子工業</td><td>5.59%</td><td>377張</td></tr>
+<tr><td>2383</td><td>台光電子材料</td><td>3.65%</td><td>120張</td></tr>
+<tr><td>2454</td><td>聯發科技</td><td>3.31%</td><td>188張</td></tr>
+<tr><td>2345</td><td>智邦科技</td><td>3.15%</td><td>208張</td></tr>
+<tr><td>7769</td><td>鴻勁精密</td><td>3.07%</td><td>86張</td></tr>
+<tr><td>3017</td><td>奇鋐科技</td><td>3.05%</td><td>157張</td></tr>
+<tr><td>2317</td><td>鴻海精密工業</td><td>2.93%</td><td>1,905張</td></tr>
+<tr><td>2368</td><td>金像電子（股）公司</td><td>2.78%</td><td>299張</td></tr>
+<tr><td>6669</td><td>緯穎科技服務</td><td>2.75%</td><td>83張</td></tr>
+<tr><td>2382</td><td>廣達電腦</td><td>2.67%</td><td>1,213張</td></tr>
+<tr><td>6515</td><td>穎崴科技</td><td>2.58%</td><td>37張</td></tr>
+<tr><td>3665</td><td>貿聯控股（BizLink Holding In</td><td>2.48%</td><td>130張</td></tr>
+<tr><td>3653</td><td>健策精密工業</td><td>2.46%</td><td>66張</td></tr>
+<tr><td>2408</td><td>南亞科技</td><td>2.43%</td><td>1,510張</td></tr>
+<tr><td>6223</td><td>旺矽科技</td><td>2.40%</td><td>71張</td></tr>
+<tr><td>2360</td><td>致茂電子</td><td>2.38%</td><td>169張</td></tr>
+<tr><td>2059</td><td>川湖科技</td><td>2.33%</td><td>82張</td></tr>
+<tr><td>5274</td><td>信驊科技</td><td>2.27%</td><td>20張</td></tr>
+<tr><td>8299</td><td>群聯電子</td><td>2.12%</td><td>150張</td></tr>
+<tr><td>8210</td><td>勤誠興業</td><td>2.05%</td><td>268張</td></tr>
+<tr><td>2344</td><td>華邦電子</td><td>1.83%</td><td>2,892張</td></tr>
+<tr><td>3711</td><td>日月光投資控股</td><td>1.79%</td><td>536張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>1.57%</td><td>111張</td></tr>
+<tr><td>6274</td><td>台燿科技</td><td>1.48%</td><td>222張</td></tr>
+<tr><td>3443</td><td>創意電子</td><td>1.41%</td><td>50張</td></tr>
+<tr><td>2891</td><td>中國信託金融控股</td><td>1.41%</td><td>3,891張</td></tr>
+<tr><td>3231</td><td>緯創資通</td><td>1.41%</td><td>1,470張</td></tr>
+<tr><td>2881</td><td>富邦金融控股</td><td>1.29%</td><td>2,058張</td></tr>
+<tr><td>8996</td><td>高力熱處理工業</td><td>1.29%</td><td>165張</td></tr>
+<tr><td>6584</td><td>南俊國際</td><td>1.26%</td><td>260張</td></tr>
+<tr><td>2884</td><td>玉山金融控股</td><td>1.23%</td><td>5,570張</td></tr>
+<tr><td>1519</td><td>華城電機</td><td>1.05%</td><td>176張</td></tr>
+<tr><td>6831</td><td>邁科科技</td><td>0.99%</td><td>314張</td></tr>
+<tr><td>3533</td><td>嘉澤端子工業</td><td>0.98%</td><td>54張</td></tr>
+<tr><td>6442</td><td>光紅建聖</td><td>0.97%</td><td>71張</td></tr>
+<tr><td>3036</td><td>文曄科技</td><td>0.96%</td><td>693張</td></tr>
+<tr><td>3264</td><td>欣銓科技</td><td>0.95%</td><td>695張</td></tr>
+<tr><td>1590</td><td>亞德客國際集團</td><td>0.93%</td><td>91張</td></tr>
+<tr><td>6510</td><td>中華精測科技</td><td>0.87%</td><td>35張</td></tr>
+<tr><td>5434</td><td>崇越科技</td><td>0.82%</td><td>294張</td></tr>
+<tr><td>3044</td><td>健鼎科技</td><td>0.79%</td><td>253張</td></tr>
+<tr><td>5234</td><td>達興材料</td><td>0.77%</td><td>244張</td></tr>
+<tr><td>5904</td><td>寶雅國際</td><td>0.69%</td><td>181張</td></tr>
+<tr><td>3293</td><td>鈊象電子</td><td>0.67%</td><td>129張</td></tr>
+<tr><td>1477</td><td>聚陽實業</td><td>0.54%</td><td>369張</td></tr>
+<tr><td>2449</td><td>京元電子</td><td>0.45%</td><td>232張</td></tr>
+<tr><td>2376</td><td>技嘉科技</td><td>0.42%</td><td>225張</td></tr>
+<tr><td>2548</td><td>華固建設</td><td>0.41%</td><td>470張</td></tr>
+<tr><td>4915</td><td>致伸科技</td><td>0.28%</td><td>547張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00981A (51 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台積電</td><td>8.92%</td><td>9,693張</td></tr>
+<tr><td>2383</td><td>台光電</td><td>8.29%</td><td>4,425張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>5.62%</td><td>6,031張</td></tr>
+<tr><td>2308</td><td>台達電</td><td>5.50%</td><td>6,024張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>5.38%</td><td>4,584張</td></tr>
+<tr><td>3653</td><td>健策</td><td>5.21%</td><td>2,267張</td></tr>
+<tr><td>8046</td><td>南電</td><td>4.88%</td><td>12,637張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>4.74%</td><td>4,363張</td></tr>
+<tr><td>2368</td><td>金像電</td><td>4.73%</td><td>8,240張</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>4.67%</td><td>3,902張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>3.94%</td><td>1,886張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>3.59%</td><td>1,754張</td></tr>
+<tr><td>3037</td><td>欣興</td><td>3.15%</td><td>9,287張</td></tr>
+<tr><td>5274</td><td>信驊</td><td>2.84%</td><td>406張</td></tr>
+<tr><td>2327</td><td>國巨*</td><td>2.30%</td><td>16,954張</td></tr>
+<tr><td>3711</td><td>日月光投控</td><td>1.97%</td><td>9,536張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>1.83%</td><td>2,099張</td></tr>
+<tr><td>6515</td><td>穎崴</td><td>1.68%</td><td>391張</td></tr>
+<tr><td>2449</td><td>京元電子</td><td>1.52%</td><td>12,719張</td></tr>
+<tr><td>6510</td><td>精測</td><td>1.42%</td><td>930張</td></tr>
+<tr><td>2303</td><td>聯電</td><td>1.26%</td><td>40,054張</td></tr>
+<tr><td>3661</td><td>世芯-KY</td><td>1.25%</td><td>738張</td></tr>
+<tr><td>6274</td><td>台燿</td><td>1.24%</td><td>3,019張</td></tr>
+<tr><td>3189</td><td>景碩</td><td>1.15%</td><td>5,358張</td></tr>
+<tr><td>2317</td><td>鴻海</td><td>1.02%</td><td>10,727張</td></tr>
+<tr><td>8358</td><td>金居</td><td>0.87%</td><td>5,558張</td></tr>
+<tr><td>8210</td><td>勤誠</td><td>0.53%</td><td>1,117張</td></tr>
+<tr><td>6147</td><td>頎邦</td><td>0.53%</td><td>7,884張</td></tr>
+<tr><td>5439</td><td>高技</td><td>0.51%</td><td>3,130張</td></tr>
+<tr><td>3443</td><td>創意</td><td>0.47%</td><td>271張</td></tr>
+<tr><td>2404</td><td>漢唐</td><td>0.44%</td><td>1,091張</td></tr>
+<tr><td>3264</td><td>欣銓</td><td>0.41%</td><td>4,897張</td></tr>
+<tr><td>1590</td><td>亞德客-KY</td><td>0.31%</td><td>500張</td></tr>
+<tr><td>8996</td><td>高力</td><td>0.26%</td><td>535張</td></tr>
+<tr><td>7769</td><td>鴻勁</td><td>0.22%</td><td>98張</td></tr>
+<tr><td>2337</td><td>旺宏</td><td>0.21%</td><td>2,910張</td></tr>
+<tr><td>6191</td><td>精成科</td><td>0.17%</td><td>3,986張</td></tr>
+<tr><td>2481</td><td>強茂</td><td>0.16%</td><td>3,652張</td></tr>
+<tr><td>3376</td><td>新日興</td><td>0.15%</td><td>1,681張</td></tr>
+<tr><td>2313</td><td>華通</td><td>0.13%</td><td>1,343張</td></tr>
+<tr><td>6415</td><td>矽力*-KY</td><td>0.11%</td><td>660張</td></tr>
+<tr><td>4966</td><td>譜瑞-KY</td><td>0.09%</td><td>371張</td></tr>
+<tr><td>3217</td><td>優群</td><td>0.06%</td><td>830張</td></tr>
+<tr><td>1303</td><td>南亞</td><td>0.05%</td><td>1,374張</td></tr>
+<tr><td>2002</td><td>中鋼</td><td>0.04%</td><td>5,161張</td></tr>
+<tr><td>1319</td><td>東陽</td><td>0.02%</td><td>509張</td></tr>
+<tr><td>2357</td><td>華碩</td><td>-</td><td>16張</td></tr>
+<tr><td>1815</td><td>富喬</td><td>-</td><td>107張</td></tr>
+<tr><td>2439</td><td>美律</td><td>-</td><td>16張</td></tr>
+<tr><td>4979</td><td>華星光</td><td>-</td><td>1張</td></tr>
+<tr><td>5347</td><td>世界</td><td>-</td><td>62張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00982A (58 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台積電</td><td>8.68%</td><td>1,548張</td></tr>
+<tr><td>5536</td><td>聖暉*</td><td>7.43%</td><td>3,355張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>6.12%</td><td>491張</td></tr>
+<tr><td>2383</td><td>台光電</td><td>5.22%</td><td>457張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>5.10%</td><td>3,946張</td></tr>
+<tr><td>3264</td><td>欣銓</td><td>4.15%</td><td>8,078張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>4.09%</td><td>719張</td></tr>
+<tr><td>6139</td><td>亞翔</td><td>3.93%</td><td>2,278張</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>3.92%</td><td>538張</td></tr>
+<tr><td>2308</td><td>台達電</td><td>3.84%</td><td>690張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>3.83%</td><td>724張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>3.80%</td><td>573張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>3.51%</td><td>276張</td></tr>
+<tr><td>6257</td><td>矽格</td><td>2.89%</td><td>6,338張</td></tr>
+<tr><td>6147</td><td>頎邦</td><td>2.66%</td><td>6,546張</td></tr>
+<tr><td>4958</td><td>臻鼎-KY</td><td>2.62%</td><td>2,654張</td></tr>
+<tr><td>3491</td><td>昇達科</td><td>2.16%</td><td>539張</td></tr>
+<tr><td>1785</td><td>光洋科</td><td>2.06%</td><td>4,611張</td></tr>
+<tr><td>2467</td><td>志聖</td><td>1.71%</td><td>1,199張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>1.66%</td><td>311張</td></tr>
+<tr><td>6285</td><td>啟碁</td><td>1.64%</td><td>3,000張</td></tr>
+<tr><td>2059</td><td>川湖</td><td>1.13%</td><td>106張</td></tr>
+<tr><td>6510</td><td>精測</td><td>1.13%</td><td>121張</td></tr>
+<tr><td>8996</td><td>高力</td><td>1.09%</td><td>373張</td></tr>
+<tr><td>3030</td><td>德律</td><td>1.01%</td><td>1,135張</td></tr>
+<tr><td>2303</td><td>聯電</td><td>0.97%</td><td>5,045張</td></tr>
+<tr><td>6488</td><td>環球晶</td><td>0.94%</td><td>683張</td></tr>
+<tr><td>5289</td><td>宜鼎</td><td>0.93%</td><td>274張</td></tr>
+<tr><td>2404</td><td>漢唐</td><td>0.91%</td><td>368張</td></tr>
+<tr><td>2347</td><td>聯強</td><td>0.79%</td><td>3,693張</td></tr>
+<tr><td>3533</td><td>嘉澤</td><td>0.76%</td><td>111張</td></tr>
+<tr><td>3583</td><td>辛耘</td><td>0.74%</td><td>372張</td></tr>
+<tr><td>3211</td><td>順達</td><td>0.73%</td><td>780張</td></tr>
+<tr><td>3131</td><td>弘塑</td><td>0.66%</td><td>89張</td></tr>
+<tr><td>2313</td><td>華通</td><td>0.61%</td><td>1,033張</td></tr>
+<tr><td>6274</td><td>台燿</td><td>0.56%</td><td>223張</td></tr>
+<tr><td>2472</td><td>立隆電</td><td>0.55%</td><td>1,210張</td></tr>
+<tr><td>2368</td><td>金像電</td><td>0.54%</td><td>155張</td></tr>
+<tr><td>3711</td><td>日月光投控</td><td>0.44%</td><td>349張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>0.42%</td><td>58張</td></tr>
+<tr><td>4938</td><td>和碩</td><td>0.26%</td><td>1,236張</td></tr>
+<tr><td>6691</td><td>洋基工程</td><td>0.26%</td><td>159張</td></tr>
+<tr><td>5274</td><td>信驊</td><td>0.26%</td><td>6張</td></tr>
+<tr><td>8046</td><td>南電</td><td>0.24%</td><td>103張</td></tr>
+<tr><td>3529</td><td>力旺</td><td>0.23%</td><td>23張</td></tr>
+<tr><td>6177</td><td>達麗</td><td>0.21%</td><td>1,784張</td></tr>
+<tr><td>3376</td><td>新日興</td><td>0.19%</td><td>355張</td></tr>
+<tr><td>2885</td><td>元大金</td><td>0.15%</td><td>1,102張</td></tr>
+<tr><td>8464</td><td>億豐</td><td>0.13%</td><td>142張</td></tr>
+<tr><td>1319</td><td>東陽</td><td>0.07%</td><td>355張</td></tr>
+<tr><td>4441</td><td>振大環球</td><td>0.03%</td><td>59張</td></tr>
+<tr><td>3443</td><td>創意</td><td>0.01%</td><td>1張</td></tr>
+<tr><td>2548</td><td>華固</td><td>0.01%</td><td>30張</td></tr>
+<tr><td>1519</td><td>華城</td><td>-</td><td>1張</td></tr>
+<tr><td>8358</td><td>金居</td><td>-</td><td>1張</td></tr>
+<tr><td>3706</td><td>神達</td><td>-</td><td>1張</td></tr>
+<tr><td>2886</td><td>兆豐金</td><td>-</td><td>1張</td></tr>
+<tr><td>2881</td><td>富邦金</td><td>-</td><td>0張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00984A (117 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台積電</td><td>4.97%</td><td>150張</td></tr>
+<tr><td>2382</td><td>廣達</td><td>4.62%</td><td>951張</td></tr>
+<tr><td>2303</td><td>聯電</td><td>3.56%</td><td>3,169張</td></tr>
+<tr><td>2881</td><td>富邦金控</td><td>3.27%</td><td>2,369張</td></tr>
+<tr><td>2882</td><td>國泰金</td><td>3.06%</td><td>2,581張</td></tr>
+<tr><td>2885</td><td>元大金</td><td>2.92%</td><td>3,696張</td></tr>
+<tr><td>3045</td><td>台灣大</td><td>2.75%</td><td>1,628張</td></tr>
+<tr><td>2891</td><td>中信金</td><td>2.74%</td><td>3,415張</td></tr>
+<tr><td>2887</td><td>台新新光金</td><td>2.22%</td><td>6,116張</td></tr>
+<tr><td>3037</td><td>欣興</td><td>2.21%</td><td>182張</td></tr>
+<tr><td>3036</td><td>文曄</td><td>2.08%</td><td>679張</td></tr>
+<tr><td>2880</td><td>華南金控</td><td>1.98%</td><td>3,977張</td></tr>
+<tr><td>2883</td><td>凱基金控</td><td>1.81%</td><td>5,514張</td></tr>
+<tr><td>4904</td><td>遠傳</td><td>1.80%</td><td>1,245張</td></tr>
+<tr><td>1102</td><td>亞泥</td><td>1.75%</td><td>3,281張</td></tr>
+<tr><td>5274</td><td>信驊科技</td><td>1.75%</td><td>7張</td></tr>
+<tr><td>2383</td><td>台光電子</td><td>1.61%</td><td>24張</td></tr>
+<tr><td>2379</td><td>瑞昱</td><td>1.56%</td><td>188張</td></tr>
+<tr><td>2308</td><td>台達電子</td><td>1.31%</td><td>40張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>1.27%</td><td>17張</td></tr>
+<tr><td>1402</td><td>遠東新</td><td>1.24%</td><td>3,152張</td></tr>
+<tr><td>3653</td><td>健策</td><td>1.23%</td><td>15張</td></tr>
+<tr><td>3702</td><td>大聯大</td><td>1.19%</td><td>774張</td></tr>
+<tr><td>3711</td><td>日月光投控</td><td>1.16%</td><td>157張</td></tr>
+<tr><td>2324</td><td>仁寶</td><td>1.15%</td><td>2,573張</td></tr>
+<tr><td>8996</td><td>高力</td><td>1.15%</td><td>67張</td></tr>
+<tr><td>3081</td><td>聯亞光電</td><td>1.14%</td><td>31張</td></tr>
+<tr><td>8021</td><td>尖點</td><td>1.09%</td><td>188張</td></tr>
+<tr><td>6515</td><td>穎崴</td><td>1.08%</td><td>7張</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>1.07%</td><td>25張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>1.07%</td><td>141張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>0.99%</td><td>32張</td></tr>
+<tr><td>2467</td><td>志聖</td><td>0.97%</td><td>116張</td></tr>
+<tr><td>2603</td><td>長榮海運</td><td>0.96%</td><td>317張</td></tr>
+<tr><td>2357</td><td>華碩</td><td>0.93%</td><td>105張</td></tr>
+<tr><td>6510</td><td>精測</td><td>0.93%</td><td>17張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>0.92%</td><td>22張</td></tr>
+<tr><td>6005</td><td>群益證券</td><td>0.88%</td><td>2,068張</td></tr>
+<tr><td>9904</td><td>寶成</td><td>0.87%</td><td>2,218張</td></tr>
+<tr><td>2376</td><td>技嘉</td><td>0.84%</td><td>203張</td></tr>
+<tr><td>6147</td><td>頎邦</td><td>0.83%</td><td>346張</td></tr>
+<tr><td>6446</td><td>藥華醫藥</td><td>0.83%</td><td>85張</td></tr>
+<tr><td>2618</td><td>長榮航</td><td>0.75%</td><td>1,457張</td></tr>
+<tr><td>8112</td><td>至上電子</td><td>0.75%</td><td>583張</td></tr>
+<tr><td>6531</td><td>愛普科技</td><td>0.74%</td><td>60張</td></tr>
+<tr><td>7751</td><td>竑騰</td><td>0.73%</td><td>19張</td></tr>
+<tr><td>2486</td><td>一詮精密</td><td>0.69%</td><td>180張</td></tr>
+<tr><td>3714</td><td>富采</td><td>0.64%</td><td>579張</td></tr>
+<tr><td>8046</td><td>南電</td><td>0.61%</td><td>44張</td></tr>
+<tr><td>2474</td><td>可成</td><td>0.59%</td><td>182張</td></tr>
+<tr><td>3189</td><td>景碩科技</td><td>0.57%</td><td>74張</td></tr>
+<tr><td>1711</td><td>永光</td><td>0.54%</td><td>629張</td></tr>
+<tr><td>6451</td><td>訊芯-KY</td><td>0.52%</td><td>86張</td></tr>
+<tr><td>2368</td><td>金像電子</td><td>0.51%</td><td>25張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>0.50%</td><td>15張</td></tr>
+<tr><td>6217</td><td>中國探針</td><td>0.50%</td><td>126張</td></tr>
+<tr><td>8150</td><td>南茂科技</td><td>0.50%</td><td>496張</td></tr>
+<tr><td>1303</td><td>南亞</td><td>0.49%</td><td>357張</td></tr>
+<tr><td>3163</td><td>波若威科技</td><td>0.49%</td><td>31張</td></tr>
+<tr><td>6274</td><td>台燿</td><td>0.49%</td><td>33張</td></tr>
+<tr><td>2385</td><td>群光</td><td>0.48%</td><td>258張</td></tr>
+<tr><td>1326</td><td>台化</td><td>0.47%</td><td>588張</td></tr>
+<tr><td>6830</td><td>汎銓</td><td>0.47%</td><td>40張</td></tr>
+<tr><td>8039</td><td>台虹科技</td><td>0.47%</td><td>222張</td></tr>
+<tr><td>1815</td><td>富喬工業</td><td>0.46%</td><td>277張</td></tr>
+<tr><td>2492</td><td>華新科</td><td>0.46%</td><td>226張</td></tr>
+<tr><td>2377</td><td>微星</td><td>0.44%</td><td>291張</td></tr>
+<tr><td>6239</td><td>力成</td><td>0.44%</td><td>141張</td></tr>
+<tr><td>6683</td><td>雍智科技</td><td>0.44%</td><td>15張</td></tr>
+<tr><td>6257</td><td>矽格</td><td>0.42%</td><td>157張</td></tr>
+<tr><td>3264</td><td>欣銓</td><td>0.41%</td><td>136張</td></tr>
+<tr><td>3481</td><td>群創光電</td><td>0.40%</td><td>1,109張</td></tr>
+<tr><td>5483</td><td>中美晶</td><td>0.40%</td><td>203張</td></tr>
+<tr><td>2455</td><td>全新</td><td>0.39%</td><td>82張</td></tr>
+<tr><td>3131</td><td>弘塑科技</td><td>0.39%</td><td>9張</td></tr>
+<tr><td>9910</td><td>豐泰</td><td>0.37%</td><td>346張</td></tr>
+<tr><td>2313</td><td>華通</td><td>0.33%</td><td>94張</td></tr>
+<tr><td>6409</td><td>旭隼</td><td>0.31%</td><td>27張</td></tr>
+<tr><td>3010</td><td>華立</td><td>0.29%</td><td>142張</td></tr>
+<tr><td>3227</td><td>原相</td><td>0.29%</td><td>92張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>0.27%</td><td>7張</td></tr>
+<tr><td>2485</td><td>兆赫</td><td>0.27%</td><td>296張</td></tr>
+<tr><td>2850</td><td>新光產險</td><td>0.27%</td><td>141張</td></tr>
+<tr><td>2855</td><td>統一證券</td><td>0.27%</td><td>518張</td></tr>
+<tr><td>8070</td><td>長華*</td><td>0.27%</td><td>388張</td></tr>
+<tr><td>2441</td><td>超豐</td><td>0.26%</td><td>195張</td></tr>
+<tr><td>2501</td><td>國建</td><td>0.26%</td><td>732張</td></tr>
+<tr><td>2637</td><td>慧洋-KY</td><td>0.26%</td><td>245張</td></tr>
+<tr><td>2006</td><td>東和鋼鐵</td><td>0.25%</td><td>243張</td></tr>
+<tr><td>2820</td><td>華票</td><td>0.25%</td><td>985張</td></tr>
+<tr><td>2851</td><td>中央再保</td><td>0.25%</td><td>536張</td></tr>
+<tr><td>2897</td><td>王道銀行</td><td>0.25%</td><td>1,655張</td></tr>
+<tr><td>2903</td><td>遠百</td><td>0.25%</td><td>728張</td></tr>
+<tr><td>6023</td><td>元大期貨</td><td>0.25%</td><td>169張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>0.25%</td><td>8張</td></tr>
+<tr><td>1227</td><td>佳格</td><td>0.24%</td><td>537張</td></tr>
+<tr><td>1434</td><td>福懋</td><td>0.24%</td><td>1,002張</td></tr>
+<tr><td>9907</td><td>統一實</td><td>0.24%</td><td>908張</td></tr>
+<tr><td>1560</td><td>中砂</td><td>0.20%</td><td>26張</td></tr>
+<tr><td>2327</td><td>國巨*</td><td>0.13%</td><td>27張</td></tr>
+<tr><td>2449</td><td>京元電子</td><td>0.13%</td><td>31張</td></tr>
+<tr><td>4966</td><td>譜瑞-KY</td><td>0.11%</td><td>13張</td></tr>
+<tr><td>6414</td><td>樺漢</td><td>0.11%</td><td>22張</td></tr>
+<tr><td>3596</td><td>智易科技</td><td>0.10%</td><td>40張</td></tr>
+<tr><td>4766</td><td>南寶</td><td>0.10%</td><td>19張</td></tr>
+<tr><td>4915</td><td>致伸</td><td>0.10%</td><td>89張</td></tr>
+<tr><td>6176</td><td>瑞儀光電</td><td>0.10%</td><td>67張</td></tr>
+<tr><td>1210</td><td>大成</td><td>0.09%</td><td>114張</td></tr>
+<tr><td>2204</td><td>中華</td><td>0.09%</td><td>112張</td></tr>
+<tr><td>3005</td><td>神基科技</td><td>0.09%</td><td>63張</td></tr>
+<tr><td>4123</td><td>晟德</td><td>0.09%</td><td>153張</td></tr>
+<tr><td>6121</td><td>新普科技</td><td>0.09%</td><td>17張</td></tr>
+<tr><td>8415</td><td>大國鋼</td><td>0.09%</td><td>184張</td></tr>
+<tr><td>9917</td><td>中保</td><td>0.09%</td><td>54張</td></tr>
+<tr><td>9939</td><td>宏全國際</td><td>0.09%</td><td>53張</td></tr>
+<tr><td>3167</td><td>大量</td><td>0.06%</td><td>5張</td></tr>
+<tr><td>2412</td><td>中華電</td><td>0.04%</td><td>20張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00985A (50 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台灣積體電路製造</td><td>28.78%</td><td>1,372張</td></tr>
+<tr><td>7769</td><td>鴻勁精密</td><td>6.43%</td><td>128張</td></tr>
+<tr><td>2059</td><td>川湖科技</td><td>6.12%</td><td>153張</td></tr>
+<tr><td>2308</td><td>台達電子工業</td><td>3.23%</td><td>155張</td></tr>
+<tr><td>2368</td><td>金像電子（股）公司</td><td>3.18%</td><td>243張</td></tr>
+<tr><td>2454</td><td>聯發科技</td><td>3.15%</td><td>127張</td></tr>
+<tr><td>3665</td><td>貿聯控股（BizLink Holding In</td><td>2.92%</td><td>109張</td></tr>
+<tr><td>3017</td><td>奇鋐科技</td><td>2.48%</td><td>91張</td></tr>
+<tr><td>3711</td><td>日月光投資控股</td><td>2.43%</td><td>518張</td></tr>
+<tr><td>2360</td><td>致茂電子</td><td>1.98%</td><td>100張</td></tr>
+<tr><td>6669</td><td>緯穎科技服務</td><td>1.91%</td><td>41張</td></tr>
+<tr><td>2345</td><td>智邦科技</td><td>1.79%</td><td>84張</td></tr>
+<tr><td>3653</td><td>健策精密工業</td><td>1.73%</td><td>33張</td></tr>
+<tr><td>8299</td><td>群聯電子</td><td>1.59%</td><td>80張</td></tr>
+<tr><td>2383</td><td>台光電子材料</td><td>1.58%</td><td>37張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>1.53%</td><td>77張</td></tr>
+<tr><td>3661</td><td>世芯電子</td><td>1.50%</td><td>39張</td></tr>
+<tr><td>6223</td><td>旺矽科技</td><td>1.43%</td><td>30張</td></tr>
+<tr><td>6789</td><td>采鈺科技</td><td>1.39%</td><td>260張</td></tr>
+<tr><td>6781</td><td>AES Holding Co Ltd</td><td>1.38%</td><td>127張</td></tr>
+<tr><td>2881</td><td>富邦金融控股</td><td>1.30%</td><td>1,476張</td></tr>
+<tr><td>6442</td><td>光紅建聖</td><td>1.23%</td><td>64張</td></tr>
+<tr><td>2891</td><td>中國信託金融控股</td><td>1.19%</td><td>2,330張</td></tr>
+<tr><td>2344</td><td>華邦電子</td><td>1.19%</td><td>1,336張</td></tr>
+<tr><td>8046</td><td>南亞電路板</td><td>1.18%</td><td>134張</td></tr>
+<tr><td>8996</td><td>高力熱處理工業</td><td>1.05%</td><td>96張</td></tr>
+<tr><td>3189</td><td>景碩科技</td><td>1.02%</td><td>209張</td></tr>
+<tr><td>6488</td><td>環球晶圓</td><td>0.98%</td><td>190張</td></tr>
+<tr><td>6515</td><td>穎崴科技</td><td>0.98%</td><td>10張</td></tr>
+<tr><td>6415</td><td>矽力杰</td><td>0.97%</td><td>256張</td></tr>
+<tr><td>1477</td><td>聚陽實業</td><td>0.88%</td><td>433張</td></tr>
+<tr><td>2412</td><td>中華電信</td><td>0.74%</td><td>561張</td></tr>
+<tr><td>4749</td><td>新應材</td><td>0.55%</td><td>57張</td></tr>
+<tr><td>4904</td><td>遠傳電信</td><td>0.50%</td><td>539張</td></tr>
+<tr><td>2408</td><td>南亞科技</td><td>0.50%</td><td>221張</td></tr>
+<tr><td>3533</td><td>嘉澤端子工業</td><td>0.48%</td><td>19張</td></tr>
+<tr><td>2395</td><td>研華</td><td>0.37%</td><td>104張</td></tr>
+<tr><td>8210</td><td>勤誠興業</td><td>0.34%</td><td>32張</td></tr>
+<tr><td>2474</td><td>可成科技</td><td>0.29%</td><td>139張</td></tr>
+<tr><td>2317</td><td>鴻海精密工業</td><td>0.25%</td><td>117張</td></tr>
+<tr><td>1216</td><td>統一企業</td><td>0.25%</td><td>378張</td></tr>
+<tr><td>3293</td><td>鈊象電子</td><td>0.25%</td><td>34張</td></tr>
+<tr><td>4958</td><td>臻鼎科技控股</td><td>0.20%</td><td>53張</td></tr>
+<tr><td>3105</td><td>穩懋半導體</td><td>0.20%</td><td>41張</td></tr>
+<tr><td>3529</td><td>力旺電子</td><td>0.19%</td><td>5張</td></tr>
+<tr><td>3264</td><td>欣銓科技</td><td>0.05%</td><td>26張</td></tr>
+<tr><td>3037</td><td>欣興電子</td><td>0.05%</td><td>6張</td></tr>
+<tr><td>6239</td><td>力成科技</td><td>0.05%</td><td>25張</td></tr>
+<tr><td>1519</td><td>華城電機</td><td>0.04%</td><td>5張</td></tr>
+<tr><td>2382</td><td>廣達電腦</td><td>0.04%</td><td>14張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00991A (50 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台灣積體</td><td>20.82%</td><td>3,600張</td></tr>
+<tr><td>2383</td><td>台光電子</td><td>9.01%</td><td>765張</td></tr>
+<tr><td>8299</td><td>群聯電子</td><td>7.14%</td><td>1,300張</td></tr>
+<tr><td>3037</td><td>欣興電子</td><td>6.82%</td><td>3,200張</td></tr>
+<tr><td>2308</td><td>台達電子</td><td>5.86%</td><td>1,020張</td></tr>
+<tr><td>5274</td><td>信驊科技</td><td>4.39%</td><td>100張</td></tr>
+<tr><td>2345</td><td>智邦科技</td><td>4.28%</td><td>730張</td></tr>
+<tr><td>3017</td><td>奇鋐科技</td><td>4.14%</td><td>550張</td></tr>
+<tr><td>8046</td><td>南亞電路</td><td>4.01%</td><td>1,650張</td></tr>
+<tr><td>2408</td><td>南亞科技</td><td>3.87%</td><td>6,200張</td></tr>
+<tr><td>2368</td><td>金像電子</td><td>3.75%</td><td>1,040張</td></tr>
+<tr><td>7769</td><td>鴻勁精密</td><td>3.46%</td><td>250張</td></tr>
+<tr><td>2454</td><td>聯發科技</td><td>3.42%</td><td>500張</td></tr>
+<tr><td>6223</td><td>旺矽科技</td><td>3.41%</td><td>260張</td></tr>
+<tr><td>3653</td><td>健策精密</td><td>2.89%</td><td>200張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>2.80%</td><td>380張</td></tr>
+<tr><td>3189</td><td>景碩科技</td><td>2.69%</td><td>2,000張</td></tr>
+<tr><td>2327</td><td>國巨股份</td><td>2.56%</td><td>3,000張</td></tr>
+<tr><td>1590</td><td>亞德客-KY</td><td>1.58%</td><td>400張</td></tr>
+<tr><td>2404</td><td>漢唐集成</td><td>0.84%</td><td>330張</td></tr>
+<tr><td>6515</td><td>穎崴科技</td><td>0.03%</td><td>1張</td></tr>
+<tr><td>6669</td><td>緯穎科技</td><td>0.01%</td><td>1張</td></tr>
+<tr><td>3711</td><td>日月光投</td><td>0.01%</td><td>9張</td></tr>
+<tr><td>2059</td><td>川湖科技</td><td>0.01%</td><td>1張</td></tr>
+<tr><td>6510</td><td>中華精測</td><td>0.01%</td><td>1張</td></tr>
+<tr><td>2382</td><td>廣達電腦</td><td>0.01%</td><td>9張</td></tr>
+<tr><td>2449</td><td>京元電子</td><td>0.01%</td><td>9張</td></tr>
+<tr><td>2360</td><td>致茂電子</td><td>0.01%</td><td>1張</td></tr>
+<tr><td>2313</td><td>華通電腦</td><td>0.01%</td><td>9張</td></tr>
+<tr><td>2317</td><td>鴻海精密</td><td>0.01%</td><td>9張</td></tr>
+<tr><td>2603</td><td>長榮海運</td><td>0.01%</td><td>9張</td></tr>
+<tr><td>2337</td><td>旺宏電子</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>5347</td><td>世界先進</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>3231</td><td>緯創資通</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>8210</td><td>勤誠興業</td><td>0.00%</td><td>1張</td></tr>
+<tr><td>6274</td><td>台燿科技</td><td>0.00%</td><td>1張</td></tr>
+<tr><td>1519</td><td>華城電機</td><td>0.00%</td><td>1張</td></tr>
+<tr><td>2344</td><td>華邦電子</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>2881</td><td>富邦金融</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>2882</td><td>國泰金融</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>2885</td><td>元大金融</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>3044</td><td>健鼎科技</td><td>0.00%</td><td>1張</td></tr>
+<tr><td>2891</td><td>中國信託</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>2890</td><td>永豐金融</td><td>0.00%</td><td>9張</td></tr>
+<tr><td>3036</td><td>文曄科技</td><td>0.00%</td><td>1張</td></tr>
+<tr><td>2412</td><td>中華電信</td><td>-</td><td>1張</td></tr>
+<tr><td>5871</td><td>中租-KY</td><td>-</td><td>1張</td></tr>
+<tr><td>3045</td><td>台灣大哥</td><td>-</td><td>1張</td></tr>
+<tr><td>1303</td><td>南亞塑膠</td><td>-</td><td>1張</td></tr>
+<tr><td>6505</td><td>台塑石化</td><td>-</td><td>1張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00992A (51 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台積電</td><td>7.78%</td><td>1,761張</td></tr>
+<tr><td>2383</td><td>台光電</td><td>4.83%</td><td>537張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>4.57%</td><td>465張</td></tr>
+<tr><td>8996</td><td>高力</td><td>3.90%</td><td>1,689張</td></tr>
+<tr><td>3037</td><td>欣興</td><td>3.76%</td><td>2,310張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>3.76%</td><td>667張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>3.49%</td><td>3,433張</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>3.45%</td><td>601張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>3.21%</td><td>716張</td></tr>
+<tr><td>6442</td><td>光聖</td><td>3.19%</td><td>785張</td></tr>
+<tr><td>6515</td><td>穎崴</td><td>3.12%</td><td>151張</td></tr>
+<tr><td>6510</td><td>精測</td><td>3.11%</td><td>422張</td></tr>
+<tr><td>8299</td><td>群聯</td><td>2.98%</td><td>711張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>2.90%</td><td>289張</td></tr>
+<tr><td>3533</td><td>嘉澤</td><td>2.51%</td><td>468張</td></tr>
+<tr><td>2059</td><td>川湖</td><td>2.18%</td><td>258張</td></tr>
+<tr><td>3653</td><td>健策</td><td>2.17%</td><td>197張</td></tr>
+<tr><td>3443</td><td>創意</td><td>2.17%</td><td>260張</td></tr>
+<tr><td>8046</td><td>南電</td><td>2.06%</td><td>1,108張</td></tr>
+<tr><td>7769</td><td>鴻勁</td><td>2.05%</td><td>194張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>2.03%</td><td>487張</td></tr>
+<tr><td>7751</td><td>竑騰</td><td>1.99%</td><td>388張</td></tr>
+<tr><td>3163</td><td>波若威</td><td>1.96%</td><td>923張</td></tr>
+<tr><td>6584</td><td>南俊國際</td><td>1.92%</td><td>1,337張</td></tr>
+<tr><td>3081</td><td>聯亞</td><td>1.88%</td><td>380張</td></tr>
+<tr><td>2368</td><td>金像電</td><td>1.84%</td><td>669張</td></tr>
+<tr><td>2308</td><td>台達電</td><td>1.57%</td><td>357張</td></tr>
+<tr><td>2408</td><td>南亞科</td><td>1.56%</td><td>3,280張</td></tr>
+<tr><td>5274</td><td>信驊</td><td>1.51%</td><td>45張</td></tr>
+<tr><td>4749</td><td>新應材</td><td>1.44%</td><td>701張</td></tr>
+<tr><td>3661</td><td>世芯-KY</td><td>1.40%</td><td>173張</td></tr>
+<tr><td>6274</td><td>台燿</td><td>1.26%</td><td>636張</td></tr>
+<tr><td>6531</td><td>愛普*</td><td>1.17%</td><td>703張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>0.94%</td><td>180張</td></tr>
+<tr><td>6271</td><td>同欣電</td><td>0.91%</td><td>2,589張</td></tr>
+<tr><td>3131</td><td>弘塑</td><td>0.90%</td><td>154張</td></tr>
+<tr><td>4991</td><td>環宇-KY</td><td>0.86%</td><td>692張</td></tr>
+<tr><td>3189</td><td>景碩</td><td>0.50%</td><td>486張</td></tr>
+<tr><td>3036</td><td>文曄</td><td>0.48%</td><td>1,177張</td></tr>
+<tr><td>2337</td><td>旺宏</td><td>0.43%</td><td>1,271張</td></tr>
+<tr><td>5289</td><td>宜鼎</td><td>0.38%</td><td>142張</td></tr>
+<tr><td>3260</td><td>威剛</td><td>0.36%</td><td>393張</td></tr>
+<tr><td>3324</td><td>雙鴻</td><td>0.36%</td><td>151張</td></tr>
+<tr><td>3711</td><td>日月光投控</td><td>0.32%</td><td>320張</td></tr>
+<tr><td>3491</td><td>昇達科</td><td>0.31%</td><td>97張</td></tr>
+<tr><td>2486</td><td>一詮</td><td>0.29%</td><td>567張</td></tr>
+<tr><td>2455</td><td>全新</td><td>0.27%</td><td>427張</td></tr>
+<tr><td>8021</td><td>尖點</td><td>0.26%</td><td>334張</td></tr>
+<tr><td>2344</td><td>華邦電</td><td>0.17%</td><td>893張</td></tr>
+<tr><td>3583</td><td>辛耘</td><td>0.05%</td><td>33張</td></tr>
+<tr><td>3529</td><td>力旺</td><td>0.03%</td><td>4張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00993A (49 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2337</td><td>旺宏</td><td>9.51%</td><td>7,020張</td></tr>
+<tr><td>6515</td><td>穎崴</td><td>7.93%</td><td>96張</td></tr>
+<tr><td>2330</td><td>台積電</td><td>7.90%</td><td>447張</td></tr>
+<tr><td>3189</td><td>景碩科技</td><td>7.80%</td><td>1,894張</td></tr>
+<tr><td>3702</td><td>大聯大</td><td>5.24%</td><td>6,340張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>4.84%</td><td>1,189張</td></tr>
+<tr><td>2383</td><td>台光電子</td><td>4.32%</td><td>120張</td></tr>
+<tr><td>6584</td><td>南俊國際</td><td>3.14%</td><td>548張</td></tr>
+<tr><td>7751</td><td>竑騰</td><td>3.08%</td><td>150張</td></tr>
+<tr><td>3037</td><td>欣興</td><td>1.78%</td><td>273張</td></tr>
+<tr><td>6213</td><td>聯茂</td><td>1.50%</td><td>732張</td></tr>
+<tr><td>5289</td><td>宜鼎國際</td><td>1.22%</td><td>114張</td></tr>
+<tr><td>5274</td><td>信驊科技</td><td>1.21%</td><td>9張</td></tr>
+<tr><td>2883</td><td>凱基金控</td><td>1.20%</td><td>6,826張</td></tr>
+<tr><td>3260</td><td>威剛科技</td><td>1.18%</td><td>319張</td></tr>
+<tr><td>4958</td><td>臻鼎-KY</td><td>1.13%</td><td>364張</td></tr>
+<tr><td>2313</td><td>華通</td><td>1.12%</td><td>602張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>1.11%</td><td>62張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>1.11%</td><td>66張</td></tr>
+<tr><td>2327</td><td>國巨*</td><td>1.10%</td><td>422張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>1.10%</td><td>66張</td></tr>
+<tr><td>7769</td><td>鴻勁</td><td>1.10%</td><td>26張</td></tr>
+<tr><td>2308</td><td>台達電子</td><td>1.09%</td><td>62張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>1.09%</td><td>52張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>1.08%</td><td>27張</td></tr>
+<tr><td>8046</td><td>南電</td><td>1.08%</td><td>145張</td></tr>
+<tr><td>2027</td><td>大成鋼</td><td>1.06%</td><td>3,389張</td></tr>
+<tr><td>3036</td><td>文曄</td><td>1.06%</td><td>645張</td></tr>
+<tr><td>1303</td><td>南亞</td><td>1.05%</td><td>1,407張</td></tr>
+<tr><td>1590</td><td>亞德客-KY</td><td>1.05%</td><td>87張</td></tr>
+<tr><td>1815</td><td>富喬工業</td><td>1.05%</td><td>1,169張</td></tr>
+<tr><td>2049</td><td>上銀科技</td><td>1.05%</td><td>418張</td></tr>
+<tr><td>3533</td><td>嘉澤端子</td><td>1.05%</td><td>49張</td></tr>
+<tr><td>6285</td><td>啟碁科技</td><td>1.05%</td><td>606張</td></tr>
+<tr><td>4749</td><td>新應材</td><td>1.04%</td><td>127張</td></tr>
+<tr><td>5234</td><td>達興材料</td><td>1.04%</td><td>278張</td></tr>
+<tr><td>2610</td><td>華航</td><td>1.03%</td><td>7,005張</td></tr>
+<tr><td>3491</td><td>昇達科技</td><td>1.03%</td><td>82張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>1.02%</td><td>26張</td></tr>
+<tr><td>1560</td><td>中砂</td><td>1.01%</td><td>240張</td></tr>
+<tr><td>2606</td><td>裕民</td><td>1.01%</td><td>2,050張</td></tr>
+<tr><td>2368</td><td>金像電子</td><td>1.00%</td><td>91張</td></tr>
+<tr><td>2618</td><td>長榮航</td><td>1.00%</td><td>3,621張</td></tr>
+<tr><td>2404</td><td>漢唐</td><td>0.99%</td><td>127張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>0.99%</td><td>44張</td></tr>
+<tr><td>3044</td><td>健鼎科技</td><td>0.96%</td><td>261張</td></tr>
+<tr><td>8210</td><td>勤誠興業</td><td>0.96%</td><td>106張</td></tr>
+<tr><td>3264</td><td>欣銓</td><td>0.95%</td><td>590張</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>0.94%</td><td>41張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00994A (37 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台積電</td><td>16.60%</td><td>313張</td></tr>
+<tr><td>現金/存款</td><td>TWD 499,921,922</td><td>11.97%</td><td>-</td></tr>
+<tr><td>2383</td><td>台光電</td><td>6.29%</td><td>60張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>5.51%</td><td>88張</td></tr>
+<tr><td>2308</td><td>台達電</td><td>5.32%</td><td>104張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>5.00%</td><td>91張</td></tr>
+<tr><td>其他+負債</td><td>11.97%</td><td>5.00%</td><td>-</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>4.89%</td><td>74張</td></tr>
+<tr><td>2368</td><td>金像電</td><td>4.46%</td><td>134張</td></tr>
+<tr><td>8046</td><td>南電</td><td>4.24%</td><td>190張</td></tr>
+<tr><td>3653</td><td>健策</td><td>4.21%</td><td>36張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>3.97%</td><td>63張</td></tr>
+<tr><td>3037</td><td>欣興</td><td>3.69%</td><td>187張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>3.17%</td><td>64張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>2.99%</td><td>26張</td></tr>
+<tr><td>5274</td><td>信驊</td><td>2.97%</td><td>8張</td></tr>
+<tr><td>6515</td><td>穎崴</td><td>2.94%</td><td>12張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>2.91%</td><td>25張</td></tr>
+<tr><td>6274</td><td>台燿</td><td>2.43%</td><td>105張</td></tr>
+<tr><td>3711</td><td>日月光投控</td><td>2.36%</td><td>199張</td></tr>
+<tr><td>3443</td><td>創意</td><td>2.01%</td><td>20張</td></tr>
+<tr><td>7769</td><td>鴻勁</td><td>1.83%</td><td>15張</td></tr>
+<tr><td>2449</td><td>京元電子</td><td>1.28%</td><td>189張</td></tr>
+<tr><td>6805</td><td>富世達</td><td>1.20%</td><td>24張</td></tr>
+<tr><td>4958</td><td>臻鼎-KY</td><td>1.13%</td><td>120張</td></tr>
+<tr><td>股票</td><td>96.49%</td><td>1.00%</td><td>-</td></tr>
+<tr><td>6510</td><td>精測</td><td>0.89%</td><td>10張</td></tr>
+<tr><td>2467</td><td>志聖</td><td>0.86%</td><td>66張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>0.78%</td><td>65張</td></tr>
+<tr><td>2059</td><td>川湖</td><td>0.76%</td><td>8張</td></tr>
+<tr><td>3081</td><td>聯亞</td><td>0.72%</td><td>12張</td></tr>
+<tr><td>4979</td><td>華星光</td><td>0.48%</td><td>36張</td></tr>
+<tr><td>8299</td><td>群聯</td><td>0.38%</td><td>8張</td></tr>
+<tr><td>8358</td><td>金居</td><td>0.22%</td><td>25張</td></tr>
+<tr><td>2412</td><td>中華電</td><td>-</td><td>0張</td></tr>
+<tr><td>3045</td><td>台灣大</td><td>-</td><td>0張</td></tr>
+<tr><td>4904</td><td>遠傳</td><td>-</td><td>0張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="etf-holdings-card">
+                <div class="etf-holdings-header">
+                    <h4>00995A (58 檔成分股)</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-holdings-content">
+                    <div class="holdings-list">
+                        <table>
+                            <tr><th>代碼</th><th>名稱</th><th>權重</th><th>持股</th></tr>
+                            <tr><td>2330</td><td>台灣積體電路製造</td><td>8.88%</td><td>208張</td></tr>
+<tr><td>2383</td><td>台光電子材料</td><td>6.44%</td><td>74張</td></tr>
+<tr><td>2308</td><td>台達電子工業</td><td>5.98%</td><td>141張</td></tr>
+<tr><td>3665</td><td>貿聯控股</td><td>5.72%</td><td>105張</td></tr>
+<tr><td>2368</td><td>金像電子</td><td>5.19%</td><td>195張</td></tr>
+<tr><td>2345</td><td>智邦科技</td><td>5.15%</td><td>119張</td></tr>
+<tr><td>6223</td><td>旺矽科技</td><td>4.94%</td><td>51張</td></tr>
+<tr><td>3017</td><td>奇鋐科技</td><td>4.72%</td><td>85張</td></tr>
+<tr><td>5274</td><td>信驊科技</td><td>3.89%</td><td>12張</td></tr>
+<tr><td>3037</td><td>欣興電子</td><td>3.65%</td><td>232張</td></tr>
+<tr><td>2454</td><td>聯發科技</td><td>3.63%</td><td>72張</td></tr>
+<tr><td>3653</td><td>健策精密工業</td><td>3.20%</td><td>30張</td></tr>
+<tr><td>8046</td><td>南亞電路板</td><td>2.73%</td><td>152張</td></tr>
+<tr><td>6515</td><td>穎崴科技</td><td>2.59%</td><td>13張</td></tr>
+<tr><td>6669</td><td>緯穎科技服務</td><td>2.09%</td><td>22張</td></tr>
+<tr><td>3711</td><td>日月光投資控股</td><td>1.67%</td><td>175張</td></tr>
+<tr><td>2449</td><td>京元電子</td><td>1.66%</td><td>300張</td></tr>
+<tr><td>7769</td><td>鴻勁</td><td>1.64%</td><td>16張</td></tr>
+<tr><td>2327</td><td>國巨*</td><td>1.62%</td><td>257張</td></tr>
+<tr><td>6510</td><td>中華精測科技</td><td>1.42%</td><td>20張</td></tr>
+<tr><td>8210</td><td>勤誠興業</td><td>1.32%</td><td>60張</td></tr>
+<tr><td>6274</td><td>台燿科技</td><td>1.30%</td><td>68張</td></tr>
+<tr><td>3661</td><td>世芯電子</td><td>1.18%</td><td>15張</td></tr>
+<tr><td>3189</td><td>景碩科技</td><td>1.04%</td><td>105張</td></tr>
+<tr><td>3443</td><td>創意電子</td><td>0.97%</td><td>12張</td></tr>
+<tr><td>6805</td><td>富世達股份有限公司</td><td>0.93%</td><td>23張</td></tr>
+<tr><td>3264</td><td>欣銓科技</td><td>0.83%</td><td>212張</td></tr>
+<tr><td>4958</td><td>臻鼎科技控股</td><td>0.80%</td><td>107張</td></tr>
+<tr><td>2303</td><td>聯華電子</td><td>0.77%</td><td>525張</td></tr>
+<tr><td>7751</td><td>竑騰</td><td>0.74%</td><td>15張</td></tr>
+<tr><td>2360</td><td>致茂電子</td><td>0.72%</td><td>18張</td></tr>
+<tr><td>3044</td><td>健鼎科技</td><td>0.69%</td><td>78張</td></tr>
+<tr><td>8358</td><td>金居開發</td><td>0.69%</td><td>96張</td></tr>
+<tr><td>2885</td><td>元大金融控股</td><td>0.64%</td><td>623張</td></tr>
+<tr><td>2455</td><td>全新光電科技</td><td>0.63%</td><td>101張</td></tr>
+<tr><td>3023</td><td>信邦電子</td><td>0.63%</td><td>113張</td></tr>
+<tr><td>5289</td><td>宜鼎國際</td><td>0.57%</td><td>22張</td></tr>
+<tr><td>2472</td><td>立隆電子工業</td><td>0.56%</td><td>162張</td></tr>
+<tr><td>4749</td><td>新應材</td><td>0.55%</td><td>28張</td></tr>
+<tr><td>3413</td><td>京鼎精密科技</td><td>0.50%</td><td>82張</td></tr>
+<tr><td>5439</td><td>高技企業</td><td>0.49%</td><td>65張</td></tr>
+<tr><td>2059</td><td>川湖科技</td><td>0.49%</td><td>6張</td></tr>
+<tr><td>3081</td><td>聯亞光電工業</td><td>0.48%</td><td>10張</td></tr>
+<tr><td>6438</td><td>迅得機械</td><td>0.48%</td><td>140張</td></tr>
+<tr><td>4979</td><td>華星光通科技</td><td>0.45%</td><td>41張</td></tr>
+<tr><td>2344</td><td>華邦電子</td><td>0.40%</td><td>220張</td></tr>
+<tr><td>3324</td><td>雙鴻科技</td><td>0.39%</td><td>17張</td></tr>
+<tr><td>3491</td><td>昇達科技</td><td>0.37%</td><td>12張</td></tr>
+<tr><td>3533</td><td>嘉澤端子工業</td><td>0.36%</td><td>7張</td></tr>
+<tr><td>3105</td><td>穩懋半導體</td><td>0.35%</td><td>36張</td></tr>
+<tr><td>6442</td><td>光紅建聖</td><td>0.35%</td><td>9張</td></tr>
+<tr><td>8996</td><td>高力熱處理工業</td><td>0.29%</td><td>13張</td></tr>
+<tr><td>2313</td><td>華通電腦</td><td>0.25%</td><td>55張</td></tr>
+<tr><td>2421</td><td>建準電機工業</td><td>0.21%</td><td>74張</td></tr>
+<tr><td>7750</td><td>新代</td><td>0.19%</td><td>4張</td></tr>
+<tr><td>6285</td><td>啟碁科技</td><td>0.17%</td><td>40張</td></tr>
+<tr><td>2404</td><td>漢唐集成</td><td>0.13%</td><td>7張</td></tr>
+<tr><td>6139</td><td>亞翔工程</td><td>0.03%</td><td>2張</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number">8</div>
+                <div class="label">檔 ETF 有變動</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">101</div>
+                <div class="label">筆持股調整</div>
+            </div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2>📈 變動分布</h2>
+                <canvas id="distributionChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2>🔥 熱門調整股票 TOP 10</h2>
+                <div id="hotStocksList"></div>
+            </div>
+        </div>
+        
+        <div class="details-section">
+            <h2>📋 詳細變動明細</h2>
+            
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00981A (3 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>4,378張</td><td>4,584張</td><td class='up'>▲ +206張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>1,635張</td><td>1,754張</td><td class='up'>▲ +119張</td></tr>
+<tr><td>5274</td><td>信驊</td><td>373張</td><td>406張</td><td class='up'>▲ +33張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00982A (1 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>3583</td><td>辛耘</td><td>370張</td><td>372張</td><td class='up'>▲ +2張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00985A (19 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>7769</td><td>鴻勁精密</td><td>116張</td><td>128張</td><td class='up'>▲ +12張</td></tr>
+<tr><td>2059</td><td>川湖科技</td><td>79張</td><td>153張</td><td class='up'>▲ +74張</td></tr>
+<tr><td>3653</td><td>健策精密工業</td><td>42張</td><td>33張</td><td class='down'>▼ -9張</td></tr>
+<tr><td>6488</td><td>環球晶圓</td><td>344張</td><td>190張</td><td class='down'>▼ -154張</td></tr>
+<tr><td>6415</td><td>矽力杰</td><td>477張</td><td>256張</td><td class='down'>▼ -221張</td></tr>
+<tr><td>6781</td><td>AES Holding Co Ltd</td><td>154張</td><td>127張</td><td class='down'>▼ -27張</td></tr>
+<tr><td>8046</td><td>南亞電路板</td><td>186張</td><td>134張</td><td class='down'>▼ -52張</td></tr>
+<tr><td>3529</td><td>力旺電子</td><td>31張</td><td>5張</td><td class='down'>▼ -26張</td></tr>
+<tr><td>2474</td><td>可成科技</td><td>427張</td><td>139張</td><td class='down'>▼ -288張</td></tr>
+<tr><td>3533</td><td>嘉澤端子工業</td><td>35張</td><td>19張</td><td class='down'>▼ -16張</td></tr>
+<tr><td>4958</td><td>臻鼎科技控股</td><td>236張</td><td>53張</td><td class='down'>▼ -183張</td></tr>
+<tr><td>3105</td><td>穩懋半導體</td><td>140張</td><td>41張</td><td class='down'>▼ -99張</td></tr>
+<tr><td>3037</td><td>欣興電子</td><td>53張</td><td>6張</td><td class='down'>▼ -47張</td></tr>
+<tr><td>2881</td><td>富邦金融控股</td><td>278張</td><td>1,476張</td><td class='up'>▲ +1,198張</td></tr>
+<tr><td>3264</td><td>欣銓科技</td><td>122張</td><td>26張</td><td class='down'>▼ -96張</td></tr>
+<tr><td>6239</td><td>力成科技</td><td>98張</td><td>25張</td><td class='down'>▼ -73張</td></tr>
+<tr><td>4904</td><td>遠傳電信</td><td>186張</td><td>539張</td><td class='up'>▲ +353張</td></tr>
+<tr><td>1519</td><td>華城電機</td><td>8張</td><td>5張</td><td class='down'>▼ -3張</td></tr>
+<tr><td>2891</td><td>中國信託金融控股</td><td>89張</td><td>2,330張</td><td class='up'>▲ +2,241張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00991A (6 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>2345</td><td>智邦科技</td><td>700張</td><td>730張</td><td class='up'>▲ +30張</td></tr>
+<tr><td>2368</td><td>金像電子</td><td>1,000張</td><td>1,040張</td><td class='up'>▲ +40張</td></tr>
+<tr><td>7769</td><td>鴻勁精密</td><td>270張</td><td>250張</td><td class='down'>▼ -20張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>370張</td><td>380張</td><td class='up'>▲ +10張</td></tr>
+<tr><td>2327</td><td>國巨股份</td><td>1,800張</td><td>3,000張</td><td class='up'>▲ +1,200張</td></tr>
+<tr><td>1590</td><td>亞德客-KY</td><td>235張</td><td>400張</td><td class='up'>▲ +165張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00992A (4 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4><span class="badge badge-add">➕ 新增成分股</span></h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>持股張數</th></tr>
+<tr><td>3583</td><td>辛耘</td><td>33張</td></tr>
+</table>
+<h4><span class="badge badge-remove">➖ 移除成分股</span></h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股張數</th></tr>
+<tr><td>6805</td><td>富世達</td><td>298張</td></tr>
+</table>
+<h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>3163</td><td>波若威</td><td>924張</td><td>923張</td><td class='down'>▼ -1張</td></tr>
+<tr><td>8021</td><td>尖點</td><td>661張</td><td>334張</td><td class='down'>▼ -327張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00993A (53 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4><span class="badge badge-remove">➖ 移除成分股</span></h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股張數</th></tr>
+<tr><td>8996</td><td>高力</td><td>122張</td></tr>
+<tr><td>2347</td><td>聯強</td><td>809張</td></tr>
+<tr><td>2885</td><td>元大金</td><td>1,143張</td></tr>
+<tr><td>2395</td><td>研華</td><td>161張</td></tr>
+<tr><td>3023</td><td>信邦</td><td>210張</td></tr>
+<tr><td>2481</td><td>強茂</td><td>570張</td></tr>
+<tr><td>4904</td><td>遠傳</td><td>586張</td></tr>
+</table>
+<h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>2337</td><td>旺宏</td><td>6,741張</td><td>7,020張</td><td class='up'>▲ +279張</td></tr>
+<tr><td>2330</td><td>台積電</td><td>469張</td><td>447張</td><td class='down'>▼ -22張</td></tr>
+<tr><td>6515</td><td>穎崴</td><td>91張</td><td>96張</td><td class='up'>▲ +5張</td></tr>
+<tr><td>3037</td><td>欣興</td><td>1,052張</td><td>273張</td><td class='down'>▼ -779張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>1,486張</td><td>1,189張</td><td class='down'>▼ -297張</td></tr>
+<tr><td>3702</td><td>大聯大</td><td>7,318張</td><td>6,340張</td><td class='down'>▼ -978張</td></tr>
+<tr><td>2383</td><td>台光電子</td><td>117張</td><td>120張</td><td class='up'>▲ +3張</td></tr>
+<tr><td>3189</td><td>景碩科技</td><td>968張</td><td>1,894張</td><td class='up'>▲ +926張</td></tr>
+<tr><td>2313</td><td>華通</td><td>1,898張</td><td>602張</td><td class='down'>▼ -1,296張</td></tr>
+<tr><td>6584</td><td>南俊國際</td><td>273張</td><td>548張</td><td class='up'>▲ +275張</td></tr>
+<tr><td>4958</td><td>臻鼎-KY</td><td>379張</td><td>364張</td><td class='down'>▼ -15張</td></tr>
+<tr><td>2368</td><td>金像電子</td><td>105張</td><td>91張</td><td class='down'>▼ -14張</td></tr>
+<tr><td>1590</td><td>亞德客-KY</td><td>101張</td><td>87張</td><td class='down'>▼ -14張</td></tr>
+<tr><td>3260</td><td>威剛科技</td><td>282張</td><td>319張</td><td class='up'>▲ +37張</td></tr>
+<tr><td>6223</td><td>旺矽</td><td>28張</td><td>27張</td><td class='down'>▼ -1張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>59張</td><td>62張</td><td class='up'>▲ +3張</td></tr>
+<tr><td>3044</td><td>健鼎科技</td><td>300張</td><td>261張</td><td class='down'>▼ -39張</td></tr>
+<tr><td>3533</td><td>嘉澤端子</td><td>51張</td><td>49張</td><td class='down'>▼ -2張</td></tr>
+<tr><td>2308</td><td>台達電子</td><td>63張</td><td>62張</td><td class='down'>▼ -1張</td></tr>
+<tr><td>3665</td><td>貿聯-KY</td><td>51張</td><td>44張</td><td class='down'>▼ -7張</td></tr>
+<tr><td>3017</td><td>奇鋐</td><td>47張</td><td>41張</td><td class='down'>▼ -6張</td></tr>
+<tr><td>5274</td><td>信驊科技</td><td>8張</td><td>9張</td><td class='up'>▲ +1張</td></tr>
+<tr><td>2883</td><td>凱基金控</td><td>5,928張</td><td>6,826張</td><td class='up'>▲ +898張</td></tr>
+<tr><td>1303</td><td>南亞</td><td>1,393張</td><td>1,407張</td><td class='up'>▲ +14張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>60張</td><td>66張</td><td class='up'>▲ +6張</td></tr>
+<tr><td>3264</td><td>欣銓</td><td>628張</td><td>590張</td><td class='down'>▼ -38張</td></tr>
+<tr><td>2327</td><td>國巨*</td><td>378張</td><td>422張</td><td class='up'>▲ +44張</td></tr>
+<tr><td>1560</td><td>中砂</td><td>229張</td><td>240張</td><td class='up'>▲ +11張</td></tr>
+<tr><td>2404</td><td>漢唐</td><td>123張</td><td>127張</td><td class='up'>▲ +4張</td></tr>
+<tr><td>2606</td><td>裕民</td><td>1,951張</td><td>2,050張</td><td class='up'>▲ +99張</td></tr>
+<tr><td>3036</td><td>文曄</td><td>526張</td><td>645張</td><td class='up'>▲ +119張</td></tr>
+<tr><td>5289</td><td>宜鼎國際</td><td>55張</td><td>114張</td><td class='up'>▲ +59張</td></tr>
+<tr><td>7769</td><td>鴻勁</td><td>13張</td><td>26張</td><td class='up'>▲ +13張</td></tr>
+<tr><td>8046</td><td>南電</td><td>70張</td><td>145張</td><td class='up'>▲ +75張</td></tr>
+<tr><td>1815</td><td>富喬工業</td><td>565張</td><td>1,169張</td><td class='up'>▲ +604張</td></tr>
+<tr><td>4749</td><td>新應材</td><td>65張</td><td>127張</td><td class='up'>▲ +62張</td></tr>
+<tr><td>6285</td><td>啟碁科技</td><td>295張</td><td>606張</td><td class='up'>▲ +311張</td></tr>
+<tr><td>2027</td><td>大成鋼</td><td>1,664張</td><td>3,389張</td><td class='up'>▲ +1,725張</td></tr>
+<tr><td>2049</td><td>上銀科技</td><td>209張</td><td>418張</td><td class='up'>▲ +209張</td></tr>
+<tr><td>2454</td><td>聯發科</td><td>24張</td><td>52張</td><td class='up'>▲ +28張</td></tr>
+<tr><td>2610</td><td>華航</td><td>3,472張</td><td>7,005張</td><td class='up'>▲ +3,533張</td></tr>
+<tr><td>3491</td><td>昇達科技</td><td>39張</td><td>82張</td><td class='up'>▲ +43張</td></tr>
+<tr><td>5234</td><td>達興材料</td><td>147張</td><td>278張</td><td class='up'>▲ +131張</td></tr>
+<tr><td>6669</td><td>緯穎</td><td>13張</td><td>26張</td><td class='up'>▲ +13張</td></tr>
+<tr><td>2618</td><td>長榮航</td><td>1,841張</td><td>3,621張</td><td class='up'>▲ +1,780張</td></tr>
+<tr><td>8210</td><td>勤誠興業</td><td>51張</td><td>106張</td><td class='up'>▲ +55張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00994A (7 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4><span class="badge badge-remove">➖ 移除成分股</span></h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股張數</th></tr>
+<tr><td>2382</td><td>廣達</td><td>17張</td></tr>
+</table>
+<h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>2308</td><td>台達電</td><td>96張</td><td>104張</td><td class='up'>▲ +9張</td></tr>
+<tr><td>2345</td><td>智邦</td><td>79張</td><td>91張</td><td class='up'>▲ +12張</td></tr>
+<tr><td>8046</td><td>南電</td><td>177張</td><td>190張</td><td class='up'>▲ +13張</td></tr>
+<tr><td>2360</td><td>致茂</td><td>49張</td><td>64張</td><td class='up'>▲ +15張</td></tr>
+<tr><td>3105</td><td>穩懋</td><td>90張</td><td>65張</td><td class='down'>▼ -25張</td></tr>
+<tr><td>4958</td><td>臻鼎-KY</td><td>90張</td><td>120張</td><td class='up'>▲ +30張</td></tr>
+</table>
+                </div>
+            </div>
+            
+
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <h3>00995A (8 筆變動)</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="etf-card-content">
+                    <h4><span class="badge badge-add">➕ 新增成分股</span></h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>持股張數</th></tr>
+<tr><td>2303</td><td>聯華電子</td><td>525張</td></tr>
+</table>
+<h4><span class="badge badge-remove">➖ 移除成分股</span></h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股張數</th></tr>
+<tr><td>3211</td><td>順達科技</td><td>10張</td></tr>
+</table>
+<h4>📊 持股變動</h4>
+<table class="changes-table">
+<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th><th>新持股</th><th>增減</th></tr>
+<tr><td>3037</td><td>欣興電子</td><td>260張</td><td>232張</td><td class='down'>▼ -28張</td></tr>
+<tr><td>2454</td><td>聯發科技</td><td>66張</td><td>72張</td><td class='up'>▲ +6張</td></tr>
+<tr><td>3711</td><td>日月光投資控股</td><td>120張</td><td>175張</td><td class='up'>▲ +55張</td></tr>
+<tr><td>3324</td><td>雙鴻科技</td><td>23張</td><td>17張</td><td class='down'>▼ -6張</td></tr>
+<tr><td>6285</td><td>啟碁科技</td><td>66張</td><td>40張</td><td class='down'>▼ -26張</td></tr>
+<tr><td>2404</td><td>漢唐集成</td><td>12張</td><td>7張</td><td class='down'>▼ -5張</td></tr>
+</table>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <script>
+        const data = {"date": "2026-04-29", "update_time": "2026-04-29 19:26:00", "summary": {"total_etfs": 8, "total_changes": 101}, "change_distribution": [{"etf_code": "00981A", "etf_name": "00981A (EZMoney)", "count": 3}, {"etf_code": "00982A", "etf_name": "Capital ETF 00982A", "count": 1}, {"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "count": 19}, {"etf_code": "00991A", "etf_name": "FHTrust ETF 00991A", "count": 6}, {"etf_code": "00992A", "etf_name": "Capital ETF 00992A", "count": 4}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "count": 53}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "count": 7}, {"etf_code": "00995A", "etf_name": "CTBC ETF 00995A", "count": 8}], "hot_stocks": [{"stock_code": "3665", "stock_name": "貿聯-KY", "total_adjustments": 3, "net_change": 209.0, "etf_details": [{"etf_code": "00981A", "etf_name": "00981A (EZMoney)", "adjustment": 206.0, "new_lots": 4583.85, "weight": 5.38, "lots": 4583.848}, {"etf_code": "00991A", "etf_name": "FHTrust ETF 00991A", "adjustment": 10.0, "new_lots": 380.0, "weight": 2.802, "lots": 380.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": -7.0, "new_lots": 44.0, "weight": 0.99, "lots": 44.0}]}, {"stock_code": "7769", "stock_name": "鴻勁精密", "total_adjustments": 3, "net_change": 5.0, "etf_details": [{"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "adjustment": 12.0, "new_lots": 128.0, "weight": 6.43, "lots": 128.0}, {"etf_code": "00991A", "etf_name": "FHTrust ETF 00991A", "adjustment": -20.0, "new_lots": 250.0, "weight": 3.461, "lots": 250.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": 13.0, "new_lots": 26.0, "weight": 1.1, "lots": 26.0}]}, {"stock_code": "8046", "stock_name": "南亞電路板", "total_adjustments": 3, "net_change": 36.0, "etf_details": [{"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "adjustment": -52.0, "new_lots": 134.0, "weight": 1.18, "lots": 134.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": 75.0, "new_lots": 145.0, "weight": 1.08, "lots": 145.0}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "adjustment": 13.0, "new_lots": 190.0, "weight": 4.24, "lots": 190.0}]}, {"stock_code": "4958", "stock_name": "臻鼎科技控股", "total_adjustments": 3, "net_change": -168.0, "etf_details": [{"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "adjustment": -183.0, "new_lots": 53.0, "weight": 0.2, "lots": 53.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": -15.0, "new_lots": 364.0, "weight": 1.13, "lots": 364.0}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "adjustment": 30.0, "new_lots": 120.0, "weight": 1.13, "lots": 120.0}]}, {"stock_code": "3105", "stock_name": "穩懋半導體", "total_adjustments": 3, "net_change": -421.0, "etf_details": [{"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "adjustment": -99.0, "new_lots": 41.0, "weight": 0.2, "lots": 41.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": -297.0, "new_lots": 1189.0, "weight": 4.84, "lots": 1189.0}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "adjustment": -25.0, "new_lots": 65.0, "weight": 0.78, "lots": 65.0}]}, {"stock_code": "3037", "stock_name": "欣興電子", "total_adjustments": 3, "net_change": -854.0, "etf_details": [{"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "adjustment": -47.0, "new_lots": 6.0, "weight": 0.05, "lots": 6.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": -779.0, "new_lots": 273.0, "weight": 1.78, "lots": 273.0}, {"etf_code": "00995A", "etf_name": "CTBC ETF 00995A", "adjustment": -28.0, "new_lots": 232.0, "weight": 3.65, "lots": 232.0}]}, {"stock_code": "2345", "stock_name": "智邦科技", "total_adjustments": 3, "net_change": 45.0, "etf_details": [{"etf_code": "00991A", "etf_name": "FHTrust ETF 00991A", "adjustment": 30.0, "new_lots": 730.0, "weight": 4.279, "lots": 730.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": 3.0, "new_lots": 62.0, "weight": 1.11, "lots": 62.0}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "adjustment": 12.0, "new_lots": 91.0, "weight": 5.0, "lots": 91.0}]}, {"stock_code": "6669", "stock_name": "緯穎", "total_adjustments": 2, "net_change": 132.0, "etf_details": [{"etf_code": "00981A", "etf_name": "00981A (EZMoney)", "adjustment": 119.0, "new_lots": 1754.0, "weight": 3.59, "lots": 1754.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": 13.0, "new_lots": 26.0, "weight": 1.02, "lots": 26.0}]}, {"stock_code": "5274", "stock_name": "信驊", "total_adjustments": 2, "net_change": 34.0, "etf_details": [{"etf_code": "00981A", "etf_name": "00981A (EZMoney)", "adjustment": 33.0, "new_lots": 406.0, "weight": 2.84, "lots": 406.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": 1.0, "new_lots": 9.0, "weight": 1.21, "lots": 9.0}]}, {"stock_code": "3533", "stock_name": "嘉澤端子工業", "total_adjustments": 2, "net_change": -18.0, "etf_details": [{"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "adjustment": -16.0, "new_lots": 19.0, "weight": 0.48, "lots": 19.0}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "adjustment": -2.0, "new_lots": 49.0, "weight": 1.05, "lots": 49.0}]}], "detailed_changes": [{"etf_code": "00981A", "etf_name": "00981A (EZMoney)", "total_changes": 3, "added": [], "removed": [], "modified": [{"stock_code": "3665", "stock_name": "貿聯-KY", "old_lots": 4377.85, "new_lots": 4583.85, "diff": 206.0, "direction": "up"}, {"stock_code": "6669", "stock_name": "緯穎", "old_lots": 1635.0, "new_lots": 1754.0, "diff": 119.0, "direction": "up"}, {"stock_code": "5274", "stock_name": "信驊", "old_lots": 373.0, "new_lots": 406.0, "diff": 33.0, "direction": "up"}]}, {"etf_code": "00982A", "etf_name": "Capital ETF 00982A", "total_changes": 1, "added": [], "removed": [], "modified": [{"stock_code": "3583", "stock_name": "辛耘", "old_lots": 370.0, "new_lots": 372.0, "diff": 2.0, "direction": "up"}]}, {"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "total_changes": 19, "added": [], "removed": [], "modified": [{"stock_code": "7769", "stock_name": "鴻勁精密", "old_lots": 116.0, "new_lots": 128.0, "diff": 12.0, "direction": "up"}, {"stock_code": "2059", "stock_name": "川湖科技", "old_lots": 79.0, "new_lots": 153.0, "diff": 74.0, "direction": "up"}, {"stock_code": "3653", "stock_name": "健策精密工業", "old_lots": 42.0, "new_lots": 33.0, "diff": -9.0, "direction": "down"}, {"stock_code": "6488", "stock_name": "環球晶圓", "old_lots": 344.0, "new_lots": 190.0, "diff": -154.0, "direction": "down"}, {"stock_code": "6415", "stock_name": "矽力杰", "old_lots": 477.0, "new_lots": 256.0, "diff": -221.0, "direction": "down"}, {"stock_code": "6781", "stock_name": "AES Holding Co Ltd", "old_lots": 154.0, "new_lots": 127.0, "diff": -27.0, "direction": "down"}, {"stock_code": "8046", "stock_name": "南亞電路板", "old_lots": 186.0, "new_lots": 134.0, "diff": -52.0, "direction": "down"}, {"stock_code": "3529", "stock_name": "力旺電子", "old_lots": 31.0, "new_lots": 5.0, "diff": -26.0, "direction": "down"}, {"stock_code": "2474", "stock_name": "可成科技", "old_lots": 427.0, "new_lots": 139.0, "diff": -288.0, "direction": "down"}, {"stock_code": "3533", "stock_name": "嘉澤端子工業", "old_lots": 35.0, "new_lots": 19.0, "diff": -16.0, "direction": "down"}, {"stock_code": "4958", "stock_name": "臻鼎科技控股", "old_lots": 236.0, "new_lots": 53.0, "diff": -183.0, "direction": "down"}, {"stock_code": "3105", "stock_name": "穩懋半導體", "old_lots": 140.0, "new_lots": 41.0, "diff": -99.0, "direction": "down"}, {"stock_code": "3037", "stock_name": "欣興電子", "old_lots": 53.0, "new_lots": 6.0, "diff": -47.0, "direction": "down"}, {"stock_code": "2881", "stock_name": "富邦金融控股", "old_lots": 278.0, "new_lots": 1476.0, "diff": 1198.0, "direction": "up"}, {"stock_code": "3264", "stock_name": "欣銓科技", "old_lots": 122.0, "new_lots": 26.0, "diff": -96.0, "direction": "down"}, {"stock_code": "6239", "stock_name": "力成科技", "old_lots": 98.0, "new_lots": 25.0, "diff": -73.0, "direction": "down"}, {"stock_code": "4904", "stock_name": "遠傳電信", "old_lots": 186.0, "new_lots": 539.0, "diff": 353.0, "direction": "up"}, {"stock_code": "1519", "stock_name": "華城電機", "old_lots": 8.0, "new_lots": 5.0, "diff": -3.0, "direction": "down"}, {"stock_code": "2891", "stock_name": "中國信託金融控股", "old_lots": 89.0, "new_lots": 2330.0, "diff": 2241.0, "direction": "up"}]}, {"etf_code": "00991A", "etf_name": "FHTrust ETF 00991A", "total_changes": 6, "added": [], "removed": [], "modified": [{"stock_code": "2345", "stock_name": "智邦科技", "old_lots": 700.0, "new_lots": 730.0, "diff": 30.0, "direction": "up"}, {"stock_code": "2368", "stock_name": "金像電子", "old_lots": 1000.0, "new_lots": 1040.0, "diff": 40.0, "direction": "up"}, {"stock_code": "7769", "stock_name": "鴻勁精密", "old_lots": 270.0, "new_lots": 250.0, "diff": -20.0, "direction": "down"}, {"stock_code": "3665", "stock_name": "貿聯-KY", "old_lots": 370.0, "new_lots": 380.0, "diff": 10.0, "direction": "up"}, {"stock_code": "2327", "stock_name": "國巨股份", "old_lots": 1800.0, "new_lots": 3000.0, "diff": 1200.0, "direction": "up"}, {"stock_code": "1590", "stock_name": "亞德客-KY", "old_lots": 235.0, "new_lots": 400.0, "diff": 165.0, "direction": "up"}]}, {"etf_code": "00992A", "etf_name": "Capital ETF 00992A", "total_changes": 4, "added": [{"stock_code": "3583", "stock_name": "辛耘", "lots": 33.0}], "removed": [{"stock_code": "6805", "stock_name": "富世達", "lots": 298.0}], "modified": [{"stock_code": "3163", "stock_name": "波若威", "old_lots": 924.0, "new_lots": 923.0, "diff": -1.0, "direction": "down"}, {"stock_code": "8021", "stock_name": "尖點", "old_lots": 661.0, "new_lots": 334.0, "diff": -327.0, "direction": "down"}]}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "total_changes": 53, "added": [], "removed": [{"stock_code": "8996", "stock_name": "高力", "lots": 122.0}, {"stock_code": "2347", "stock_name": "聯強", "lots": 809.0}, {"stock_code": "2885", "stock_name": "元大金", "lots": 1143.0}, {"stock_code": "2395", "stock_name": "研華", "lots": 161.0}, {"stock_code": "3023", "stock_name": "信邦", "lots": 210.0}, {"stock_code": "2481", "stock_name": "強茂", "lots": 570.0}, {"stock_code": "4904", "stock_name": "遠傳", "lots": 586.0}], "modified": [{"stock_code": "2337", "stock_name": "旺宏", "old_lots": 6741.0, "new_lots": 7020.0, "diff": 279.0, "direction": "up"}, {"stock_code": "2330", "stock_name": "台積電", "old_lots": 469.0, "new_lots": 447.0, "diff": -22.0, "direction": "down"}, {"stock_code": "6515", "stock_name": "穎崴", "old_lots": 91.0, "new_lots": 96.0, "diff": 5.0, "direction": "up"}, {"stock_code": "3037", "stock_name": "欣興", "old_lots": 1052.0, "new_lots": 273.0, "diff": -779.0, "direction": "down"}, {"stock_code": "3105", "stock_name": "穩懋", "old_lots": 1486.0, "new_lots": 1189.0, "diff": -297.0, "direction": "down"}, {"stock_code": "3702", "stock_name": "大聯大", "old_lots": 7318.0, "new_lots": 6340.0, "diff": -978.0, "direction": "down"}, {"stock_code": "2383", "stock_name": "台光電子", "old_lots": 117.0, "new_lots": 120.0, "diff": 3.0, "direction": "up"}, {"stock_code": "3189", "stock_name": "景碩科技", "old_lots": 968.0, "new_lots": 1894.0, "diff": 926.0, "direction": "up"}, {"stock_code": "2313", "stock_name": "華通", "old_lots": 1898.0, "new_lots": 602.0, "diff": -1296.0, "direction": "down"}, {"stock_code": "6584", "stock_name": "南俊國際", "old_lots": 273.0, "new_lots": 548.0, "diff": 275.0, "direction": "up"}, {"stock_code": "4958", "stock_name": "臻鼎-KY", "old_lots": 379.0, "new_lots": 364.0, "diff": -15.0, "direction": "down"}, {"stock_code": "2368", "stock_name": "金像電子", "old_lots": 105.0, "new_lots": 91.0, "diff": -14.0, "direction": "down"}, {"stock_code": "1590", "stock_name": "亞德客-KY", "old_lots": 101.0, "new_lots": 87.0, "diff": -14.0, "direction": "down"}, {"stock_code": "3260", "stock_name": "威剛科技", "old_lots": 282.0, "new_lots": 319.0, "diff": 37.0, "direction": "up"}, {"stock_code": "6223", "stock_name": "旺矽", "old_lots": 28.0, "new_lots": 27.0, "diff": -1.0, "direction": "down"}, {"stock_code": "2345", "stock_name": "智邦", "old_lots": 59.0, "new_lots": 62.0, "diff": 3.0, "direction": "up"}, {"stock_code": "3044", "stock_name": "健鼎科技", "old_lots": 300.0, "new_lots": 261.0, "diff": -39.0, "direction": "down"}, {"stock_code": "3533", "stock_name": "嘉澤端子", "old_lots": 51.0, "new_lots": 49.0, "diff": -2.0, "direction": "down"}, {"stock_code": "2308", "stock_name": "台達電子", "old_lots": 63.0, "new_lots": 62.0, "diff": -1.0, "direction": "down"}, {"stock_code": "3665", "stock_name": "貿聯-KY", "old_lots": 51.0, "new_lots": 44.0, "diff": -7.0, "direction": "down"}, {"stock_code": "3017", "stock_name": "奇鋐", "old_lots": 47.0, "new_lots": 41.0, "diff": -6.0, "direction": "down"}, {"stock_code": "5274", "stock_name": "信驊科技", "old_lots": 8.0, "new_lots": 9.0, "diff": 1.0, "direction": "up"}, {"stock_code": "2883", "stock_name": "凱基金控", "old_lots": 5928.0, "new_lots": 6826.0, "diff": 898.0, "direction": "up"}, {"stock_code": "1303", "stock_name": "南亞", "old_lots": 1393.0, "new_lots": 1407.0, "diff": 14.0, "direction": "up"}, {"stock_code": "2360", "stock_name": "致茂", "old_lots": 60.0, "new_lots": 66.0, "diff": 6.0, "direction": "up"}, {"stock_code": "3264", "stock_name": "欣銓", "old_lots": 628.0, "new_lots": 590.0, "diff": -38.0, "direction": "down"}, {"stock_code": "2327", "stock_name": "國巨*", "old_lots": 378.0, "new_lots": 422.0, "diff": 44.0, "direction": "up"}, {"stock_code": "1560", "stock_name": "中砂", "old_lots": 229.0, "new_lots": 240.0, "diff": 11.0, "direction": "up"}, {"stock_code": "2404", "stock_name": "漢唐", "old_lots": 123.0, "new_lots": 127.0, "diff": 4.0, "direction": "up"}, {"stock_code": "2606", "stock_name": "裕民", "old_lots": 1951.0, "new_lots": 2050.0, "diff": 99.0, "direction": "up"}, {"stock_code": "3036", "stock_name": "文曄", "old_lots": 526.0, "new_lots": 645.0, "diff": 119.0, "direction": "up"}, {"stock_code": "5289", "stock_name": "宜鼎國際", "old_lots": 55.0, "new_lots": 114.0, "diff": 59.0, "direction": "up"}, {"stock_code": "7769", "stock_name": "鴻勁", "old_lots": 13.0, "new_lots": 26.0, "diff": 13.0, "direction": "up"}, {"stock_code": "8046", "stock_name": "南電", "old_lots": 70.0, "new_lots": 145.0, "diff": 75.0, "direction": "up"}, {"stock_code": "1815", "stock_name": "富喬工業", "old_lots": 565.0, "new_lots": 1169.0, "diff": 604.0, "direction": "up"}, {"stock_code": "4749", "stock_name": "新應材", "old_lots": 65.0, "new_lots": 127.0, "diff": 62.0, "direction": "up"}, {"stock_code": "6285", "stock_name": "啟碁科技", "old_lots": 295.0, "new_lots": 606.0, "diff": 311.0, "direction": "up"}, {"stock_code": "2027", "stock_name": "大成鋼", "old_lots": 1664.0, "new_lots": 3389.0, "diff": 1725.0, "direction": "up"}, {"stock_code": "2049", "stock_name": "上銀科技", "old_lots": 209.0, "new_lots": 418.0, "diff": 209.0, "direction": "up"}, {"stock_code": "2454", "stock_name": "聯發科", "old_lots": 24.0, "new_lots": 52.0, "diff": 28.0, "direction": "up"}, {"stock_code": "2610", "stock_name": "華航", "old_lots": 3472.0, "new_lots": 7005.0, "diff": 3533.0, "direction": "up"}, {"stock_code": "3491", "stock_name": "昇達科技", "old_lots": 39.0, "new_lots": 82.0, "diff": 43.0, "direction": "up"}, {"stock_code": "5234", "stock_name": "達興材料", "old_lots": 147.0, "new_lots": 278.0, "diff": 131.0, "direction": "up"}, {"stock_code": "6669", "stock_name": "緯穎", "old_lots": 13.0, "new_lots": 26.0, "diff": 13.0, "direction": "up"}, {"stock_code": "2618", "stock_name": "長榮航", "old_lots": 1841.0, "new_lots": 3621.0, "diff": 1780.0, "direction": "up"}, {"stock_code": "8210", "stock_name": "勤誠興業", "old_lots": 51.0, "new_lots": 106.0, "diff": 55.0, "direction": "up"}]}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "total_changes": 7, "added": [], "removed": [{"stock_code": "2382", "stock_name": "廣達", "lots": 17.0}], "modified": [{"stock_code": "2308", "stock_name": "台達電", "old_lots": 95.5, "new_lots": 104.5, "diff": 9.0, "direction": "up"}, {"stock_code": "2345", "stock_name": "智邦", "old_lots": 79.0, "new_lots": 91.0, "diff": 12.0, "direction": "up"}, {"stock_code": "8046", "stock_name": "南電", "old_lots": 177.0, "new_lots": 190.0, "diff": 13.0, "direction": "up"}, {"stock_code": "2360", "stock_name": "致茂", "old_lots": 49.0, "new_lots": 64.0, "diff": 15.0, "direction": "up"}, {"stock_code": "3105", "stock_name": "穩懋", "old_lots": 90.0, "new_lots": 65.0, "diff": -25.0, "direction": "down"}, {"stock_code": "4958", "stock_name": "臻鼎-KY", "old_lots": 90.0, "new_lots": 120.0, "diff": 30.0, "direction": "up"}]}, {"etf_code": "00995A", "etf_name": "CTBC ETF 00995A", "total_changes": 8, "added": [{"stock_code": "2303", "stock_name": "聯華電子", "lots": 525.0}], "removed": [{"stock_code": "3211", "stock_name": "順達科技", "lots": 10.0}], "modified": [{"stock_code": "3037", "stock_name": "欣興電子", "old_lots": 260.0, "new_lots": 232.0, "diff": -28.0, "direction": "down"}, {"stock_code": "2454", "stock_name": "聯發科技", "old_lots": 66.0, "new_lots": 72.0, "diff": 6.0, "direction": "up"}, {"stock_code": "3711", "stock_name": "日月光投資控股", "old_lots": 120.0, "new_lots": 175.0, "diff": 55.0, "direction": "up"}, {"stock_code": "3324", "stock_name": "雙鴻科技", "old_lots": 23.0, "new_lots": 17.0, "diff": -6.0, "direction": "down"}, {"stock_code": "6285", "stock_name": "啟碁科技", "old_lots": 66.0, "new_lots": 40.0, "diff": -26.0, "direction": "down"}, {"stock_code": "2404", "stock_name": "漢唐集成", "old_lots": 12.0, "new_lots": 7.0, "diff": -5.0, "direction": "down"}]}], "etf_holdings": [{"etf_code": "00980A", "etf_name": "Nomura ETF 00980A", "holdings": [{"stock_code": "2330", "stock_name": "台灣積體電路製造", "weight": 8.7, "lots": 583.0}, {"stock_code": "2308", "stock_name": "台達電子工業", "weight": 5.59, "lots": 377.0}, {"stock_code": "2383", "stock_name": "台光電子材料", "weight": 3.65, "lots": 120.0}, {"stock_code": "2454", "stock_name": "聯發科技", "weight": 3.31, "lots": 188.0}, {"stock_code": "2345", "stock_name": "智邦科技", "weight": 3.15, "lots": 208.0}, {"stock_code": "7769", "stock_name": "鴻勁精密", "weight": 3.07, "lots": 86.0}, {"stock_code": "3017", "stock_name": "奇鋐科技", "weight": 3.05, "lots": 157.0}, {"stock_code": "2317", "stock_name": "鴻海精密工業", "weight": 2.93, "lots": 1905.0}, {"stock_code": "2368", "stock_name": "金像電子（股）公司", "weight": 2.78, "lots": 299.0}, {"stock_code": "6669", "stock_name": "緯穎科技服務", "weight": 2.75, "lots": 83.0}, {"stock_code": "2382", "stock_name": "廣達電腦", "weight": 2.67, "lots": 1213.0}, {"stock_code": "6515", "stock_name": "穎崴科技", "weight": 2.58, "lots": 37.0}, {"stock_code": "3665", "stock_name": "貿聯控股（BizLink Holding In", "weight": 2.48, "lots": 130.336}, {"stock_code": "3653", "stock_name": "健策精密工業", "weight": 2.46, "lots": 66.0}, {"stock_code": "2408", "stock_name": "南亞科技", "weight": 2.43, "lots": 1510.0}, {"stock_code": "6223", "stock_name": "旺矽科技", "weight": 2.4, "lots": 71.0}, {"stock_code": "2360", "stock_name": "致茂電子", "weight": 2.38, "lots": 169.0}, {"stock_code": "2059", "stock_name": "川湖科技", "weight": 2.33, "lots": 82.0}, {"stock_code": "5274", "stock_name": "信驊科技", "weight": 2.27, "lots": 20.0}, {"stock_code": "8299", "stock_name": "群聯電子", "weight": 2.12, "lots": 150.0}, {"stock_code": "8210", "stock_name": "勤誠興業", "weight": 2.05, "lots": 268.0}, {"stock_code": "2344", "stock_name": "華邦電子", "weight": 1.83, "lots": 2892.0}, {"stock_code": "3711", "stock_name": "日月光投資控股", "weight": 1.79, "lots": 536.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 1.57, "lots": 111.0}, {"stock_code": "6274", "stock_name": "台燿科技", "weight": 1.48, "lots": 222.0}, {"stock_code": "3443", "stock_name": "創意電子", "weight": 1.41, "lots": 50.0}, {"stock_code": "2891", "stock_name": "中國信託金融控股", "weight": 1.41, "lots": 3891.0}, {"stock_code": "3231", "stock_name": "緯創資通", "weight": 1.41, "lots": 1470.0}, {"stock_code": "2881", "stock_name": "富邦金融控股", "weight": 1.29, "lots": 2057.575}, {"stock_code": "8996", "stock_name": "高力熱處理工業", "weight": 1.29, "lots": 165.0}, {"stock_code": "6584", "stock_name": "南俊國際", "weight": 1.26, "lots": 260.0}, {"stock_code": "2884", "stock_name": "玉山金融控股", "weight": 1.23, "lots": 5569.622}, {"stock_code": "1519", "stock_name": "華城電機", "weight": 1.05, "lots": 176.0}, {"stock_code": "6831", "stock_name": "邁科科技", "weight": 0.99, "lots": 314.0}, {"stock_code": "3533", "stock_name": "嘉澤端子工業", "weight": 0.98, "lots": 54.0}, {"stock_code": "6442", "stock_name": "光紅建聖", "weight": 0.97, "lots": 71.0}, {"stock_code": "3036", "stock_name": "文曄科技", "weight": 0.96, "lots": 693.0}, {"stock_code": "3264", "stock_name": "欣銓科技", "weight": 0.95, "lots": 695.0}, {"stock_code": "1590", "stock_name": "亞德客國際集團", "weight": 0.93, "lots": 91.0}, {"stock_code": "6510", "stock_name": "中華精測科技", "weight": 0.87, "lots": 35.0}, {"stock_code": "5434", "stock_name": "崇越科技", "weight": 0.82, "lots": 294.0}, {"stock_code": "3044", "stock_name": "健鼎科技", "weight": 0.79, "lots": 253.0}, {"stock_code": "5234", "stock_name": "達興材料", "weight": 0.77, "lots": 244.0}, {"stock_code": "5904", "stock_name": "寶雅國際", "weight": 0.69, "lots": 181.45}, {"stock_code": "3293", "stock_name": "鈊象電子", "weight": 0.67, "lots": 129.0}, {"stock_code": "1477", "stock_name": "聚陽實業", "weight": 0.54, "lots": 369.0}, {"stock_code": "2449", "stock_name": "京元電子", "weight": 0.45, "lots": 232.0}, {"stock_code": "2376", "stock_name": "技嘉科技", "weight": 0.42, "lots": 225.0}, {"stock_code": "2548", "stock_name": "華固建設", "weight": 0.41, "lots": 470.0}, {"stock_code": "4915", "stock_name": "致伸科技", "weight": 0.28, "lots": 547.0}]}, {"etf_code": "00981A", "etf_name": "00981A (EZMoney)", "holdings": [{"stock_code": "2330", "stock_name": "台積電", "weight": 8.92, "lots": 9693.0}, {"stock_code": "2383", "stock_name": "台光電", "weight": 8.29, "lots": 4425.0}, {"stock_code": "2345", "stock_name": "智邦", "weight": 5.62, "lots": 6031.0}, {"stock_code": "2308", "stock_name": "台達電", "weight": 5.5, "lots": 6024.0}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 5.38, "lots": 4583.848}, {"stock_code": "3653", "stock_name": "健策", "weight": 5.21, "lots": 2267.0}, {"stock_code": "8046", "stock_name": "南電", "weight": 4.88, "lots": 12637.0}, {"stock_code": "2454", "stock_name": "聯發科", "weight": 4.74, "lots": 4363.0}, {"stock_code": "2368", "stock_name": "金像電", "weight": 4.73, "lots": 8240.0}, {"stock_code": "3017", "stock_name": "奇鋐", "weight": 4.67, "lots": 3902.0}, {"stock_code": "6223", "stock_name": "旺矽", "weight": 3.94, "lots": 1886.0}, {"stock_code": "6669", "stock_name": "緯穎", "weight": 3.59, "lots": 1754.0}, {"stock_code": "3037", "stock_name": "欣興", "weight": 3.15, "lots": 9287.0}, {"stock_code": "5274", "stock_name": "信驊", "weight": 2.84, "lots": 406.0}, {"stock_code": "2327", "stock_name": "國巨*", "weight": 2.3, "lots": 16954.0}, {"stock_code": "3711", "stock_name": "日月光投控", "weight": 1.97, "lots": 9536.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 1.83, "lots": 2099.0}, {"stock_code": "6515", "stock_name": "穎崴", "weight": 1.68, "lots": 391.0}, {"stock_code": "2449", "stock_name": "京元電子", "weight": 1.52, "lots": 12719.0}, {"stock_code": "6510", "stock_name": "精測", "weight": 1.42, "lots": 930.0}, {"stock_code": "2303", "stock_name": "聯電", "weight": 1.26, "lots": 40054.0}, {"stock_code": "3661", "stock_name": "世芯-KY", "weight": 1.25, "lots": 738.0}, {"stock_code": "6274", "stock_name": "台燿", "weight": 1.24, "lots": 3019.0}, {"stock_code": "3189", "stock_name": "景碩", "weight": 1.15, "lots": 5358.0}, {"stock_code": "2317", "stock_name": "鴻海", "weight": 1.02, "lots": 10727.0}, {"stock_code": "8358", "stock_name": "金居", "weight": 0.87, "lots": 5558.0}, {"stock_code": "8210", "stock_name": "勤誠", "weight": 0.53, "lots": 1117.0}, {"stock_code": "6147", "stock_name": "頎邦", "weight": 0.53, "lots": 7884.0}, {"stock_code": "5439", "stock_name": "高技", "weight": 0.51, "lots": 3130.0}, {"stock_code": "3443", "stock_name": "創意", "weight": 0.47, "lots": 271.0}, {"stock_code": "2404", "stock_name": "漢唐", "weight": 0.44, "lots": 1091.0}, {"stock_code": "3264", "stock_name": "欣銓", "weight": 0.41, "lots": 4897.0}, {"stock_code": "1590", "stock_name": "亞德客-KY", "weight": 0.31, "lots": 500.0}, {"stock_code": "8996", "stock_name": "高力", "weight": 0.26, "lots": 535.0}, {"stock_code": "7769", "stock_name": "鴻勁", "weight": 0.22, "lots": 98.0}, {"stock_code": "2337", "stock_name": "旺宏", "weight": 0.21, "lots": 2910.0}, {"stock_code": "6191", "stock_name": "精成科", "weight": 0.17, "lots": 3986.0}, {"stock_code": "2481", "stock_name": "強茂", "weight": 0.16, "lots": 3652.0}, {"stock_code": "3376", "stock_name": "新日興", "weight": 0.15, "lots": 1681.0}, {"stock_code": "2313", "stock_name": "華通", "weight": 0.13, "lots": 1343.0}, {"stock_code": "6415", "stock_name": "矽力*-KY", "weight": 0.11, "lots": 660.0}, {"stock_code": "4966", "stock_name": "譜瑞-KY", "weight": 0.09, "lots": 371.0}, {"stock_code": "3217", "stock_name": "優群", "weight": 0.06, "lots": 830.0}, {"stock_code": "1303", "stock_name": "南亞", "weight": 0.05, "lots": 1374.0}, {"stock_code": "2002", "stock_name": "中鋼", "weight": 0.04, "lots": 5161.0}, {"stock_code": "1319", "stock_name": "東陽", "weight": 0.02, "lots": 509.0}, {"stock_code": "2357", "stock_name": "華碩", "weight": 0.0, "lots": 16.0}, {"stock_code": "1815", "stock_name": "富喬", "weight": 0.0, "lots": 107.0}, {"stock_code": "2439", "stock_name": "美律", "weight": 0.0, "lots": 16.0}, {"stock_code": "4979", "stock_name": "華星光", "weight": 0.0, "lots": 1.0}, {"stock_code": "5347", "stock_name": "世界", "weight": 0.0, "lots": 62.0}]}, {"etf_code": "00982A", "etf_name": "Capital ETF 00982A", "holdings": [{"stock_code": "2330", "stock_name": "台積電", "weight": 8.68, "lots": 1548.0}, {"stock_code": "5536", "stock_name": "聖暉*", "weight": 7.43, "lots": 3355.0}, {"stock_code": "6669", "stock_name": "緯穎", "weight": 6.12, "lots": 491.0}, {"stock_code": "2383", "stock_name": "台光電", "weight": 5.22, "lots": 457.0}, {"stock_code": "3105", "stock_name": "穩懋", "weight": 5.1, "lots": 3946.0}, {"stock_code": "3264", "stock_name": "欣銓", "weight": 4.15, "lots": 8078.0}, {"stock_code": "2345", "stock_name": "智邦", "weight": 4.09, "lots": 719.0}, {"stock_code": "6139", "stock_name": "亞翔", "weight": 3.93, "lots": 2278.0}, {"stock_code": "3017", "stock_name": "奇鋐", "weight": 3.92, "lots": 538.0}, {"stock_code": "2308", "stock_name": "台達電", "weight": 3.84, "lots": 690.0}, {"stock_code": "2360", "stock_name": "致茂", "weight": 3.83, "lots": 724.0}, {"stock_code": "2454", "stock_name": "聯發科", "weight": 3.8, "lots": 573.0}, {"stock_code": "6223", "stock_name": "旺矽", "weight": 3.51, "lots": 276.0}, {"stock_code": "6257", "stock_name": "矽格", "weight": 2.89, "lots": 6338.0}, {"stock_code": "6147", "stock_name": "頎邦", "weight": 2.66, "lots": 6546.0}, {"stock_code": "4958", "stock_name": "臻鼎-KY", "weight": 2.62, "lots": 2654.0}, {"stock_code": "3491", "stock_name": "昇達科", "weight": 2.16, "lots": 539.0}, {"stock_code": "1785", "stock_name": "光洋科", "weight": 2.06, "lots": 4611.0}, {"stock_code": "2467", "stock_name": "志聖", "weight": 1.71, "lots": 1199.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 1.66, "lots": 311.0}, {"stock_code": "6285", "stock_name": "啟碁", "weight": 1.64, "lots": 3000.0}, {"stock_code": "2059", "stock_name": "川湖", "weight": 1.13, "lots": 106.0}, {"stock_code": "6510", "stock_name": "精測", "weight": 1.13, "lots": 121.0}, {"stock_code": "8996", "stock_name": "高力", "weight": 1.09, "lots": 373.0}, {"stock_code": "3030", "stock_name": "德律", "weight": 1.01, "lots": 1135.0}, {"stock_code": "2303", "stock_name": "聯電", "weight": 0.97, "lots": 5045.0}, {"stock_code": "6488", "stock_name": "環球晶", "weight": 0.94, "lots": 683.0}, {"stock_code": "5289", "stock_name": "宜鼎", "weight": 0.93, "lots": 274.0}, {"stock_code": "2404", "stock_name": "漢唐", "weight": 0.91, "lots": 368.0}, {"stock_code": "2347", "stock_name": "聯強", "weight": 0.79, "lots": 3693.0}, {"stock_code": "3533", "stock_name": "嘉澤", "weight": 0.76, "lots": 111.0}, {"stock_code": "3583", "stock_name": "辛耘", "weight": 0.74, "lots": 372.0}, {"stock_code": "3211", "stock_name": "順達", "weight": 0.73, "lots": 780.0}, {"stock_code": "3131", "stock_name": "弘塑", "weight": 0.66, "lots": 89.0}, {"stock_code": "2313", "stock_name": "華通", "weight": 0.61, "lots": 1033.0}, {"stock_code": "6274", "stock_name": "台燿", "weight": 0.56, "lots": 223.0}, {"stock_code": "2472", "stock_name": "立隆電", "weight": 0.55, "lots": 1210.0}, {"stock_code": "2368", "stock_name": "金像電", "weight": 0.54, "lots": 155.0}, {"stock_code": "3711", "stock_name": "日月光投控", "weight": 0.44, "lots": 349.0}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 0.42, "lots": 58.136}, {"stock_code": "4938", "stock_name": "和碩", "weight": 0.26, "lots": 1236.0}, {"stock_code": "6691", "stock_name": "洋基工程", "weight": 0.26, "lots": 159.0}, {"stock_code": "5274", "stock_name": "信驊", "weight": 0.26, "lots": 6.0}, {"stock_code": "8046", "stock_name": "南電", "weight": 0.24, "lots": 103.0}, {"stock_code": "3529", "stock_name": "力旺", "weight": 0.23, "lots": 23.0}, {"stock_code": "6177", "stock_name": "達麗", "weight": 0.21, "lots": 1784.35}, {"stock_code": "3376", "stock_name": "新日興", "weight": 0.19, "lots": 355.0}, {"stock_code": "2885", "stock_name": "元大金", "weight": 0.15, "lots": 1102.42}, {"stock_code": "8464", "stock_name": "億豐", "weight": 0.13, "lots": 142.0}, {"stock_code": "1319", "stock_name": "東陽", "weight": 0.07, "lots": 355.0}, {"stock_code": "4441", "stock_name": "振大環球", "weight": 0.03, "lots": 59.0}, {"stock_code": "3443", "stock_name": "創意", "weight": 0.01, "lots": 1.0}, {"stock_code": "2548", "stock_name": "華固", "weight": 0.01, "lots": 29.6}, {"stock_code": "1519", "stock_name": "華城", "weight": 0.0, "lots": 0.6}, {"stock_code": "8358", "stock_name": "金居", "weight": 0.0, "lots": 1.0}, {"stock_code": "3706", "stock_name": "神達", "weight": 0.0, "lots": 1.4}, {"stock_code": "2886", "stock_name": "兆豐金", "weight": 0.0, "lots": 1.0}, {"stock_code": "2881", "stock_name": "富邦金", "weight": 0.0, "lots": 0.25}]}, {"etf_code": "00984A", "etf_name": "安聯台灣高息成長主動式ETF", "holdings": [{"stock_code": "2330", "stock_name": "台積電", "weight": 4.97, "lots": 150.0}, {"stock_code": "2382", "stock_name": "廣達", "weight": 4.62, "lots": 951.0}, {"stock_code": "2303", "stock_name": "聯電", "weight": 3.56, "lots": 3169.0}, {"stock_code": "2881", "stock_name": "富邦金控", "weight": 3.27, "lots": 2369.025}, {"stock_code": "2882", "stock_name": "國泰金", "weight": 3.06, "lots": 2581.0}, {"stock_code": "2885", "stock_name": "元大金", "weight": 2.92, "lots": 3696.0}, {"stock_code": "3045", "stock_name": "台灣大", "weight": 2.75, "lots": 1628.0}, {"stock_code": "2891", "stock_name": "中信金", "weight": 2.74, "lots": 3415.0}, {"stock_code": "2887", "stock_name": "台新新光金", "weight": 2.22, "lots": 6116.0}, {"stock_code": "3037", "stock_name": "欣興", "weight": 2.21, "lots": 182.0}, {"stock_code": "3036", "stock_name": "文曄", "weight": 2.08, "lots": 679.0}, {"stock_code": "2880", "stock_name": "華南金控", "weight": 1.98, "lots": 3977.0}, {"stock_code": "2883", "stock_name": "凱基金控", "weight": 1.81, "lots": 5514.0}, {"stock_code": "4904", "stock_name": "遠傳", "weight": 1.8, "lots": 1245.0}, {"stock_code": "1102", "stock_name": "亞泥", "weight": 1.75, "lots": 3281.0}, {"stock_code": "5274", "stock_name": "信驊科技", "weight": 1.75, "lots": 7.0}, {"stock_code": "2383", "stock_name": "台光電子", "weight": 1.61, "lots": 24.0}, {"stock_code": "2379", "stock_name": "瑞昱", "weight": 1.56, "lots": 188.0}, {"stock_code": "2308", "stock_name": "台達電子", "weight": 1.31, "lots": 40.0}, {"stock_code": "6223", "stock_name": "旺矽", "weight": 1.27, "lots": 17.0}, {"stock_code": "1402", "stock_name": "遠東新", "weight": 1.24, "lots": 3152.0}, {"stock_code": "3653", "stock_name": "健策", "weight": 1.23, "lots": 15.0}, {"stock_code": "3702", "stock_name": "大聯大", "weight": 1.19, "lots": 774.0}, {"stock_code": "3711", "stock_name": "日月光投控", "weight": 1.16, "lots": 157.0}, {"stock_code": "2324", "stock_name": "仁寶", "weight": 1.15, "lots": 2573.0}, {"stock_code": "8996", "stock_name": "高力", "weight": 1.15, "lots": 67.0}, {"stock_code": "3081", "stock_name": "聯亞光電", "weight": 1.14, "lots": 31.0}, {"stock_code": "8021", "stock_name": "尖點", "weight": 1.09, "lots": 188.0}, {"stock_code": "6515", "stock_name": "穎崴", "weight": 1.08, "lots": 7.0}, {"stock_code": "3017", "stock_name": "奇鋐", "weight": 1.07, "lots": 25.0}, {"stock_code": "3105", "stock_name": "穩懋", "weight": 1.07, "lots": 141.0}, {"stock_code": "2360", "stock_name": "致茂", "weight": 0.99, "lots": 32.0}, {"stock_code": "2467", "stock_name": "志聖", "weight": 0.97, "lots": 116.0}, {"stock_code": "2603", "stock_name": "長榮海運", "weight": 0.96, "lots": 317.0}, {"stock_code": "2357", "stock_name": "華碩", "weight": 0.93, "lots": 105.0}, {"stock_code": "6510", "stock_name": "精測", "weight": 0.93, "lots": 17.0}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 0.92, "lots": 22.0}, {"stock_code": "6005", "stock_name": "群益證券", "weight": 0.88, "lots": 2068.0}, {"stock_code": "9904", "stock_name": "寶成", "weight": 0.87, "lots": 2218.0}, {"stock_code": "2376", "stock_name": "技嘉", "weight": 0.84, "lots": 203.0}, {"stock_code": "6147", "stock_name": "頎邦", "weight": 0.83, "lots": 346.0}, {"stock_code": "6446", "stock_name": "藥華醫藥", "weight": 0.83, "lots": 85.0}, {"stock_code": "2618", "stock_name": "長榮航", "weight": 0.75, "lots": 1457.0}, {"stock_code": "8112", "stock_name": "至上電子", "weight": 0.75, "lots": 583.0}, {"stock_code": "6531", "stock_name": "愛普科技", "weight": 0.74, "lots": 60.0}, {"stock_code": "7751", "stock_name": "竑騰", "weight": 0.73, "lots": 19.0}, {"stock_code": "2486", "stock_name": "一詮精密", "weight": 0.69, "lots": 180.0}, {"stock_code": "3714", "stock_name": "富采", "weight": 0.64, "lots": 579.0}, {"stock_code": "8046", "stock_name": "南電", "weight": 0.61, "lots": 44.0}, {"stock_code": "2474", "stock_name": "可成", "weight": 0.59, "lots": 182.0}, {"stock_code": "3189", "stock_name": "景碩科技", "weight": 0.57, "lots": 74.0}, {"stock_code": "1711", "stock_name": "永光", "weight": 0.54, "lots": 629.0}, {"stock_code": "6451", "stock_name": "訊芯-KY", "weight": 0.52, "lots": 86.0}, {"stock_code": "2368", "stock_name": "金像電子", "weight": 0.51, "lots": 25.0}, {"stock_code": "2345", "stock_name": "智邦", "weight": 0.5, "lots": 15.0}, {"stock_code": "6217", "stock_name": "中國探針", "weight": 0.5, "lots": 126.0}, {"stock_code": "8150", "stock_name": "南茂科技", "weight": 0.5, "lots": 496.0}, {"stock_code": "1303", "stock_name": "南亞", "weight": 0.49, "lots": 357.0}, {"stock_code": "3163", "stock_name": "波若威科技", "weight": 0.49, "lots": 31.0}, {"stock_code": "6274", "stock_name": "台燿", "weight": 0.49, "lots": 33.0}, {"stock_code": "2385", "stock_name": "群光", "weight": 0.48, "lots": 258.0}, {"stock_code": "1326", "stock_name": "台化", "weight": 0.47, "lots": 588.0}, {"stock_code": "6830", "stock_name": "汎銓", "weight": 0.47, "lots": 40.0}, {"stock_code": "8039", "stock_name": "台虹科技", "weight": 0.47, "lots": 222.0}, {"stock_code": "1815", "stock_name": "富喬工業", "weight": 0.46, "lots": 277.0}, {"stock_code": "2492", "stock_name": "華新科", "weight": 0.46, "lots": 226.0}, {"stock_code": "2377", "stock_name": "微星", "weight": 0.44, "lots": 291.0}, {"stock_code": "6239", "stock_name": "力成", "weight": 0.44, "lots": 141.0}, {"stock_code": "6683", "stock_name": "雍智科技", "weight": 0.44, "lots": 15.0}, {"stock_code": "6257", "stock_name": "矽格", "weight": 0.42, "lots": 157.0}, {"stock_code": "3264", "stock_name": "欣銓", "weight": 0.41, "lots": 136.0}, {"stock_code": "3481", "stock_name": "群創光電", "weight": 0.4, "lots": 1109.0}, {"stock_code": "5483", "stock_name": "中美晶", "weight": 0.4, "lots": 203.0}, {"stock_code": "2455", "stock_name": "全新", "weight": 0.39, "lots": 82.0}, {"stock_code": "3131", "stock_name": "弘塑科技", "weight": 0.39, "lots": 9.0}, {"stock_code": "9910", "stock_name": "豐泰", "weight": 0.37, "lots": 346.0}, {"stock_code": "2313", "stock_name": "華通", "weight": 0.33, "lots": 94.0}, {"stock_code": "6409", "stock_name": "旭隼", "weight": 0.31, "lots": 27.0}, {"stock_code": "3010", "stock_name": "華立", "weight": 0.29, "lots": 142.0}, {"stock_code": "3227", "stock_name": "原相", "weight": 0.29, "lots": 92.0}, {"stock_code": "2454", "stock_name": "聯發科", "weight": 0.27, "lots": 7.0}, {"stock_code": "2485", "stock_name": "兆赫", "weight": 0.27, "lots": 296.0}, {"stock_code": "2850", "stock_name": "新光產險", "weight": 0.27, "lots": 141.0}, {"stock_code": "2855", "stock_name": "統一證券", "weight": 0.27, "lots": 518.0}, {"stock_code": "8070", "stock_name": "長華*", "weight": 0.27, "lots": 388.0}, {"stock_code": "2441", "stock_name": "超豐", "weight": 0.26, "lots": 195.0}, {"stock_code": "2501", "stock_name": "國建", "weight": 0.26, "lots": 732.0}, {"stock_code": "2637", "stock_name": "慧洋-KY", "weight": 0.26, "lots": 245.0}, {"stock_code": "2006", "stock_name": "東和鋼鐵", "weight": 0.25, "lots": 243.0}, {"stock_code": "2820", "stock_name": "華票", "weight": 0.25, "lots": 985.0}, {"stock_code": "2851", "stock_name": "中央再保", "weight": 0.25, "lots": 536.0}, {"stock_code": "2897", "stock_name": "王道銀行", "weight": 0.25, "lots": 1655.0}, {"stock_code": "2903", "stock_name": "遠百", "weight": 0.25, "lots": 728.0}, {"stock_code": "6023", "stock_name": "元大期貨", "weight": 0.25, "lots": 169.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 0.25, "lots": 8.0}, {"stock_code": "1227", "stock_name": "佳格", "weight": 0.24, "lots": 537.0}, {"stock_code": "1434", "stock_name": "福懋", "weight": 0.24, "lots": 1002.0}, {"stock_code": "9907", "stock_name": "統一實", "weight": 0.24, "lots": 908.0}, {"stock_code": "1560", "stock_name": "中砂", "weight": 0.2, "lots": 26.0}, {"stock_code": "2327", "stock_name": "國巨*", "weight": 0.13, "lots": 27.0}, {"stock_code": "2449", "stock_name": "京元電子", "weight": 0.13, "lots": 31.0}, {"stock_code": "4966", "stock_name": "譜瑞-KY", "weight": 0.11, "lots": 13.0}, {"stock_code": "6414", "stock_name": "樺漢", "weight": 0.11, "lots": 22.0}, {"stock_code": "3596", "stock_name": "智易科技", "weight": 0.1, "lots": 40.0}, {"stock_code": "4766", "stock_name": "南寶", "weight": 0.1, "lots": 19.0}, {"stock_code": "4915", "stock_name": "致伸", "weight": 0.1, "lots": 89.0}, {"stock_code": "6176", "stock_name": "瑞儀光電", "weight": 0.1, "lots": 67.0}, {"stock_code": "1210", "stock_name": "大成", "weight": 0.09, "lots": 114.0}, {"stock_code": "2204", "stock_name": "中華", "weight": 0.09, "lots": 112.0}, {"stock_code": "3005", "stock_name": "神基科技", "weight": 0.09, "lots": 63.0}, {"stock_code": "4123", "stock_name": "晟德", "weight": 0.09, "lots": 153.0}, {"stock_code": "6121", "stock_name": "新普科技", "weight": 0.09, "lots": 17.0}, {"stock_code": "8415", "stock_name": "大國鋼", "weight": 0.09, "lots": 184.0}, {"stock_code": "9917", "stock_name": "中保", "weight": 0.09, "lots": 54.0}, {"stock_code": "9939", "stock_name": "宏全國際", "weight": 0.09, "lots": 53.0}, {"stock_code": "3167", "stock_name": "大量", "weight": 0.06, "lots": 5.0}, {"stock_code": "2412", "stock_name": "中華電", "weight": 0.04, "lots": 20.0}]}, {"etf_code": "00985A", "etf_name": "Nomura ETF 00985A", "holdings": [{"stock_code": "2330", "stock_name": "台灣積體電路製造", "weight": 28.78, "lots": 1372.0}, {"stock_code": "7769", "stock_name": "鴻勁精密", "weight": 6.43, "lots": 128.0}, {"stock_code": "2059", "stock_name": "川湖科技", "weight": 6.12, "lots": 153.0}, {"stock_code": "2308", "stock_name": "台達電子工業", "weight": 3.23, "lots": 155.0}, {"stock_code": "2368", "stock_name": "金像電子（股）公司", "weight": 3.18, "lots": 243.0}, {"stock_code": "2454", "stock_name": "聯發科技", "weight": 3.15, "lots": 127.0}, {"stock_code": "3665", "stock_name": "貿聯控股（BizLink Holding In", "weight": 2.92, "lots": 109.0}, {"stock_code": "3017", "stock_name": "奇鋐科技", "weight": 2.48, "lots": 91.0}, {"stock_code": "3711", "stock_name": "日月光投資控股", "weight": 2.43, "lots": 518.0}, {"stock_code": "2360", "stock_name": "致茂電子", "weight": 1.98, "lots": 100.0}, {"stock_code": "6669", "stock_name": "緯穎科技服務", "weight": 1.91, "lots": 41.0}, {"stock_code": "2345", "stock_name": "智邦科技", "weight": 1.79, "lots": 84.0}, {"stock_code": "3653", "stock_name": "健策精密工業", "weight": 1.73, "lots": 33.0}, {"stock_code": "8299", "stock_name": "群聯電子", "weight": 1.59, "lots": 80.0}, {"stock_code": "2383", "stock_name": "台光電子材料", "weight": 1.58, "lots": 37.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 1.53, "lots": 77.0}, {"stock_code": "3661", "stock_name": "世芯電子", "weight": 1.5, "lots": 39.0}, {"stock_code": "6223", "stock_name": "旺矽科技", "weight": 1.43, "lots": 30.0}, {"stock_code": "6789", "stock_name": "采鈺科技", "weight": 1.39, "lots": 260.0}, {"stock_code": "6781", "stock_name": "AES Holding Co Ltd", "weight": 1.38, "lots": 127.0}, {"stock_code": "2881", "stock_name": "富邦金融控股", "weight": 1.3, "lots": 1476.0}, {"stock_code": "6442", "stock_name": "光紅建聖", "weight": 1.23, "lots": 64.0}, {"stock_code": "2891", "stock_name": "中國信託金融控股", "weight": 1.19, "lots": 2330.0}, {"stock_code": "2344", "stock_name": "華邦電子", "weight": 1.19, "lots": 1336.0}, {"stock_code": "8046", "stock_name": "南亞電路板", "weight": 1.18, "lots": 134.0}, {"stock_code": "8996", "stock_name": "高力熱處理工業", "weight": 1.05, "lots": 96.0}, {"stock_code": "3189", "stock_name": "景碩科技", "weight": 1.02, "lots": 209.0}, {"stock_code": "6488", "stock_name": "環球晶圓", "weight": 0.98, "lots": 190.0}, {"stock_code": "6515", "stock_name": "穎崴科技", "weight": 0.98, "lots": 10.0}, {"stock_code": "6415", "stock_name": "矽力杰", "weight": 0.97, "lots": 256.0}, {"stock_code": "1477", "stock_name": "聚陽實業", "weight": 0.88, "lots": 433.0}, {"stock_code": "2412", "stock_name": "中華電信", "weight": 0.74, "lots": 561.0}, {"stock_code": "4749", "stock_name": "新應材", "weight": 0.55, "lots": 57.0}, {"stock_code": "4904", "stock_name": "遠傳電信", "weight": 0.5, "lots": 539.0}, {"stock_code": "2408", "stock_name": "南亞科技", "weight": 0.5, "lots": 221.0}, {"stock_code": "3533", "stock_name": "嘉澤端子工業", "weight": 0.48, "lots": 19.0}, {"stock_code": "2395", "stock_name": "研華", "weight": 0.37, "lots": 104.0}, {"stock_code": "8210", "stock_name": "勤誠興業", "weight": 0.34, "lots": 32.0}, {"stock_code": "2474", "stock_name": "可成科技", "weight": 0.29, "lots": 139.0}, {"stock_code": "2317", "stock_name": "鴻海精密工業", "weight": 0.25, "lots": 117.0}, {"stock_code": "1216", "stock_name": "統一企業", "weight": 0.25, "lots": 378.0}, {"stock_code": "3293", "stock_name": "鈊象電子", "weight": 0.25, "lots": 34.0}, {"stock_code": "4958", "stock_name": "臻鼎科技控股", "weight": 0.2, "lots": 53.0}, {"stock_code": "3105", "stock_name": "穩懋半導體", "weight": 0.2, "lots": 41.0}, {"stock_code": "3529", "stock_name": "力旺電子", "weight": 0.19, "lots": 5.0}, {"stock_code": "3264", "stock_name": "欣銓科技", "weight": 0.05, "lots": 26.0}, {"stock_code": "3037", "stock_name": "欣興電子", "weight": 0.05, "lots": 6.0}, {"stock_code": "6239", "stock_name": "力成科技", "weight": 0.05, "lots": 25.0}, {"stock_code": "1519", "stock_name": "華城電機", "weight": 0.04, "lots": 5.0}, {"stock_code": "2382", "stock_name": "廣達電腦", "weight": 0.04, "lots": 14.0}]}, {"etf_code": "00991A", "etf_name": "FHTrust ETF 00991A", "holdings": [{"stock_code": "2330", "stock_name": "台灣積體", "weight": 20.816, "lots": 3600.0}, {"stock_code": "2383", "stock_name": "台光電子", "weight": 9.009, "lots": 765.0}, {"stock_code": "8299", "stock_name": "群聯電子", "weight": 7.138, "lots": 1300.0}, {"stock_code": "3037", "stock_name": "欣興電子", "weight": 6.816, "lots": 3200.0}, {"stock_code": "2308", "stock_name": "台達電子", "weight": 5.857, "lots": 1020.0}, {"stock_code": "5274", "stock_name": "信驊科技", "weight": 4.391, "lots": 100.0}, {"stock_code": "2345", "stock_name": "智邦科技", "weight": 4.279, "lots": 730.0}, {"stock_code": "3017", "stock_name": "奇鋐科技", "weight": 4.136, "lots": 550.0}, {"stock_code": "8046", "stock_name": "南亞電路", "weight": 4.009, "lots": 1650.0}, {"stock_code": "2408", "stock_name": "南亞科技", "weight": 3.865, "lots": 6200.0}, {"stock_code": "2368", "stock_name": "金像電子", "weight": 3.752, "lots": 1040.0}, {"stock_code": "7769", "stock_name": "鴻勁精密", "weight": 3.461, "lots": 250.0}, {"stock_code": "2454", "stock_name": "聯發科技", "weight": 3.415, "lots": 500.0}, {"stock_code": "6223", "stock_name": "旺矽科技", "weight": 3.41, "lots": 260.0}, {"stock_code": "3653", "stock_name": "健策精密", "weight": 2.889, "lots": 200.0}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 2.802, "lots": 380.0}, {"stock_code": "3189", "stock_name": "景碩科技", "weight": 2.695, "lots": 2000.0}, {"stock_code": "2327", "stock_name": "國巨股份", "weight": 2.562, "lots": 3000.0}, {"stock_code": "1590", "stock_name": "亞德客-KY", "weight": 1.581, "lots": 400.0}, {"stock_code": "2404", "stock_name": "漢唐集成", "weight": 0.839, "lots": 330.0}, {"stock_code": "6515", "stock_name": "穎崴科技", "weight": 0.027, "lots": 1.0}, {"stock_code": "6669", "stock_name": "緯穎科技", "weight": 0.013, "lots": 1.0}, {"stock_code": "3711", "stock_name": "日月光投", "weight": 0.012, "lots": 9.0}, {"stock_code": "2059", "stock_name": "川湖科技", "weight": 0.011, "lots": 1.0}, {"stock_code": "6510", "stock_name": "中華精測", "weight": 0.01, "lots": 1.0}, {"stock_code": "2382", "stock_name": "廣達電腦", "weight": 0.008, "lots": 9.0}, {"stock_code": "2449", "stock_name": "京元電子", "weight": 0.007, "lots": 9.0}, {"stock_code": "2360", "stock_name": "致茂電子", "weight": 0.005, "lots": 1.0}, {"stock_code": "2313", "stock_name": "華通電腦", "weight": 0.005, "lots": 9.0}, {"stock_code": "2317", "stock_name": "鴻海精密", "weight": 0.005, "lots": 9.0}, {"stock_code": "2603", "stock_name": "長榮海運", "weight": 0.005, "lots": 9.0}, {"stock_code": "2337", "stock_name": "旺宏電子", "weight": 0.004, "lots": 9.0}, {"stock_code": "5347", "stock_name": "世界先進", "weight": 0.003, "lots": 9.0}, {"stock_code": "3231", "stock_name": "緯創資通", "weight": 0.003, "lots": 9.0}, {"stock_code": "8210", "stock_name": "勤誠興業", "weight": 0.003, "lots": 1.0}, {"stock_code": "6274", "stock_name": "台燿科技", "weight": 0.003, "lots": 1.0}, {"stock_code": "1519", "stock_name": "華城電機", "weight": 0.002, "lots": 1.0}, {"stock_code": "2344", "stock_name": "華邦電子", "weight": 0.002, "lots": 9.0}, {"stock_code": "2881", "stock_name": "富邦金融", "weight": 0.002, "lots": 9.0}, {"stock_code": "2882", "stock_name": "國泰金融", "weight": 0.002, "lots": 9.0}, {"stock_code": "2885", "stock_name": "元大金融", "weight": 0.001, "lots": 9.0}, {"stock_code": "3044", "stock_name": "健鼎科技", "weight": 0.001, "lots": 1.0}, {"stock_code": "2891", "stock_name": "中國信託", "weight": 0.001, "lots": 9.0}, {"stock_code": "2890", "stock_name": "永豐金融", "weight": 0.001, "lots": 9.0}, {"stock_code": "3036", "stock_name": "文曄科技", "weight": 0.001, "lots": 1.0}, {"stock_code": "2412", "stock_name": "中華電信", "weight": 0.0, "lots": 1.0}, {"stock_code": "5871", "stock_name": "中租-KY", "weight": 0.0, "lots": 1.0}, {"stock_code": "3045", "stock_name": "台灣大哥", "weight": 0.0, "lots": 1.0}, {"stock_code": "1303", "stock_name": "南亞塑膠", "weight": 0.0, "lots": 1.0}, {"stock_code": "6505", "stock_name": "台塑石化", "weight": 0.0, "lots": 1.0}]}, {"etf_code": "00992A", "etf_name": "Capital ETF 00992A", "holdings": [{"stock_code": "2330", "stock_name": "台積電", "weight": 7.78, "lots": 1761.0}, {"stock_code": "2383", "stock_name": "台光電", "weight": 4.83, "lots": 537.0}, {"stock_code": "6669", "stock_name": "緯穎", "weight": 4.57, "lots": 465.0}, {"stock_code": "8996", "stock_name": "高力", "weight": 3.9, "lots": 1689.0}, {"stock_code": "3037", "stock_name": "欣興", "weight": 3.76, "lots": 2310.0}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 3.76, "lots": 667.0}, {"stock_code": "3105", "stock_name": "穩懋", "weight": 3.49, "lots": 3433.0}, {"stock_code": "3017", "stock_name": "奇鋐", "weight": 3.45, "lots": 601.0}, {"stock_code": "2345", "stock_name": "智邦", "weight": 3.21, "lots": 716.0}, {"stock_code": "6442", "stock_name": "光聖", "weight": 3.19, "lots": 785.0}, {"stock_code": "6515", "stock_name": "穎崴", "weight": 3.12, "lots": 151.0}, {"stock_code": "6510", "stock_name": "精測", "weight": 3.11, "lots": 422.0}, {"stock_code": "8299", "stock_name": "群聯", "weight": 2.98, "lots": 711.0}, {"stock_code": "6223", "stock_name": "旺矽", "weight": 2.9, "lots": 289.0}, {"stock_code": "3533", "stock_name": "嘉澤", "weight": 2.51, "lots": 468.0}, {"stock_code": "2059", "stock_name": "川湖", "weight": 2.18, "lots": 258.0}, {"stock_code": "3653", "stock_name": "健策", "weight": 2.17, "lots": 197.0}, {"stock_code": "3443", "stock_name": "創意", "weight": 2.17, "lots": 260.0}, {"stock_code": "8046", "stock_name": "南電", "weight": 2.06, "lots": 1108.0}, {"stock_code": "7769", "stock_name": "鴻勁", "weight": 2.05, "lots": 194.0}, {"stock_code": "2360", "stock_name": "致茂", "weight": 2.03, "lots": 487.0}, {"stock_code": "7751", "stock_name": "竑騰", "weight": 1.99, "lots": 388.0}, {"stock_code": "3163", "stock_name": "波若威", "weight": 1.96, "lots": 923.0}, {"stock_code": "6584", "stock_name": "南俊國際", "weight": 1.92, "lots": 1337.0}, {"stock_code": "3081", "stock_name": "聯亞", "weight": 1.88, "lots": 380.0}, {"stock_code": "2368", "stock_name": "金像電", "weight": 1.84, "lots": 669.0}, {"stock_code": "2308", "stock_name": "台達電", "weight": 1.57, "lots": 357.0}, {"stock_code": "2408", "stock_name": "南亞科", "weight": 1.56, "lots": 3280.0}, {"stock_code": "5274", "stock_name": "信驊", "weight": 1.51, "lots": 45.0}, {"stock_code": "4749", "stock_name": "新應材", "weight": 1.44, "lots": 701.0}, {"stock_code": "3661", "stock_name": "世芯-KY", "weight": 1.4, "lots": 173.0}, {"stock_code": "6274", "stock_name": "台燿", "weight": 1.26, "lots": 636.0}, {"stock_code": "6531", "stock_name": "愛普*", "weight": 1.17, "lots": 703.0}, {"stock_code": "2454", "stock_name": "聯發科", "weight": 0.94, "lots": 180.0}, {"stock_code": "6271", "stock_name": "同欣電", "weight": 0.91, "lots": 2589.0}, {"stock_code": "3131", "stock_name": "弘塑", "weight": 0.9, "lots": 154.0}, {"stock_code": "4991", "stock_name": "環宇-KY", "weight": 0.86, "lots": 692.0}, {"stock_code": "3189", "stock_name": "景碩", "weight": 0.5, "lots": 486.013}, {"stock_code": "3036", "stock_name": "文曄", "weight": 0.48, "lots": 1177.0}, {"stock_code": "2337", "stock_name": "旺宏", "weight": 0.43, "lots": 1271.0}, {"stock_code": "5289", "stock_name": "宜鼎", "weight": 0.38, "lots": 142.0}, {"stock_code": "3260", "stock_name": "威剛", "weight": 0.36, "lots": 393.0}, {"stock_code": "3324", "stock_name": "雙鴻", "weight": 0.36, "lots": 151.0}, {"stock_code": "3711", "stock_name": "日月光投控", "weight": 0.32, "lots": 320.0}, {"stock_code": "3491", "stock_name": "昇達科", "weight": 0.31, "lots": 97.0}, {"stock_code": "2486", "stock_name": "一詮", "weight": 0.29, "lots": 567.0}, {"stock_code": "2455", "stock_name": "全新", "weight": 0.27, "lots": 427.0}, {"stock_code": "8021", "stock_name": "尖點", "weight": 0.26, "lots": 334.0}, {"stock_code": "2344", "stock_name": "華邦電", "weight": 0.17, "lots": 893.0}, {"stock_code": "3583", "stock_name": "辛耘", "weight": 0.05, "lots": 33.0}, {"stock_code": "3529", "stock_name": "力旺", "weight": 0.03, "lots": 4.0}]}, {"etf_code": "00993A", "etf_name": "00993A (安聯投信)", "holdings": [{"stock_code": "2337", "stock_name": "旺宏", "weight": 9.51, "lots": 7020.0}, {"stock_code": "6515", "stock_name": "穎崴", "weight": 7.93, "lots": 96.0}, {"stock_code": "2330", "stock_name": "台積電", "weight": 7.9, "lots": 447.0}, {"stock_code": "3189", "stock_name": "景碩科技", "weight": 7.8, "lots": 1894.0}, {"stock_code": "3702", "stock_name": "大聯大", "weight": 5.24, "lots": 6340.0}, {"stock_code": "3105", "stock_name": "穩懋", "weight": 4.84, "lots": 1189.0}, {"stock_code": "2383", "stock_name": "台光電子", "weight": 4.32, "lots": 120.0}, {"stock_code": "6584", "stock_name": "南俊國際", "weight": 3.14, "lots": 548.0}, {"stock_code": "7751", "stock_name": "竑騰", "weight": 3.08, "lots": 150.0}, {"stock_code": "3037", "stock_name": "欣興", "weight": 1.78, "lots": 273.0}, {"stock_code": "6213", "stock_name": "聯茂", "weight": 1.5, "lots": 732.0}, {"stock_code": "5289", "stock_name": "宜鼎國際", "weight": 1.22, "lots": 114.0}, {"stock_code": "5274", "stock_name": "信驊科技", "weight": 1.21, "lots": 9.0}, {"stock_code": "2883", "stock_name": "凱基金控", "weight": 1.2, "lots": 6826.0}, {"stock_code": "3260", "stock_name": "威剛科技", "weight": 1.18, "lots": 319.0}, {"stock_code": "4958", "stock_name": "臻鼎-KY", "weight": 1.13, "lots": 364.0}, {"stock_code": "2313", "stock_name": "華通", "weight": 1.12, "lots": 602.0}, {"stock_code": "2345", "stock_name": "智邦", "weight": 1.11, "lots": 62.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 1.11, "lots": 66.0}, {"stock_code": "2327", "stock_name": "國巨*", "weight": 1.1, "lots": 422.0}, {"stock_code": "2360", "stock_name": "致茂", "weight": 1.1, "lots": 66.0}, {"stock_code": "7769", "stock_name": "鴻勁", "weight": 1.1, "lots": 26.0}, {"stock_code": "2308", "stock_name": "台達電子", "weight": 1.09, "lots": 62.0}, {"stock_code": "2454", "stock_name": "聯發科", "weight": 1.09, "lots": 52.0}, {"stock_code": "6223", "stock_name": "旺矽", "weight": 1.08, "lots": 27.0}, {"stock_code": "8046", "stock_name": "南電", "weight": 1.08, "lots": 145.0}, {"stock_code": "2027", "stock_name": "大成鋼", "weight": 1.06, "lots": 3389.0}, {"stock_code": "3036", "stock_name": "文曄", "weight": 1.06, "lots": 645.0}, {"stock_code": "1303", "stock_name": "南亞", "weight": 1.05, "lots": 1407.0}, {"stock_code": "1590", "stock_name": "亞德客-KY", "weight": 1.05, "lots": 87.0}, {"stock_code": "1815", "stock_name": "富喬工業", "weight": 1.05, "lots": 1169.0}, {"stock_code": "2049", "stock_name": "上銀科技", "weight": 1.05, "lots": 418.0}, {"stock_code": "3533", "stock_name": "嘉澤端子", "weight": 1.05, "lots": 49.0}, {"stock_code": "6285", "stock_name": "啟碁科技", "weight": 1.05, "lots": 606.0}, {"stock_code": "4749", "stock_name": "新應材", "weight": 1.04, "lots": 127.0}, {"stock_code": "5234", "stock_name": "達興材料", "weight": 1.04, "lots": 278.0}, {"stock_code": "2610", "stock_name": "華航", "weight": 1.03, "lots": 7005.0}, {"stock_code": "3491", "stock_name": "昇達科技", "weight": 1.03, "lots": 82.0}, {"stock_code": "6669", "stock_name": "緯穎", "weight": 1.02, "lots": 26.0}, {"stock_code": "1560", "stock_name": "中砂", "weight": 1.01, "lots": 240.0}, {"stock_code": "2606", "stock_name": "裕民", "weight": 1.01, "lots": 2050.0}, {"stock_code": "2368", "stock_name": "金像電子", "weight": 1.0, "lots": 91.0}, {"stock_code": "2618", "stock_name": "長榮航", "weight": 1.0, "lots": 3621.0}, {"stock_code": "2404", "stock_name": "漢唐", "weight": 0.99, "lots": 127.0}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 0.99, "lots": 44.0}, {"stock_code": "3044", "stock_name": "健鼎科技", "weight": 0.96, "lots": 261.0}, {"stock_code": "8210", "stock_name": "勤誠興業", "weight": 0.96, "lots": 106.0}, {"stock_code": "3264", "stock_name": "欣銓", "weight": 0.95, "lots": 590.0}, {"stock_code": "3017", "stock_name": "奇鋐", "weight": 0.94, "lots": 41.0}]}, {"etf_code": "00994A", "etf_name": "FSITC ETF 00994A", "holdings": [{"stock_code": "2330", "stock_name": "台積電", "weight": 16.6, "lots": 312.999}, {"stock_code": "現金/存款", "stock_name": "TWD 499,921,922", "weight": 11.97, "lots": 0}, {"stock_code": "2383", "stock_name": "台光電", "weight": 6.29, "lots": 60.0}, {"stock_code": "2454", "stock_name": "聯發科", "weight": 5.51, "lots": 88.0}, {"stock_code": "2308", "stock_name": "台達電", "weight": 5.32, "lots": 104.499}, {"stock_code": "2345", "stock_name": "智邦", "weight": 5.0, "lots": 91.0}, {"stock_code": "其他+負債", "stock_name": "11.97%", "weight": 5.0, "lots": 0}, {"stock_code": "3017", "stock_name": "奇鋐", "weight": 4.89, "lots": 73.5}, {"stock_code": "2368", "stock_name": "金像電", "weight": 4.46, "lots": 134.0}, {"stock_code": "8046", "stock_name": "南電", "weight": 4.24, "lots": 190.0}, {"stock_code": "3653", "stock_name": "健策", "weight": 4.21, "lots": 35.501}, {"stock_code": "3665", "stock_name": "貿聯-KY", "weight": 3.97, "lots": 63.0}, {"stock_code": "3037", "stock_name": "欣興", "weight": 3.69, "lots": 187.001}, {"stock_code": "2360", "stock_name": "致茂", "weight": 3.17, "lots": 64.0}, {"stock_code": "6669", "stock_name": "緯穎", "weight": 2.99, "lots": 26.0}, {"stock_code": "5274", "stock_name": "信驊", "weight": 2.97, "lots": 7.7}, {"stock_code": "6515", "stock_name": "穎崴", "weight": 2.94, "lots": 12.1}, {"stock_code": "6223", "stock_name": "旺矽", "weight": 2.91, "lots": 24.901}, {"stock_code": "6274", "stock_name": "台燿", "weight": 2.43, "lots": 105.0}, {"stock_code": "3711", "stock_name": "日月光投控", "weight": 2.36, "lots": 199.002}, {"stock_code": "3443", "stock_name": "創意", "weight": 2.01, "lots": 20.05}, {"stock_code": "7769", "stock_name": "鴻勁", "weight": 1.83, "lots": 15.0}, {"stock_code": "2449", "stock_name": "京元電子", "weight": 1.28, "lots": 189.0}, {"stock_code": "6805", "stock_name": "富世達", "weight": 1.2, "lots": 24.001}, {"stock_code": "4958", "stock_name": "臻鼎-KY", "weight": 1.13, "lots": 120.0}, {"stock_code": "股票", "stock_name": "96.49%", "weight": 1.0, "lots": 0}, {"stock_code": "6510", "stock_name": "精測", "weight": 0.89, "lots": 10.0}, {"stock_code": "2467", "stock_name": "志聖", "weight": 0.86, "lots": 66.0}, {"stock_code": "3105", "stock_name": "穩懋", "weight": 0.78, "lots": 65.0}, {"stock_code": "2059", "stock_name": "川湖", "weight": 0.76, "lots": 8.0}, {"stock_code": "3081", "stock_name": "聯亞", "weight": 0.72, "lots": 12.0}, {"stock_code": "4979", "stock_name": "華星光", "weight": 0.48, "lots": 36.0}, {"stock_code": "8299", "stock_name": "群聯", "weight": 0.38, "lots": 8.0}, {"stock_code": "8358", "stock_name": "金居", "weight": 0.22, "lots": 25.0}, {"stock_code": "2412", "stock_name": "中華電", "weight": 0.0, "lots": 0.001}, {"stock_code": "3045", "stock_name": "台灣大", "weight": 0.0, "lots": 0.001}, {"stock_code": "4904", "stock_name": "遠傳", "weight": 0.0, "lots": 0.003}]}, {"etf_code": "00995A", "etf_name": "CTBC ETF 00995A", "holdings": [{"stock_code": "2330", "stock_name": "台灣積體電路製造", "weight": 8.88, "lots": 208.0}, {"stock_code": "2383", "stock_name": "台光電子材料", "weight": 6.44, "lots": 74.0}, {"stock_code": "2308", "stock_name": "台達電子工業", "weight": 5.98, "lots": 141.0}, {"stock_code": "3665", "stock_name": "貿聯控股", "weight": 5.72, "lots": 105.0}, {"stock_code": "2368", "stock_name": "金像電子", "weight": 5.19, "lots": 195.0}, {"stock_code": "2345", "stock_name": "智邦科技", "weight": 5.15, "lots": 119.0}, {"stock_code": "6223", "stock_name": "旺矽科技", "weight": 4.94, "lots": 51.0}, {"stock_code": "3017", "stock_name": "奇鋐科技", "weight": 4.72, "lots": 85.0}, {"stock_code": "5274", "stock_name": "信驊科技", "weight": 3.89, "lots": 12.0}, {"stock_code": "3037", "stock_name": "欣興電子", "weight": 3.65, "lots": 232.0}, {"stock_code": "2454", "stock_name": "聯發科技", "weight": 3.63, "lots": 72.0}, {"stock_code": "3653", "stock_name": "健策精密工業", "weight": 3.2, "lots": 30.0}, {"stock_code": "8046", "stock_name": "南亞電路板", "weight": 2.73, "lots": 152.0}, {"stock_code": "6515", "stock_name": "穎崴科技", "weight": 2.59, "lots": 13.0}, {"stock_code": "6669", "stock_name": "緯穎科技服務", "weight": 2.09, "lots": 22.0}, {"stock_code": "3711", "stock_name": "日月光投資控股", "weight": 1.67, "lots": 175.0}, {"stock_code": "2449", "stock_name": "京元電子", "weight": 1.66, "lots": 299.5}, {"stock_code": "7769", "stock_name": "鴻勁", "weight": 1.64, "lots": 16.0}, {"stock_code": "2327", "stock_name": "國巨*", "weight": 1.62, "lots": 257.0}, {"stock_code": "6510", "stock_name": "中華精測科技", "weight": 1.42, "lots": 20.0}, {"stock_code": "8210", "stock_name": "勤誠興業", "weight": 1.32, "lots": 60.0}, {"stock_code": "6274", "stock_name": "台燿科技", "weight": 1.3, "lots": 68.0}, {"stock_code": "3661", "stock_name": "世芯電子", "weight": 1.18, "lots": 15.0}, {"stock_code": "3189", "stock_name": "景碩科技", "weight": 1.04, "lots": 105.0}, {"stock_code": "3443", "stock_name": "創意電子", "weight": 0.97, "lots": 12.0}, {"stock_code": "6805", "stock_name": "富世達股份有限公司", "weight": 0.93, "lots": 23.0}, {"stock_code": "3264", "stock_name": "欣銓科技", "weight": 0.83, "lots": 212.2}, {"stock_code": "4958", "stock_name": "臻鼎科技控股", "weight": 0.8, "lots": 107.0}, {"stock_code": "2303", "stock_name": "聯華電子", "weight": 0.77, "lots": 525.0}, {"stock_code": "7751", "stock_name": "竑騰", "weight": 0.74, "lots": 15.0}, {"stock_code": "2360", "stock_name": "致茂電子", "weight": 0.72, "lots": 18.0}, {"stock_code": "3044", "stock_name": "健鼎科技", "weight": 0.69, "lots": 78.0}, {"stock_code": "8358", "stock_name": "金居開發", "weight": 0.69, "lots": 96.0}, {"stock_code": "2885", "stock_name": "元大金融控股", "weight": 0.64, "lots": 623.0}, {"stock_code": "2455", "stock_name": "全新光電科技", "weight": 0.63, "lots": 101.0}, {"stock_code": "3023", "stock_name": "信邦電子", "weight": 0.63, "lots": 113.0}, {"stock_code": "5289", "stock_name": "宜鼎國際", "weight": 0.57, "lots": 22.0}, {"stock_code": "2472", "stock_name": "立隆電子工業", "weight": 0.56, "lots": 162.0}, {"stock_code": "4749", "stock_name": "新應材", "weight": 0.55, "lots": 28.0}, {"stock_code": "3413", "stock_name": "京鼎精密科技", "weight": 0.5, "lots": 82.0}, {"stock_code": "5439", "stock_name": "高技企業", "weight": 0.49, "lots": 65.18}, {"stock_code": "2059", "stock_name": "川湖科技", "weight": 0.49, "lots": 6.0}, {"stock_code": "3081", "stock_name": "聯亞光電工業", "weight": 0.48, "lots": 10.0}, {"stock_code": "6438", "stock_name": "迅得機械", "weight": 0.48, "lots": 140.0}, {"stock_code": "4979", "stock_name": "華星光通科技", "weight": 0.45, "lots": 41.0}, {"stock_code": "2344", "stock_name": "華邦電子", "weight": 0.4, "lots": 220.0}, {"stock_code": "3324", "stock_name": "雙鴻科技", "weight": 0.39, "lots": 17.0}, {"stock_code": "3491", "stock_name": "昇達科技", "weight": 0.37, "lots": 12.0}, {"stock_code": "3533", "stock_name": "嘉澤端子工業", "weight": 0.36, "lots": 7.0}, {"stock_code": "3105", "stock_name": "穩懋半導體", "weight": 0.35, "lots": 36.0}, {"stock_code": "6442", "stock_name": "光紅建聖", "weight": 0.35, "lots": 9.0}, {"stock_code": "8996", "stock_name": "高力熱處理工業", "weight": 0.29, "lots": 13.0}, {"stock_code": "2313", "stock_name": "華通電腦", "weight": 0.25, "lots": 55.0}, {"stock_code": "2421", "stock_name": "建準電機工業", "weight": 0.21, "lots": 73.637}, {"stock_code": "7750", "stock_name": "新代", "weight": 0.19, "lots": 4.0}, {"stock_code": "6285", "stock_name": "啟碁科技", "weight": 0.17, "lots": 40.0}, {"stock_code": "2404", "stock_name": "漢唐集成", "weight": 0.13, "lots": 7.0}, {"stock_code": "6139", "stock_name": "亞翔工程", "weight": 0.03, "lots": 2.0}]}]};
+        
+        // 持股總覽摺疊（有 max-height 捲動，用 CSS 切換即可）
+        function toggleHoldingsCard(header) {
+            header.classList.toggle('expanded');
+            const content = header.nextElementSibling;
+            content.classList.toggle('expanded');
+        }
+
+        // 變動明細摺疊（動態計算高度，避免內容被截斷）
+        function toggleDetailCard(header) {
+            const content = header.nextElementSibling;
+            if (header.classList.contains('expanded')) {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                requestAnimationFrame(() => {
+                    content.style.maxHeight = '0';
+                });
+                header.classList.remove('expanded');
+                content.classList.remove('expanded');
+            } else {
+                header.classList.add('expanded');
+                content.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.addEventListener('transitionend', function handler() {
+                    if (header.classList.contains('expanded')) {
+                        content.style.maxHeight = 'none';
+                    }
+                    content.removeEventListener('transitionend', handler);
+                }, { once: true });
+            }
+        }
+
+        // 綁定摺疊事件
+        document.querySelectorAll('.etf-holdings-header').forEach(header => {
+            header.addEventListener('click', () => toggleHoldingsCard(header));
+        });
+        document.querySelectorAll('.etf-card-header').forEach(header => {
+            header.addEventListener('click', () => toggleDetailCard(header));
+        });
+        
+        // 變動分布圓餅圖
+        const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+        new Chart(distributionCtx, {
+            type: 'pie',
+            data: {
+                labels: data.change_distribution.map(d => d.etf_code),
+                datasets: [{
+                    data: data.change_distribution.map(d => d.count),
+                    backgroundColor: [
+                        '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                        '#43e97b', '#fa709a', '#fee140', '#30cfd0'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // 生成熱門股票列表
+        function renderHotStocks() {
+            const container = document.getElementById('hotStocksList');
+            let html = '';
+            
+            data.hot_stocks.forEach((stock, index) => {
+                html += `
+                    <div class="hot-stock-item">
+                        <div class="hot-stock-header" onclick="toggleHotStock(this)">
+                            <div class="hot-stock-info">
+                                <span class="hot-stock-rank">#${index + 1}</span>
+                                <span class="hot-stock-name">${stock.stock_code} ${stock.stock_name}</span>
+                                <div class="hot-stock-stats">
+                                    <span>📊 ${stock.total_adjustments} 次調整</span>
+                                    <span>合計: ${stock.net_change > 0 ? '+' : ''}${stock.net_change} 張</span>
+                                </div>
+                            </div>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="hot-stock-content">
+                            <table class="etf-adjustments-table">
+                                <thead>
+                                    <tr>
+                                        <th>ETF代碼</th>
+                                        <th>調整</th>
+                                        <th>持股張數</th>
+                                        <th>權重</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                // 添加 ETF 調整詳情
+                if (stock.etf_details && stock.etf_details.length > 0) {
+                    stock.etf_details.forEach(detail => {
+                        const adjClass = detail.adjustment > 0 ? 'up' : 'down';
+                        const adjArrow = detail.adjustment > 0 ? '▲' : '▼';
+                        const adjSign = detail.adjustment > 0 ? '+' : '';
+                        const weight = detail.weight ? `${detail.weight.toFixed(2)}%` : '-';
+                        const lots = detail.lots ? `${detail.lots.toLocaleString()} 張` : '-';
+                        
+                        html += `
+                            <tr>
+                                <td>${detail.etf_code}</td>
+                                <td class="${adjClass}">${adjArrow} ${adjSign}${detail.adjustment} 張</td>
+                                <td>${lots}</td>
+                                <td>${weight}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html += '<tr><td colspan="4">無詳細資訊</td></tr>';
+                }
+                
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // 切換展開狀態
+        function toggleHotStock(header) {
+            header.classList.toggle('expanded');
+            const content = header.nextElementSibling;
+            content.classList.toggle('expanded');
+            const icon = header.querySelector('.toggle-icon');
+            icon.style.transform = content.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+        
+        // 執行渲染
+        renderHotStocks();
+    </script>
+</body>
+</html>
