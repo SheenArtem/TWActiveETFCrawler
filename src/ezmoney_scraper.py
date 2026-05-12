@@ -27,6 +27,7 @@ from .config import (
 # EZMoney ETF 基金代碼對照表
 EZMONEY_ETF_CODES = {
     '00981A': '49YTW',  # 主動統一台股增長
+    '00403A': '63YTW',  # 統一投信新增主動式 ETF
     # 未來可以新增其他 ETF 的對照
 }
 
