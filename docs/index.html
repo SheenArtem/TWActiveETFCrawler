@@ -684,6 +684,177 @@
             color: #999;
             font-size: 0.9em;
         }
+
+        /* === Stock Reverse Lookup === */
+        .lookup-section {
+            background: white;
+            padding: 24px 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .lookup-section h2 {
+            margin: 0 0 14px 0;
+        }
+
+        .lookup-form {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .lookup-input {
+            flex: 1;
+            min-width: 180px;
+            padding: 10px 14px;
+            font-size: 1em;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: border-color 0.15s;
+            font-family: inherit;
+        }
+
+        .lookup-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .lookup-btn {
+            padding: 10px 20px;
+            font-size: 0.95em;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.15s;
+        }
+
+        .lookup-btn:hover {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .lookup-btn:active {
+            transform: translateY(1px);
+        }
+
+        .lookup-btn.secondary {
+            background: #eee;
+            color: #555;
+        }
+
+        .lookup-hint {
+            font-size: 0.82em;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        .lookup-result {
+            margin-top: 20px;
+        }
+
+        .lookup-stock-title {
+            font-size: 1.15em;
+            font-weight: 700;
+            color: #333;
+            padding: 12px 16px;
+            background: #f5f5ff;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            margin-bottom: 14px;
+        }
+
+        .lookup-block-title {
+            font-size: 0.98em;
+            font-weight: 700;
+            color: #555;
+            margin: 18px 0 8px 0;
+        }
+
+        .lookup-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+        }
+
+        .lookup-table th {
+            background: #f5f5f5;
+            padding: 8px 10px;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+            white-space: nowrap;
+        }
+
+        .lookup-table td {
+            padding: 7px 10px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+        }
+
+        .lookup-table th:first-child,
+        .lookup-table td:first-child {
+            text-align: left;
+        }
+
+        .lookup-table .val-pos {
+            color: #c62828;
+            font-weight: 600;
+        }
+
+        .lookup-table .val-neg {
+            color: #1565c0;
+            font-weight: 600;
+        }
+
+        .lookup-table tfoot td {
+            background: #fafafa;
+            font-weight: 700;
+            border-top: 2px solid #ddd;
+        }
+
+        .lookup-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        .lookup-empty {
+            padding: 16px;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+
+        .lookup-loading {
+            padding: 16px;
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 600px) {
+            .lookup-section {
+                padding: 16px 12px;
+            }
+
+            .lookup-table {
+                min-width: 540px;
+                font-size: 0.8em;
+            }
+
+            .lookup-table th,
+            .lookup-table td {
+                padding: 5px 6px;
+            }
+        }
     </style>
 </head>
 
@@ -708,6 +879,20 @@
 
         <!-- Main Content -->
         <div class="main-content">
+            <!-- Stock Reverse Lookup -->
+            <div class="lookup-section" id="lookup-section">
+                <h2>🔍 個股反查 ETF 持倉</h2>
+                <form class="lookup-form" id="lookup-form" onsubmit="return false;">
+                    <input type="text" id="lookup-input" class="lookup-input"
+                           placeholder="輸入股票代碼，例如 2330"
+                           autocomplete="off" inputmode="numeric" />
+                    <button type="submit" class="lookup-btn" id="lookup-btn">查詢</button>
+                    <button type="button" class="lookup-btn secondary" id="lookup-clear-btn">清除</button>
+                </form>
+                <div class="lookup-hint">查詢該股票目前在各檔追蹤 ETF 中的持股數量與權重，以及近 20 個交易日的買賣明細。</div>
+                <div class="lookup-result" id="lookup-result"></div>
+            </div>
+
             <!-- Cross-ETF Buy/Sell Section -->
             <div class="cross-etf-section" id="cross-etf-section">
                 <h2>🔥 近五日 ETF 同步買賣超 TOP 10</h2>
@@ -1286,6 +1471,278 @@
                     '<p style="color:#f44336;">載入各 ETF 買賣超資料失敗</p>';
             }
         }
+
+        // ====== Stock Reverse Lookup ======
+        const lookupDataCache = new Map();
+
+        async function fetchDataDay(date) {
+            if (lookupDataCache.has(date)) return lookupDataCache.get(date);
+            try {
+                const resp = await fetch(`data_${date}.json`);
+                if (!resp.ok) throw new Error('not ok');
+                const json = await resp.json();
+                lookupDataCache.set(date, json);
+                return json;
+            } catch (err) {
+                lookupDataCache.set(date, null);
+                return null;
+            }
+        }
+
+        function fmtMonthDay(d) {
+            const dt = new Date(d);
+            return `${dt.getMonth() + 1}/${dt.getDate()}`;
+        }
+
+        function fmtNum(v, digits) {
+            if (digits === undefined) digits = 1;
+            const fixed = Number(v).toFixed(digits);
+            return fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        async function runStockLookup() {
+            const inputEl = document.getElementById('lookup-input');
+            const resultEl = document.getElementById('lookup-result');
+            const code = (inputEl.value || '').trim().toUpperCase();
+
+            if (!code) {
+                resultEl.innerHTML = '<div class="lookup-empty">請輸入股票代碼</div>';
+                return;
+            }
+
+            resultEl.innerHTML = '<div class="lookup-loading">查詢中，正在載入近期持倉與變動資料...</div>';
+
+            try {
+                const idxResp = await fetch('reports_index.json');
+                const reportsIndex = await idxResp.json();
+                if (!reportsIndex.length) {
+                    resultEl.innerHTML = '<div class="lookup-empty">尚無資料</div>';
+                    return;
+                }
+
+                // Latest day (for current holdings) + up to 20 most recent for buy/sell
+                const recentDates = reportsIndex.slice(0, 20).map(r => r.date);
+                const latestDate = recentDates[0];
+
+                // Load latest first (for current holdings)
+                const latest = await fetchDataDay(latestDate);
+                if (!latest) {
+                    resultEl.innerHTML = '<div class="lookup-empty">無法載入最新資料</div>';
+                    return;
+                }
+
+                // Find current holdings of this stock across ETFs
+                let stockName = '';
+                const currentHoldings = [];   // { etfCode, etfName, lots, weight }
+                (latest.etf_holdings || []).forEach(etf => {
+                    (etf.holdings || []).forEach(h => {
+                        if (String(h.stock_code).toUpperCase() === code) {
+                            if (!stockName) stockName = h.stock_name;
+                            currentHoldings.push({
+                                etfCode: etf.etf_code,
+                                etfName: etf.etf_name,
+                                lots: h.lots || 0,
+                                weight: h.weight || 0
+                            });
+                        }
+                    });
+                });
+                currentHoldings.sort((a, b) => b.lots - a.lots);
+
+                // Load remaining days in parallel
+                await Promise.all(recentDates.slice(1).map(fetchDataDay));
+
+                // Aggregate buy/sell per ETF per day from detailed_changes
+                // etfMap: etfCode -> { name, perDay: {date -> diff}, total }
+                const etfMap = {};
+                recentDates.forEach(date => {
+                    const day = lookupDataCache.get(date);
+                    if (!day || !day.detailed_changes) return;
+                    day.detailed_changes.forEach(etfEntry => {
+                        const etfCode = etfEntry.etf_code;
+                        const etfName = etfEntry.etf_name;
+
+                        let diff = 0;
+                        let nameHit = '';
+
+                        (etfEntry.modified || []).forEach(s => {
+                            if (String(s.stock_code).toUpperCase() === code) {
+                                diff += (s.diff || 0);
+                                if (!nameHit) nameHit = s.stock_name;
+                            }
+                        });
+                        (etfEntry.added || []).forEach(s => {
+                            if (String(s.stock_code).toUpperCase() === code) {
+                                diff += (s.lots || 0);
+                                if (!nameHit) nameHit = s.stock_name;
+                            }
+                        });
+                        (etfEntry.removed || []).forEach(s => {
+                            if (String(s.stock_code).toUpperCase() === code) {
+                                diff -= (s.lots || 0);
+                                if (!nameHit) nameHit = s.stock_name;
+                            }
+                        });
+
+                        if (diff !== 0) {
+                            if (!etfMap[etfCode]) {
+                                etfMap[etfCode] = { name: etfName, perDay: {}, total: 0 };
+                            }
+                            etfMap[etfCode].perDay[date] = (etfMap[etfCode].perDay[date] || 0) + diff;
+                            etfMap[etfCode].total += diff;
+                            if (nameHit && !stockName) stockName = nameHit;
+                        }
+                    });
+                });
+
+                renderLookupResult(code, stockName, currentHoldings, etfMap, recentDates);
+
+            } catch (err) {
+                console.error('反查股票失敗:', err);
+                resultEl.innerHTML = '<div class="lookup-empty" style="color:#f44336;">查詢失敗，請稍後重試</div>';
+            }
+        }
+
+        function renderLookupResult(code, stockName, currentHoldings, etfMap, recentDates) {
+            const resultEl = document.getElementById('lookup-result');
+
+            const hasCurrent = currentHoldings.length > 0;
+            const tradedEtfs = Object.keys(etfMap);
+            const hasTrades = tradedEtfs.length > 0;
+
+            if (!hasCurrent && !hasTrades) {
+                resultEl.innerHTML = `
+                    <div class="lookup-stock-title">${stockName || ''} ${code}</div>
+                    <div class="lookup-empty">近期未在任何追蹤 ETF 中持有，也無買賣紀錄</div>`;
+                return;
+            }
+
+            // Current holdings table
+            let currentBlock = '';
+            if (hasCurrent) {
+                const latestDate = recentDates[0];
+                const totalLots = currentHoldings.reduce((s, h) => s + h.lots, 0);
+
+                const rows = currentHoldings.map(h => `
+                    <tr>
+                        <td>${h.etfCode}</td>
+                        <td>${fmtNum(h.lots, 1)}</td>
+                        <td>${h.weight.toFixed(2)}%</td>
+                    </tr>`).join('');
+
+                currentBlock = `
+                    <div class="lookup-block-title">📌 目前持有此股的 ETF（${currentHoldings.length} 檔，資料日期 ${latestDate}）</div>
+                    <div class="lookup-table-wrap">
+                        <table class="lookup-table">
+                            <thead>
+                                <tr><th>ETF 代碼</th><th>持股（張）</th><th>權重</th></tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>合計持股</td>
+                                    <td>${fmtNum(totalLots, 1)}</td>
+                                    <td>—</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>`;
+            } else {
+                currentBlock = `
+                    <div class="lookup-block-title">📌 目前持有此股的 ETF</div>
+                    <div class="lookup-empty">目前無任何追蹤 ETF 持有此股</div>`;
+            }
+
+            // Buy/sell table for last 20 trading days (most recent on left)
+            let tradesBlock = '';
+            if (hasTrades) {
+                // Use all dates available, but compute a smart subset of columns:
+                // include only dates where any tracked ETF showed a non-zero diff.
+                const activeDates = recentDates.filter(d =>
+                    tradedEtfs.some(etf => etfMap[etf].perDay[d] !== undefined)
+                );
+
+                const dateHeaders = activeDates.map(d => `<th>${fmtMonthDay(d)}</th>`).join('');
+
+                // Sort ETFs by absolute total descending
+                const sortedEtfs = tradedEtfs
+                    .map(etf => ({ etf, ...etfMap[etf] }))
+                    .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+
+                const rows = sortedEtfs.map(item => {
+                    const cells = activeDates.map(d => {
+                        const v = item.perDay[d];
+                        if (v === undefined || v === 0) return '<td>—</td>';
+                        const cls = v > 0 ? 'val-pos' : 'val-neg';
+                        const prefix = v > 0 ? '+' : '';
+                        return `<td class="${cls}">${prefix}${fmtNum(v, 1)}</td>`;
+                    }).join('');
+
+                    const totalCls = item.total > 0 ? 'val-pos' : 'val-neg';
+                    const totalPrefix = item.total > 0 ? '+' : '';
+
+                    return `
+                        <tr>
+                            <td>${item.etf}</td>
+                            ${cells}
+                            <td class="${totalCls}">${totalPrefix}${fmtNum(item.total, 1)}</td>
+                        </tr>`;
+                }).join('');
+
+                // Daily total across ETFs
+                const dailyTotalCells = activeDates.map(d => {
+                    const v = sortedEtfs.reduce((s, it) => s + (it.perDay[d] || 0), 0);
+                    if (v === 0) return '<td>—</td>';
+                    const cls = v > 0 ? 'val-pos' : 'val-neg';
+                    const prefix = v > 0 ? '+' : '';
+                    return `<td class="${cls}">${prefix}${fmtNum(v, 1)}</td>`;
+                }).join('');
+                const grandTotal = sortedEtfs.reduce((s, it) => s + it.total, 0);
+                const grandCls = grandTotal > 0 ? 'val-pos' : 'val-neg';
+                const grandPrefix = grandTotal > 0 ? '+' : '';
+
+                tradesBlock = `
+                    <div class="lookup-block-title">📊 近 ${recentDates.length} 個交易日各 ETF 買賣明細（單位：張，正值=買超 / 負值=賣超）</div>
+                    <div class="lookup-table-wrap">
+                        <table class="lookup-table">
+                            <thead>
+                                <tr><th>ETF</th>${dateHeaders}<th>合計</th></tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>當日合計</td>
+                                    ${dailyTotalCells}
+                                    <td class="${grandCls}">${grandPrefix}${fmtNum(grandTotal, 1)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>`;
+            } else {
+                tradesBlock = `
+                    <div class="lookup-block-title">📊 近 ${recentDates.length} 個交易日各 ETF 買賣明細</div>
+                    <div class="lookup-empty">近期內各 ETF 對此股無變動紀錄</div>`;
+            }
+
+            resultEl.innerHTML = `
+                <div class="lookup-stock-title">${stockName ? stockName + ' ' : ''}${code}</div>
+                ${currentBlock}
+                ${tradesBlock}`;
+        }
+
+        document.getElementById('lookup-form').addEventListener('submit', runStockLookup);
+        document.getElementById('lookup-btn').addEventListener('click', runStockLookup);
+        document.getElementById('lookup-clear-btn').addEventListener('click', () => {
+            document.getElementById('lookup-input').value = '';
+            document.getElementById('lookup-result').innerHTML = '';
+            document.getElementById('lookup-input').focus();
+        });
+        document.getElementById('lookup-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runStockLookup();
+            }
+        });
 
         // Launch all data loaders
         loadETFMarketData();
