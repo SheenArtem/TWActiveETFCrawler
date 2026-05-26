@@ -26,6 +26,8 @@ from src.ctbc_scraper import CTBCScraper
 from src.fsitc_scraper import FSITCScraper
 from src.tsit_scraper import TSITScraper
 from src.allianz_scraper import AllianzScraper
+from src.cathay_scraper import CathayScraper
+from src.morgan_scraper import MorganScraper
 from src.utils import setup_logging, cleanup_old_data, get_trading_days
 from src.report_manager import ReportManager
 from src.etf_market_data import ETFMarketDataFetcher
@@ -550,6 +552,115 @@ def daily_update_tsit(generate_report=True):
             logger.info("No significant changes detected.")
 
 
+def daily_update_cathay(generate_report=True):
+    """每日更新國泰投信 ETF 作業"""
+    logger.info("Starting Cathay Funds ETF daily update...")
+
+    db = Database(DB_FULL_PATH)
+    scraper = CathayScraper()
+
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:
+        target_date -= timedelta(days=1)
+    date_str = target_date.strftime('%Y-%m-%d')
+    logger.info(f"Fetching Cathay ETF data for {date_str}")
+
+    cathay_etfs = scraper.get_all_mappings()
+    logger.info(f"Found {len(cathay_etfs)} Cathay ETFs to update")
+
+    etf_list_data = [{
+        'etf_code': etf_code,
+        'etf_name': '主動國泰動能高息' if etf_code == '00400A' else f'{etf_code} (Cathay)',
+        'issuer': 'Cathay',
+        'listing_date': ''
+    } for etf_code in cathay_etfs.keys()]
+    if etf_list_data:
+        db.insert_etf_list(etf_list_data)
+
+    total_inserted = 0
+    for i, etf_code in enumerate(cathay_etfs.keys(), 1):
+        logger.info(f"[{i}/{len(cathay_etfs)}] Updating {etf_code}")
+        try:
+            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            if holdings:
+                inserted = db.insert_holdings(holdings)
+                total_inserted += inserted
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings")
+            else:
+                logger.warning(f"{etf_code}: No holdings data found")
+        except Exception as e:
+            logger.error(f"Error updating {etf_code}: {e}")
+            logger.exception(e)
+
+    logger.info(f"Cathay ETF daily update complete: {total_inserted} new holdings inserted")
+
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+        logger.info("Analyzing holdings changes...")
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(cathay_etfs.keys()), date_str)
+        if changes_dict:
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
+        else:
+            logger.info("No significant changes detected.")
+
+
+def daily_update_morgan(generate_report=True):
+    """每日更新摩根投信 ETF 作業（透過 PCF xlsx）"""
+    logger.info("Starting Morgan Funds ETF daily update...")
+
+    db = Database(DB_FULL_PATH)
+    scraper = MorganScraper()
+
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:
+        target_date -= timedelta(days=1)
+    date_str = target_date.strftime('%Y-%m-%d')
+    logger.info(f"Fetching Morgan ETF data for {date_str}")
+
+    morgan_etfs = scraper.get_all_mappings()
+    logger.info(f"Found {len(morgan_etfs)} Morgan ETFs to update")
+
+    etf_list_data = [{
+        'etf_code': etf_code,
+        'etf_name': '主動摩根台灣鑫收' if etf_code == '00401A' else f'{etf_code} (Morgan)',
+        'issuer': 'Morgan',
+        'listing_date': ''
+    } for etf_code in morgan_etfs.keys()]
+    if etf_list_data:
+        db.insert_etf_list(etf_list_data)
+
+    total_inserted = 0
+    for i, etf_code in enumerate(morgan_etfs.keys(), 1):
+        logger.info(f"[{i}/{len(morgan_etfs)}] Updating {etf_code}")
+        try:
+            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            if holdings:
+                # PCF 的實際日期可能跟 target_date 不同，這裡相信 xlsx 標的日期
+                inserted = db.insert_holdings(holdings)
+                total_inserted += inserted
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (xlsx date: {holdings[0]['date']})")
+            else:
+                logger.warning(f"{etf_code}: No holdings data found")
+        except Exception as e:
+            logger.error(f"Error updating {etf_code}: {e}")
+            logger.exception(e)
+
+    logger.info(f"Morgan ETF daily update complete: {total_inserted} new holdings inserted")
+
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+        logger.info("Analyzing holdings changes...")
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(morgan_etfs.keys()), date_str)
+        if changes_dict:
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
+        else:
+            logger.info("No significant changes detected.")
+
+
 def daily_update_allianz(generate_report=True):
     """每日更新安聯投信 ETF 作業（使用 Playwright DOM 提取）"""
     logger.info("Starting Allianz ETF daily update (Playwright DOM extraction)...")
@@ -779,7 +890,19 @@ def main():
         action='store_true',
         help='每日更新模式：抓取安聯投信 ETF 最新資料'
     )
-    
+
+    parser.add_argument(
+        '--cathay',
+        action='store_true',
+        help='每日更新模式：抓取國泰投信 ETF 最新資料'
+    )
+
+    parser.add_argument(
+        '--morgan',
+        action='store_true',
+        help='每日更新模式：抓取摩根投信 ETF 最新資料（PCF xlsx）'
+    )
+
     parser.add_argument(
         '--all',
         action='store_true',
@@ -818,7 +941,7 @@ def main():
             update_etf_market_data()
             return
 
-        if not (args.ezmoney or args.nomura or args.capital or args.fhtrust or args.ctbc or args.fsitc or args.tsit or args.allianz or args.all):
+        if not (args.ezmoney or args.nomura or args.capital or args.fhtrust or args.ctbc or args.fsitc or args.tsit or args.allianz or args.cathay or args.morgan or args.all):
             logger.info("No arguments provided, running default scrapers (EZMoney)")
             daily_update_ezmoney()
         else:
@@ -848,7 +971,13 @@ def main():
 
             if args.allianz or args.all:
                 daily_update_allianz(generate_report=not skip_individual_reports)
-            
+
+            if args.cathay or args.all:
+                daily_update_cathay(generate_report=not skip_individual_reports)
+
+            if args.morgan or args.all:
+                daily_update_morgan(generate_report=not skip_individual_reports)
+
             # 當使用 --all 時，在所有更新完成後生成完整報告
             if args.all:
                 generate_consolidated_reports()
