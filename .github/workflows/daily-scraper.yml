@@ -2,8 +2,8 @@ name: Daily ETF Scraper
 
 on:
   schedule:
-  # 台灣時間 18:00 (即 UTC 10:00)
-    - cron: '0 10 * * *'
+  # 台灣時間 18:22 (即 UTC 10:00)
+    - cron: '22 10 * * *'
   workflow_dispatch:
   push:
     branches: [ main ]
