@@ -7,6 +7,8 @@ from typing import List, Dict, Any
 from datetime import datetime
 from loguru import logger
 
+from .stock_names import canonical_name
+
 
 class Database:
     """SQLite 資料庫管理類別"""
@@ -240,10 +242,19 @@ class Database:
         
         columns = [desc[0] for desc in cursor.description]
         results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        
+
         conn.close()
+
+        # 以代號為主鍵統一台股顯示名稱（各投信原始名稱格式不一）。
+        # 此為所有報表輸出讀取持股名稱的單一出口，故在此正規化即可全面套用。
+        for row in results:
+            row['stock_name'] = canonical_name(
+                row.get('stock_code', ''),
+                row.get('stock_name', '')
+            )
+
         return results
-    
+
     def get_latest_date(self, etf_code: str = None) -> str:
         """
         獲取最新的資料日期
