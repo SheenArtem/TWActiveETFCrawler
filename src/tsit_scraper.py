@@ -82,39 +82,25 @@ class TSITScraper:
         """解析 HTML 表格數據"""
         holdings = []
         try:
-            # 尋找 "股票" 標題
-            # 實際 HTML 結構: <div class="panel-heading">... 股票</div>
-            stock_header = None
-            
-            # 嘗試多種標題標籤
-            for tag in soup.find_all(['h6', 'div']):
-                if "股票" in tag.text.strip() and "panel-heading" in tag.get('class', []):
-                    stock_header = tag
+            # 定位持股表格：表頭同時含「股數」與「權重」即為股票持股表。
+            # 台新 2026 改版後已移除 panel-heading 結構，改以表頭欄位辨識；
+            # 期貨表用「口數」、資產彙總表無這些欄位，可藉此排除。
+            table = None
+            for t in soup.find_all('table'):
+                header_text = ' '.join(th.get_text(strip=True) for th in t.find_all('th'))
+                if '股數' in header_text and '權重' in header_text and '口數' not in header_text:
+                    table = t
                     break
-            
-            if not stock_header:
-                # Fallback: 搜尋所有含 "股票" 的 panel-heading
-                headers = soup.find_all(class_='panel-heading')
-                for h in headers:
-                    if "股票" in h.text:
-                        stock_header = h
-                        break
-            
-            if not stock_header:
-                logger.warning("Could not find stock header '股票'")
-                return []
-                
-            # 找到標題後的表格
-            table = stock_header.find_next('table')
+
             if not table:
-                logger.warning("Could not find table after stock header")
+                logger.warning(f"TSIT: stock holdings table not found for {etf_code} (page structure changed?)")
                 return []
-                
+
             # 解析表格
             # 預期欄位: 代號, 名稱, 股數, 持股權重
             # Ticker, Name, Shares, Weight
-            
-            rows = table.select('tbody tr')
+
+            rows = table.find_all('tr')
             for row in rows:
                 cols = row.find_all('td')
                 if len(cols) >= 4:

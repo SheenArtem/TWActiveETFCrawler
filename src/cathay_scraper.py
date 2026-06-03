@@ -1,11 +1,11 @@
 """
 國泰投信 ETF 爬蟲模組
-透過官網內部 JSON API GetIndexStockWeights 抓取持股權重。
+透過官網內部 JSON API GetETFDetailStockList 抓取持股明細。
 
-注意：此 endpoint 只回傳股票代號、名稱、權重(%)，未提供持股股數，
-因此 shares 一律寫 0。其它欄位（市值）也無法取得。
-若日後改用 PCF Excel (DownloadETFWeightExcel / DownloadBuySaleExcel)
-取得股數，再來重構此模組。
+此 endpoint (官網持股權重概覽 tab / 匯出 Excel 按鈕所用) 帶 SearchDate 參數,
+回傳每檔的 stockCode / stockName / volumn(股數) / weights(權重%),
+故 shares 取自 volumn。市值仍無法取得, 一律寫 0。
+SearchDate 支援歷史日期 (YYYY-MM-DD), 非交易日 result 為 null。
 """
 import random
 import time
@@ -28,7 +28,7 @@ CATHAY_ETF_CODES = {
 }
 
 API_BASE = 'https://cwapi.cathaysite.com.tw'
-WEIGHTS_ENDPOINT = '/api/ETF/GetIndexStockWeights'
+STOCKLIST_ENDPOINT = '/api/ETF/GetETFDetailStockList'
 
 
 class CathayScraper:
@@ -78,58 +78,60 @@ class CathayScraper:
 
     def get_etf_holdings(self, etf_code: str, date: str) -> List[Dict[str, Any]]:
         """
-        傳入 date 僅做為呼叫端期望日期；實際以 API 回傳的 result.date 為準。
+        傳入 date 作為 SearchDate 查詢該日持股 (YYYY-MM-DD)。
+        非交易日 API result 為 null, 回傳空陣列。
         """
         fund_code = self._get_fund_code(etf_code)
         if not fund_code:
             return []
 
-        url = f"{API_BASE}{WEIGHTS_ENDPOINT}?FundCode={fund_code}"
-        logger.info(f"Cathay: fetching {etf_code} (FundCode={fund_code})")
+        url = f"{API_BASE}{STOCKLIST_ENDPOINT}?FundCode={fund_code}&SearchDate={date}"
+        logger.info(f"Cathay: fetching {etf_code} (FundCode={fund_code}) for {date}")
         self._random_delay()
         try:
             r = self.session.get(url, headers=self._headers(), timeout=30, verify=False)
             r.raise_for_status()
             data = r.json()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Cathay: request failed for {etf_code}: {e}")
+            logger.error(f"Cathay: request failed for {etf_code} on {date}: {e}")
             return []
         except ValueError as e:
-            logger.error(f"Cathay: JSON parse failed for {etf_code}: {e}")
+            logger.error(f"Cathay: JSON parse failed for {etf_code} on {date}: {e}")
             return []
 
         if not data.get('success'):
-            logger.warning(f"Cathay: API returned non-success for {etf_code}: {data.get('returnMessage')}")
+            logger.warning(f"Cathay: API non-success for {etf_code} on {date}: {data.get('returnMessage')}")
             return []
 
-        result = data.get('result') or {}
-        raw_date = result.get('date') or ''
-        # API 日期格式 "2026/05/26" -> "2026-05-26"
-        if '/' in raw_date:
-            actual_date = raw_date.replace('/', '-')
-        else:
-            actual_date = date
+        stock_list = data.get('result')
+        if not stock_list:
+            # 非交易日或當日尚無資料, result 為 null
+            logger.info(f"Cathay: no holdings for {etf_code} on {date} (non-trading day?)")
+            return []
 
-        stock_weights = result.get('stockWeights') or []
         holdings = []
-        for row in stock_weights:
+        for row in stock_list:
             stock_code = (row.get('stockCode') or '').strip()
             stock_name = (row.get('stockName') or '').strip()
+            if not stock_code:
+                continue
+            try:
+                shares = int(float(str(row.get('volumn') or '0').replace(',', '')))
+            except (TypeError, ValueError):
+                shares = 0
             try:
                 weight = float(str(row.get('weights') or '0').replace('%', '').replace(',', ''))
             except (TypeError, ValueError):
                 weight = 0.0
-            if not stock_code:
-                continue
             holdings.append({
                 'etf_code': etf_code,
                 'stock_code': stock_code,
                 'stock_name': stock_name,
-                'shares': 0,         # API 未提供
+                'shares': shares,
                 'market_value': 0,   # API 未提供
                 'weight': weight,
-                'date': actual_date,
+                'date': date,
             })
 
-        logger.info(f"Cathay: parsed {len(holdings)} holdings for {etf_code} on {actual_date}")
+        logger.info(f"Cathay: parsed {len(holdings)} holdings for {etf_code} on {date}")
         return holdings
