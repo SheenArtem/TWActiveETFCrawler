@@ -28,7 +28,7 @@ jobs:
           echo "db 最後更新=$LAST / 今天(UTC)=$TODAY"
           if [ "$LAST" = "$TODAY" ]; then
             echo "今天的資料已存在,跳過爬蟲"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Python
