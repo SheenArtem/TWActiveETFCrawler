@@ -2,7 +2,8 @@ name: Daily ETF Scraper
 
 on:
   schedule:
-  # 台灣時間 18:22 (即 UTC 10:00)
+  # 台灣時間 18:22 (UTC 10:22) — 較晚的後備班次。
+  # 主觸發是 Cloudflare Workers Cron (台 17:25),此 schedule 萬一 Cloudflare 沒跑時補上。
     - cron: '22 10 * * *'
   workflow_dispatch:
   push:
@@ -11,41 +12,55 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0   # 需完整歷史,守衛才能查到 db 最後一次 commit 日期
+
+      # 早退守衛: 若今天(UTC)已經有人(主班次)更新並 commit 過資料,就跳過整個爬蟲。
+      - name: Skip if today's data already committed
+        id: guard
+        run: |
+          LAST=$(git log -1 --format=%cd --date=short -- data/etf_holdings.db)
+          TODAY=$(date -u +%F)
+          echo "db 最後更新=$LAST / 今天(UTC)=$TODAY"
+          if [ "$LAST" = "$TODAY" ]; then
+            echo "今天的資料已存在,跳過爬蟲"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Python
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           playwright install chromium
-      
-      # 修改 1: 使用 --all 參數
+
       - name: Run daily update (All ETFs)
+        if: steps.guard.outputs.skip != 'true'
         run: |
           python main.py --all
-      
+
       - name: Show database statistics
+        if: steps.guard.outputs.skip != 'true'
         run: |
           python main.py --stats
-      
+
       - name: Commit and push changes
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add data/etf_holdings.db
           git add reports/
-          git add docs/    # 修改 2: 添加 docs/ 目錄
+          git add docs/
           git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Update ETF holdings data - $(date +'%Y-%m-%d')" && git push)
-
-
-
-
