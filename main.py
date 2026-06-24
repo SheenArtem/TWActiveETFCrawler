@@ -399,26 +399,14 @@ def daily_update_fsitc(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = FSITCScraper()
     
-    # 檢查當前時間（UTC），決定使用哪一天的數據
-    # 台股收盤時間為13:30（台北時間），數據更新通常在收盤後
-    # 如果在10:00 UTC前執行（台北18:00前），使用前一個交易日的數據
-    current_time = datetime.now()  # GitHub Actions uses UTC time
-    
-    if current_time.hour < 10:  # UTC 10:00 = 台北18:00
-        # 在收盤整理時間前，使用前一個交易日
-        target_date = current_time - timedelta(days=1)
-        logger.info(f"Current time (UTC): {current_time.strftime('%H:%M')}, using previous trading day")
-    else:
-        # 收盤後，使用當天（如果是交易日）
-        target_date = current_time
-        logger.info(f"Current time (UTC): {current_time.strftime('%H:%M')}, using current day if it's a trading day")
-    
-    # 避免週末
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
-    
-    date_str = target_date.strftime('%Y-%m-%d')
-    logger.info(f"Fetching FSITC ETF data for {date_str}")
+    # 請求日期用今天，API 會回不晚於該日的最新一筆 PCF。
+    # 實際資料日期一律以 API 回傳的 sdate(actual_date) 為準，不再用時間門檻推測或強制覆寫，
+    # 避免把舊日期的 PCF 標記成當天造成日期錯位。
+    request_date = datetime.now()
+    while request_date.weekday() >= 5:  # 避免週末，讓請求日期落在交易日
+        request_date -= timedelta(days=1)
+    date_str = request_date.strftime('%Y-%m-%d')
+    logger.info(f"Requesting FSITC ETF data (request date: {date_str}), trusting API actual date")
     
     # 取得所有已配置的第一金 ETF
     fsitc_etfs = scraper.get_all_mappings()
@@ -445,21 +433,17 @@ def daily_update_fsitc(generate_report=True):
         
         try:
             holdings, actual_date = scraper.get_etf_holdings(etf_code, date_str)
-            
-            # 强制使用我们计算的target_date，不信任API的sdate
-            # 原因：API的sdate可能在台北时间11点就更新为当天，导致日期不一致
+
+            # 相信 API 回的真實資料日期(sdate)：scraper 已將 holding['date'] 設為 actual_date，
+            # 此處不再覆寫，避免把舊日期的 PCF 標記成當天造成日期錯位。
             if holdings:
-                # 记录API日期与我们计算日期的差异
                 if actual_date != date_str:
-                    logger.warning(f"{etf_code}: API date ({actual_date}) differs from target date ({date_str}), using target date")
-                
-                # 强制覆盖所有holdings的date为target_date
-                for holding in holdings:
-                    holding['date'] = date_str
-                
+                    logger.info(f"{etf_code}: using API actual date {actual_date} (request date was {date_str})")
+
                 inserted = db.insert_holdings(holdings)
                 total_inserted += inserted
-                logger.info(f"{etf_code}: Inserted {inserted} new holdings (using target date: {date_str})")
+                actual_dates[etf_code] = actual_date
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (data date: {actual_date})")
             else:
                 logger.warning(f"{etf_code}: No holdings data found")
         except Exception as e:
@@ -473,8 +457,8 @@ def daily_update_fsitc(generate_report=True):
         logger.info("Analyzing holdings changes...")
         report_mgr = ReportManager(db, REPORTS_DIR)
         
-        # 使用target_date生成報告，確保與數據日期一致
-        report_date = date_str
+        # 報告日期用 API 實際資料日期，確保與寫入 DB 的資料日期一致
+        report_date = max(actual_dates.values()) if actual_dates else date_str
         logger.info(f"Generating report for {report_date}")
         
         changes_dict = report_mgr.analyzer.detect_changes_batch(list(fsitc_etfs.keys()), report_date)
