@@ -2,9 +2,10 @@ name: Daily ETF Scraper
 
 on:
   schedule:
-  # 台灣時間 18:22 (UTC 10:22) — 較晚的後備班次。
-  # 主觸發是 Cloudflare Workers Cron (台 17:25),此 schedule 萬一 Cloudflare 沒跑時補上。
-    - cron: '22 10 * * *'
+  # 台灣時間 21:00 (UTC 13:00) — 較晚的後備班次。
+  # 主觸發是 Cloudflare Workers Cron (台 18:25 / UTC 10:25),此 schedule 萬一 Cloudflare 沒跑時補上。
+  # 必須晚於主觸發跑完(約 10:30),否則早退守衛失效、後備會搶在主觸發前面。
+    - cron: '0 13 * * *'
   workflow_dispatch:
   push:
     branches: [ main ]
