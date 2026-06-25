@@ -4,7 +4,7 @@
 from typing import Dict, List
 from pathlib import Path
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .holdings_analyzer import HoldingChange
 
 
@@ -160,7 +160,9 @@ class HTMLReportGenerator:
         
         return {
             'date': date,
-            'update_time': (datetime.now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),  # 台北时间 (UTC+8)
+            # 以 timezone-aware 的 UTC 轉台北時區，主機是否為 UTC 都正確。
+            # 舊寫法 datetime.now()+8h 假設主機為 UTC，在本機(已是 UTC+8)會多加 8 小時變成隔日。
+            'update_time': datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M:%S'),  # 台北時間 (UTC+8)
             'summary': {
                 'total_etfs': len(changes_dict),
                 'total_changes': total_changes

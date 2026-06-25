@@ -895,6 +895,21 @@ def generate_consolidated_reports():
     if not date_str:
         logger.warning("No data found in database, skipping consolidated reports")
         return
+
+    # 防呆：DB 最新日期不應晚於今天的交易日。某些來源(如 PCF 申購買回清單)會回傳
+    # 次一交易日的前瞻性估值日，若被誤存進 DB，get_latest_date() 會挑到未來日期，
+    # 導致報表/網頁日期超前真實交易日。此處夾住上限，確保網頁永遠不顯示未來日期。
+    today_trading = datetime.now()
+    while today_trading.weekday() >= 5:  # 避免週末
+        today_trading -= timedelta(days=1)
+    today_str = today_trading.strftime('%Y-%m-%d')
+    if date_str > today_str:
+        logger.warning(
+            f"DB latest date {date_str} is in the future (> today's trading date {today_str}); "
+            f"clamping report date to {today_str}"
+        )
+        date_str = today_str
+
     logger.info(f"Using latest trading date from DB for reports: {date_str}")
 
     # 取得所有活躍的 ETF

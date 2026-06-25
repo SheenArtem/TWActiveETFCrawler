@@ -146,6 +146,15 @@ class MorganScraper:
         estimated_total_mv = fund_row.get('Estimated Total Market Value') or 0
         if not valuation_date:
             valuation_date = date  # fallback
+        # JPMorgan PCF (申購買回清單) 的 Valuation Date 是「次一交易日」(申購買回基準日)，
+        # 並非持股 as-of 日。若解析出的估值日晚於請求日(今天的交易日)，代表這是隔日的
+        # 前瞻性籃子，應以請求日作為持股日期，避免把未來日期寫進 DB 造成報表/網頁日期超前。
+        if valuation_date > date:
+            logger.info(
+                f"Morgan {etf_code}: PCF valuation date {valuation_date} is later than "
+                f"request date {date} (forward-looking basket); storing as {date}"
+            )
+            valuation_date = date
 
         # 找 constituent 欄位 index
         cons_header = rows[2]
