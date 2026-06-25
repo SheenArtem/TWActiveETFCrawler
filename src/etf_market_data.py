@@ -7,7 +7,7 @@ import requests
 import time
 import urllib3
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any
 from loguru import logger
 from fake_useragent import UserAgent
@@ -343,7 +343,8 @@ class ETFMarketDataFetcher:
                     item["etf_name"] = etf_info_dict[code]
 
         output = {
-            "update_time": (datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S"),
+            # tz-aware UTC 轉台北，主機是否為 UTC 都正確(本機 UTC+8 用舊式 now()+8h 會多加 8h 變隔日)。
+            "update_time": datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S"),
             "etf_count": len(market_data),
             "data": market_data,
         }

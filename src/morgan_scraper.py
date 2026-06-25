@@ -111,8 +111,9 @@ class MorganScraper:
         """
         從 PCF xlsx 解析持股清單。
 
-        傳入 date 僅作為呼叫端期望的目標日期；實際 date 以 xlsx 中的
-        Valuation Date 為準（會覆寫 holding['date']）。
+        實際 date 以 xlsx 的 Valuation Date 為準並覆寫 holding['date']；
+        但 PCF 的 Valuation Date 是「次一交易日」(申購買回基準日)的前瞻日，
+        若晚於傳入的 date(今天交易日) 則夾回 date，避免把未來日期寫進 DB。
         """
         isin = MORGAN_ETF_CODES.get(etf_code)
         if not isin:
