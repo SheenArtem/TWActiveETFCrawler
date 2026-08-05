@@ -265,11 +265,25 @@ class Database:
                 
                 existing = cursor.fetchone()
                 
-                # 使用 REPLACE (等同於 DELETE + INSERT)
+                # UPSERT：同 (etf, stock, date) 已存在時就地更新數值欄位，
+                # 但**保留原 created_at**——它的語意是「該列首次寫入的時間」。
+                #
+                # 舊寫法 INSERT OR REPLACE 等同 DELETE+INSERT，會把 created_at 蓋成當下，
+                # 於是「來源沒更新、重寫同一個資料日期」也被 CI 早退守衛算成今天有進度。
+                # source_dated 豁免的來源一多（台新/安聯/群益/摩根轉換後 14/19，已過
+                # 70% 門檻），「全來源停更」的傍晚會誤達標而跳過後備班次，晚發布的
+                # 來源（如聯博常在 18-19 點才更新當日檔）那天就永久缺資料。
+                # 改成保留 created_at 後，守衛數的是「今天首次寫入的檔數」，
+                # 停更重寫不計入，門檻語意恢復正確。
                 cursor.execute("""
-                    INSERT OR REPLACE INTO holdings 
+                    INSERT INTO holdings
                     (etf_code, stock_code, stock_name, shares, market_value, weight, date)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(etf_code, stock_code, date) DO UPDATE SET
+                        stock_name=excluded.stock_name,
+                        shares=excluded.shares,
+                        market_value=excluded.market_value,
+                        weight=excluded.weight
                 """, (
                     etf_code,
                     stock_code,

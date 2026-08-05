@@ -134,6 +134,122 @@ def check_source_date_parsers():
           CTBCScraper._extract_data_date(missing, "2026-08-05") == ("2026-08-05", False))
 
 
+def check_batch2_parsers():
+    """
+    第二批轉換的日期解析：台新／安聯／群益／摩根。
+
+    這些函式決定要不要標 source_dated，而 source_dated 決定寫入層防護是否放行，
+    解析錯誤會直接變成「錯位資料被放行」或「正確資料被誤擋」。全部可離線測。
+    """
+    from bs4 import BeautifulSoup
+
+    print("--- 台新：日期黏在「每基數」表頭前 ---")
+    from src.tsit_scraper import TSITScraper
+    ok = BeautifulSoup(
+        '<p class="small">日期：<input id="PUB_DATE" value="2026-08-06" /></p>'
+        '<table><tr><th>2026/8/5每基數實際申購總價金(元)</th><td>TWD 1</td></tr>'
+        '<tr><th>2026/8/5每基數申購總價金差額(元)</th><td>TWD 2</td></tr></table>',
+        'html.parser')
+    check("台新：取「每基數」前的日期且不受 #PUB_DATE 干擾",
+          TSITScraper._extract_data_date(ok, "2026-08-06") == ("2026-08-05", True))
+    bare = BeautifulSoup('<p>日期：<input id="PUB_DATE" value="2026-08-06" /></p>', 'html.parser')
+    check("台新：找不到錨點 -> 退回請求日且不標記",
+          TSITScraper._extract_data_date(bare, "2026-08-06") == ("2026-08-06", False))
+    conflict = BeautifulSoup(
+        '<th>2026/8/5每基數實際申購總價金</th><th>2026/8/4每基數申購總價金差額</th>',
+        'html.parser')
+    check("台新：頁面出現兩個不同日期 -> 視為改版，保守退回",
+          TSITScraper._extract_data_date(conflict, "2026-08-06") == ("2026-08-06", False))
+
+    print("--- 安聯：頁面「資料日期 :」標籤 ---")
+    from src.allianz_scraper import AllianzScraper
+    check("安聯：有資料日期 -> 取用並標記",
+          AllianzScraper._extract_data_date(
+              "持股比重 配息紀錄 資料日期 : 2026/08/05 基金資產", "2026-08-06"
+          ) == ("2026-08-05", True))
+    check("安聯：無資料日期 -> 退回請求日且不標記",
+          AllianzScraper._extract_data_date("基金資產 淨值", "2026-08-06")
+          == ("2026-08-06", False))
+
+    print("--- 群益：buyback API 的 pcf.date2 ---")
+    from src.capital_scraper import CapitalScraper
+    payload = {"data": {"pcf": {"date1": "2026-08-06", "date2": "2026-08-05"},
+                        "stocks": [
+                            {"stocNo": "2330", "stocName": "台積電", "share": 1794000.0,
+                             "weight": 8.522, "date1": "2026/8/6 上午 12:00:00"},
+                            {"stocNo": "ABC", "stocName": "非股票列", "share": 1, "weight": 1},
+                        ]}}
+    rows_out, d, sd = CapitalScraper._parse_api_response(payload, "00982A", "2026-08-06")
+    check("群益：用 pcf.date2 而非 date1，且過濾非 4 碼代號",
+          d == "2026-08-05" and sd is True and len(rows_out) == 1
+          and rows_out[0]["shares"] == 1794000 and rows_out[0]["source_dated"] is True)
+    no_date = {"data": {"pcf": {"date1": "2026-08-06"},
+                        "stocks": [{"stocNo": "2330", "stocName": "台積電",
+                                    "share": 1, "weight": 1}]}}
+    rows_out, d, sd = CapitalScraper._parse_api_response(no_date, "00982A", "2026-08-06")
+    check("群益：date2 缺漏 -> 退回請求日且不標記",
+          d == "2026-08-06" and sd is False and rows_out[0]["source_dated"] is False)
+    rows_out, d, sd = CapitalScraper._parse_api_response({}, "00982A", "2026-08-06")
+    check("群益：整包壞掉 -> 空列表＋退回請求日", rows_out == [] and sd is False)
+
+    print("--- 摩根：估值日領先＝新檔，未領先＝舊檔 ---")
+    # 摩根的規則不獨立成函式（在 get_etf_holdings 內），此處驗證其依據的
+    # _parse_valuation_date 與「領先才可信」的比較語意
+    from src.morgan_scraper import MorganScraper
+    vd = MorganScraper._parse_valuation_date("20260806")
+    check("摩根：VD 解析為 ISO 格式", vd == "2026-08-06")
+    check("摩根：VD 領先請求日 -> 新檔（source_dated 應為 True）", vd > "2026-08-05")
+    check("摩根：VD 未領先 -> 舊檔（source_dated 應為 False）", not (vd > "2026-08-06"))
+    check("摩根：VD 解析不到 -> 空字串（走 fallback）",
+          MorganScraper._parse_valuation_date(None) == "")
+
+
+def check_upsert_created_at():
+    """
+    UPSERT 的 created_at 語意：「該列首次寫入時間」。
+
+    停更重寫（source_dated 豁免下，同一個資料日期整組重寫）不可刷新 created_at，
+    否則 CI 早退守衛會把「來源沒更新」算成今天有進度；豁免檔數過 70% 門檻後
+    （第二批轉換後 14/19），「全來源停更」的傍晚會誤跳過後備班次。
+    這組測試對舊實作（INSERT OR REPLACE）是紅的。
+    """
+    db, _ = fresh_db()
+    db.insert_holdings(rows_sd("00982A", "2026-08-04", DAY1))
+    conn = db.get_connection()
+    # 模擬「這些列是昨天寫入的」
+    conn.execute("update holdings set created_at='2026-08-04 10:25:00'")
+    conn.commit()
+
+    # 停更重寫：同一天、同內容再寫一次
+    db.insert_holdings(rows_sd("00982A", "2026-08-04", DAY1))
+    stamps = [r[0] for r in db.get_connection().execute(
+        "select distinct created_at from holdings where etf_code='00982A'")]
+    check("停更重寫不刷新 created_at（守衛不會誤計）",
+          stamps == ["2026-08-04 10:25:00"], f"created_at={stamps}")
+
+    # 數值變動的更新也保留首次寫入時間，且數值要真的更新
+    db.insert_holdings(rows_sd("00982A", "2026-08-04", DAY2_CHANGED))
+    row = db.get_connection().execute(
+        "select shares, created_at from holdings "
+        "where etf_code='00982A' and stock_code='2330' and date='2026-08-04'"
+    ).fetchone()
+    check("內容更新生效但 created_at 仍是首次寫入時間",
+          row == (46500, "2026-08-04 10:25:00"), f"row={row}")
+
+    # 守衛的 WROTE 查詢：昨天首寫的列今天重寫後，不得計入「今天」
+    wrote_today = db.get_connection().execute(
+        "select count(distinct etf_code) from holdings "
+        "where substr(created_at,1,10)=date('now')").fetchone()[0]
+    check("守衛 WROTE 查詢不把停更重寫計入今天", wrote_today == 0, f"WROTE={wrote_today}")
+
+    # 新的一天首次寫入照常計入
+    db.insert_holdings(rows_sd("00982A", "2026-08-05", DAY2_CHANGED))
+    wrote_today = db.get_connection().execute(
+        "select count(distinct etf_code) from holdings "
+        "where substr(created_at,1,10)=date('now')").fetchone()[0]
+    check("新資料日期的首次寫入計入今天", wrote_today == 1, f"WROTE={wrote_today}")
+
+
 def check_report_layer():
     """
     報表層：資料日期落後的 ETF 必須同時活在「持股總覽」與「變動追蹤」兩半。
@@ -304,6 +420,12 @@ def main():
 
     print("=== 來源日期解析（scraper）===")
     check_source_date_parsers()
+
+    print("=== 第二批來源日期解析（台新/安聯/群益/摩根）===")
+    check_batch2_parsers()
+
+    print("=== UPSERT：created_at＝首次寫入時間 ===")
+    check_upsert_created_at()
 
     print("=== 報表層：落後的 ETF 不可從任一半消失 ===")
     check_report_layer()
