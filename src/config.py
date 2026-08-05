@@ -41,7 +41,7 @@ LOG_PATH = BASE_DIR / os.getenv("LOG_PATH", "logs/etf_crawler.log")
 # 而且誤擋無法補救（來源日期會往前走，被擋掉那天再也抓不回來）。
 # 判斷邏輯與理由見 Database._reject_duplicate_snapshots。
 #
-# 背景：2026-02~08 期間錯位共發生 15 個交易日。詳見 AGENTS.md「日期錯位防護」。
+# 背景：2026-02~08 期間錯位共發生 15 個交易日。詳見 .ai/guides/date-alignment.md。
 REJECT_DUPLICATE_OF_PREVIOUS_DAY = os.getenv("REJECT_DUPLICATE_OF_PREVIOUS_DAY", "True").lower() == "true"
 
 # 變動追蹤設定
