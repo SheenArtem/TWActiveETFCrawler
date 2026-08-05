@@ -1,11 +1,29 @@
 """
 群益證券投信 ETF 爬蟲模組
-使用 Playwright 下載 Excel 文件並解析
+
+主路徑：buyback API（申購買回清單，即 PCF）。
+資料來源原則是「下載檔案 > DOM > API」，群益是**已記錄的例外**（2026-08-05 實測）：
+官網下載的 Excel 四個 sheet 與檔名都沒有資料日期，頁面上唯一的日期是「最新預估淨值」
+的報價日；只有 `POST /CFWeb/api/etf/buyback` 回帶 `data.pcf.date2`（持股基準日）。
+沿用 Excel 就得用請求日期，群益因此曾是歷史錯位第二大戶（15 組）。
+API 與 Excel 是同一份資料（nav、股數逐筆一致），差別只在 API 多帶日期。
+
+已知風險（walk 進 API 的代價）：欄位改名或改版不會有下載按鈕壞掉那種明顯訊號。
+緩解：_parse_api_response 對缺欄位保守退回，且保留原 Playwright+Excel 路徑當備援
+（備援不帶 source_dated，寫入層防護會對它生效）。
+
+日期欄位語意（2026-08-05 實測）：
+- `data.pcf.date2` = 持股基準日（要用這個）
+- `data.pcf.date1`、每筆股票的 `date1` = 下一交易日（PCF 適用日），**勿用**——
+  與摩根 PCF 的估值日同款前瞻模式。
 """
 from playwright.sync_api import sync_playwright
+import requests
 import time
 import random
-from typing import List, Dict, Any, Optional
+import re
+import urllib3
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
@@ -26,15 +44,94 @@ CAPITAL_ETF_CODES = {
 
 
 class CapitalScraper:
-    """群益證券投信網站 ETF 爬蟲（使用 Excel 下載）"""
-    
+    """群益證券投信網站 ETF 爬蟲（buyback API 為主，Excel 下載為備援）"""
+
     BASE_URL = "https://www.capitalfund.com.tw/etf/product/detail/{fund_id}/portfolio"
-    
+    BUYBACK_API = "https://www.capitalfund.com.tw/CFWeb/api/etf/buyback"
+
     def __init__(self):
         """初始化爬蟲"""
         self.request_count = 0
         self.download_dir = Path("downloads/capital")
         self.download_dir.mkdir(parents=True, exist_ok=True)
+
+    def _fetch_buyback(self, fund_id: str) -> Optional[Dict[str, Any]]:
+        """呼叫 buyback API（申購買回清單）。失敗回傳 None，由呼叫端退回 Excel 備援。"""
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        try:
+            resp = requests.post(
+                self.BUYBACK_API,
+                json={"fundId": fund_id},
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                    "Referer": self.BASE_URL.format(fund_id=fund_id),
+                    "Accept": "application/json",
+                },
+                timeout=30,
+                verify=False,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.exceptions.RequestException, ValueError) as e:
+            logger.warning(f"Capital buyback API failed for fund {fund_id}: {e}")
+            return None
+
+    @staticmethod
+    def _parse_api_response(
+        payload: Dict[str, Any], etf_code: str, fallback_date: str
+    ) -> Tuple[List[Dict[str, Any]], str, bool]:
+        """
+        解析 buyback API 回應。
+
+        `data.pcf.date2` 是持股基準日；`date1`（pcf 層與每筆股票都有）是下一交易日的
+        PCF 適用日，**勿用**。date2 缺漏或格式不對時退回請求日期且不標 source_dated，
+        寫入層的日期錯位防護會繼續生效。
+
+        Returns:
+            (持股列表, 資料日期, 是否真的取自來源)
+        """
+        data = (payload or {}).get('data') or {}
+        stocks = data.get('stocks') or []
+
+        date2 = str(((data.get('pcf') or {}).get('date2')) or '').strip()
+        if re.fullmatch(r'20\d{2}-\d{2}-\d{2}', date2):
+            actual_date, source_dated = date2, True
+            if actual_date != fallback_date:
+                logger.info(
+                    f"Capital data date from buyback API: {actual_date} (requested {fallback_date})"
+                )
+        else:
+            actual_date, source_dated = fallback_date, False
+            logger.warning(
+                f"Capital: pcf.date2 missing or malformed ({date2!r}); "
+                f"falling back to requested date {fallback_date}"
+            )
+
+        holdings = []
+        for s in stocks:
+            stock_code = str(s.get('stocNo') or '').strip()
+            if not (stock_code.isdigit() and len(stock_code) == 4):
+                continue
+            try:
+                shares = int(float(s.get('share') or 0))
+            except (TypeError, ValueError):
+                shares = 0
+            try:
+                weight = float(s.get('weight') or 0)
+            except (TypeError, ValueError):
+                weight = 0.0
+            holdings.append({
+                'etf_code': etf_code,
+                'stock_code': stock_code,
+                'stock_name': str(s.get('stocName') or '').strip(),
+                'shares': shares,
+                'weight': weight,
+                'market_value': 0,
+                'date': actual_date,
+                'source_dated': source_dated,
+            })
+
+        return holdings, actual_date, source_dated
     
     def _random_delay(self):
         """隨機延遲，避免被封鎖"""
@@ -237,26 +334,38 @@ class CapitalScraper:
         """
         self._random_delay()
         self.request_count += 1
-        
+
         # 獲取基金代碼
         fund_id = self.get_fund_id(etf_code)
         if not fund_id:
             logger.error(f"Cannot fetch holdings: ETF {etf_code} not in mapping")
             return []
-        
-        # 下載 Excel 文件
+
+        # 主路徑：buyback API（帶持股基準日 date2，見模組 docstring 的例外理由）
+        payload = self._fetch_buyback(fund_id)
+        if payload:
+            holdings, actual_date, source_dated = self._parse_api_response(
+                payload, etf_code, date
+            )
+            if holdings:
+                logger.info(
+                    f"Capital: parsed {len(holdings)} holdings for {etf_code} via buyback API "
+                    f"(data date: {actual_date}, source_dated={source_dated})"
+                )
+                return holdings
+            logger.warning(
+                f"Capital: buyback API returned no parsable stocks for {etf_code}; "
+                f"falling back to Excel download"
+            )
+
+        # 備援：原 Playwright 下載 Excel。Excel 無資料日期，只能用請求日期，
+        # 不帶 source_dated —— 寫入層的日期錯位防護會對這條路徑生效。
         excel_path = self.download_portfolio_excel(fund_id, date)
         if not excel_path or not excel_path.exists():
             logger.error(f"Failed to download Excel file for {etf_code}")
             return []
-        
-        # 解析 Excel 文件
-        holdings = self.parse_excel_file(excel_path, etf_code, date)
-        
-        # 清理下載的文件（可選）
-        # excel_path.unlink()
-        
-        return holdings
+
+        return self.parse_excel_file(excel_path, etf_code, date)
     
     @staticmethod
     def _parse_number(value: Any) -> int:
