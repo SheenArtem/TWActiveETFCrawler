@@ -145,17 +145,32 @@ class MorganScraper:
         fund_row = dict(zip(fund_header, fund_data))
         valuation_date = self._parse_valuation_date(fund_row.get('Valuation Date'))
         estimated_total_mv = fund_row.get('Estimated Total Market Value') or 0
+
+        # JPMorgan PCF (申購買回清單) 的 Valuation Date 是「次一交易日」(申購買回基準日)，
+        # 並非持股 as-of 日。這個前瞻性反而是新鮮度的判準：
+        #
+        #   VD > 請求日  -> 今天的新檔（當日檔的 VD 必為下一交易日）。夾回請求日後，
+        #                   該日期可信，標 source_dated=True 讓寫入層防護放行——
+        #                   否則摩根「真的一股沒動」的日子會被誤擋成永久缺漏
+        #                   （歷史模擬中每半年約 3 次）。
+        #   VD == 請求日 -> 舊檔（昨天那份的 VD 剛好等於今天）。日期不可信，
+        #                   source_dated=False 維持防護；內容與昨日相同時會被正確擋下。
+        #   解析不到     -> 退回請求日，source_dated=False，維持防護。
+        source_dated = False
         if not valuation_date:
             valuation_date = date  # fallback
-        # JPMorgan PCF (申購買回清單) 的 Valuation Date 是「次一交易日」(申購買回基準日)，
-        # 並非持股 as-of 日。若解析出的估值日晚於請求日(今天的交易日)，代表這是隔日的
-        # 前瞻性籃子，應以請求日作為持股日期，避免把未來日期寫進 DB 造成報表/網頁日期超前。
-        if valuation_date > date:
+        elif valuation_date > date:
             logger.info(
                 f"Morgan {etf_code}: PCF valuation date {valuation_date} is later than "
-                f"request date {date} (forward-looking basket); storing as {date}"
+                f"request date {date} (fresh forward-looking basket); storing as {date}"
             )
             valuation_date = date
+            source_dated = True
+        else:
+            logger.warning(
+                f"Morgan {etf_code}: PCF valuation date {valuation_date} has not advanced past "
+                f"request date {date}; source likely not updated yet, duplicate guard stays active"
+            )
 
         # 找 constituent 欄位 index
         cons_header = rows[2]
@@ -200,6 +215,7 @@ class MorganScraper:
                 'market_value': market_value,
                 'weight': weight,
                 'date': valuation_date,
+                'source_dated': source_dated,
             })
 
         logger.info(f"Morgan: parsed {len(holdings)} holdings for {etf_code} on {valuation_date}")
