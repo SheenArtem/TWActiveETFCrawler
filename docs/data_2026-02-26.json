@@ -2,43 +2,48 @@
   "date": "2026-02-26",
   "update_time": "2026-02-26 18:39:34",
   "summary": {
-    "total_etfs": 7,
-    "total_changes": 40
+    "total_etfs": 8,
+    "total_changes": 64
   },
   "change_distribution": [
     {
       "etf_code": "00981A",
-      "etf_name": "00981A (EZMoney)",
+      "etf_name": "主動統一台股增長",
       "count": 12
     },
     {
+      "etf_code": "00982A",
+      "etf_name": "主動群益台灣強棒",
+      "count": 24
+    },
+    {
       "etf_code": "00985A",
-      "etf_name": "Nomura ETF 00985A",
+      "etf_name": "主動野村台灣50",
       "count": 16
     },
     {
       "etf_code": "00987A",
-      "etf_name": "TSIT ETF 00987A",
+      "etf_name": "主動台新優勢成長",
       "count": 1
     },
     {
       "etf_code": "00991A",
-      "etf_name": "FHTrust ETF 00991A",
+      "etf_name": "主動復華未來50",
       "count": 1
     },
     {
       "etf_code": "00992A",
-      "etf_name": "Capital ETF 00992A",
+      "etf_name": "主動群益科技創新",
       "count": 1
     },
     {
       "etf_code": "00994A",
-      "etf_name": "FSITC ETF 00994A",
+      "etf_name": "主動第一金台股優",
       "count": 6
     },
     {
       "etf_code": "00995A",
-      "etf_name": "CTBC ETF 00995A",
+      "etf_name": "主動中信台灣卓越",
       "count": 3
     }
   ],
@@ -51,7 +56,7 @@
       "etf_details": [
         {
           "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
+          "etf_name": "主動統一台股增長",
           "adjustment": 932.0,
           "new_lots": 5190.0,
           "weight": 3.83,
@@ -59,7 +64,7 @@
         },
         {
           "etf_code": "00991A",
-          "etf_name": "FHTrust ETF 00991A",
+          "etf_name": "主動復華未來50",
           "adjustment": 100.0,
           "new_lots": 3200.0,
           "weight": 5.741,
@@ -67,7 +72,7 @@
         },
         {
           "etf_code": "00995A",
-          "etf_name": "CTBC ETF 00995A",
+          "etf_name": "主動中信台灣卓越",
           "adjustment": 22.0,
           "new_lots": 254.0,
           "weight": 3.07,
@@ -83,7 +88,7 @@
       "etf_details": [
         {
           "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
+          "etf_name": "主動統一台股增長",
           "adjustment": -50.0,
           "new_lots": 128.0,
           "weight": 1.91,
@@ -91,7 +96,7 @@
         },
         {
           "etf_code": "00985A",
-          "etf_name": "Nomura ETF 00985A",
+          "etf_name": "主動野村台灣50",
           "adjustment": -5.0,
           "new_lots": 4.0,
           "weight": 0.45,
@@ -99,7 +104,7 @@
         },
         {
           "etf_code": "00994A",
-          "etf_name": "FSITC ETF 00994A",
+          "etf_name": "主動第一金台股優",
           "adjustment": -0.7,
           "new_lots": 3.6,
           "weight": 3.47,
@@ -115,7 +120,7 @@
       "etf_details": [
         {
           "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
+          "etf_name": "主動統一台股增長",
           "adjustment": 580.0,
           "new_lots": 4559.0,
           "weight": 3.88,
@@ -123,11 +128,155 @@
         },
         {
           "etf_code": "00995A",
-          "etf_name": "CTBC ETF 00995A",
+          "etf_name": "主動中信台灣卓越",
           "adjustment": 14.0,
           "new_lots": 50.0,
           "weight": 0.7,
           "lots": 50.0
+        }
+      ]
+    },
+    {
+      "stock_code": "2449",
+      "stock_name": "京元電子",
+      "total_adjustments": 2,
+      "net_change": 412.0,
+      "etf_details": [
+        {
+          "etf_code": "00981A",
+          "etf_name": "主動統一台股增長",
+          "adjustment": 390.0,
+          "new_lots": 2626.0,
+          "weight": 1.32,
+          "lots": 2626.0
+        },
+        {
+          "etf_code": "00982A",
+          "etf_name": "主動群益台灣強棒",
+          "adjustment": 22.0,
+          "new_lots": 2579.0,
+          "weight": 2.49,
+          "lots": 2579.0
+        }
+      ]
+    },
+    {
+      "stock_code": "2383",
+      "stock_name": "台光電",
+      "total_adjustments": 2,
+      "net_change": -4.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "主動群益台灣強棒",
+          "adjustment": 4.0,
+          "new_lots": 466.0,
+          "weight": 3.4,
+          "lots": 466.0
+        },
+        {
+          "etf_code": "00985A",
+          "etf_name": "主動野村台灣50",
+          "adjustment": -8.0,
+          "new_lots": 58.0,
+          "weight": 1.62,
+          "lots": 58.0
+        }
+      ]
+    },
+    {
+      "stock_code": "3017",
+      "stock_name": "奇鋐",
+      "total_adjustments": 2,
+      "net_change": 12.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "主動群益台灣強棒",
+          "adjustment": 4.0,
+          "new_lots": 548.0,
+          "weight": 2.77,
+          "lots": 548.0
+        },
+        {
+          "etf_code": "00994A",
+          "etf_name": "主動第一金台股優",
+          "adjustment": 8.0,
+          "new_lots": 27.0,
+          "weight": 4.48,
+          "lots": 27.0
+        }
+      ]
+    },
+    {
+      "stock_code": "3036",
+      "stock_name": "文曄",
+      "total_adjustments": 2,
+      "net_change": 66.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "主動群益台灣強棒",
+          "adjustment": 33.0,
+          "new_lots": 4620.0,
+          "weight": 2.55,
+          "lots": 4620.0
+        },
+        {
+          "etf_code": "00985A",
+          "etf_name": "主動野村台灣50",
+          "adjustment": 33.0,
+          "new_lots": 1505.0,
+          "weight": 3.18,
+          "lots": 1505.0
+        }
+      ]
+    },
+    {
+      "stock_code": "8210",
+      "stock_name": "勤誠",
+      "total_adjustments": 2,
+      "net_change": -26.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "主動群益台灣強棒",
+          "adjustment": 1.0,
+          "new_lots": 574.0,
+          "weight": 1.57,
+          "lots": 574.0
+        },
+        {
+          "etf_code": "00985A",
+          "etf_name": "主動野村台灣50",
+          "adjustment": -27.0,
+          "new_lots": 76.0,
+          "weight": 0.8,
+          "lots": 76.0
+        }
+      ]
+    },
+    {
+      "stock_code": "2368",
+      "stock_name": "金像電",
+      "total_adjustments": 2,
+      "net_change": -15.0,
+      "etf_details": [
+        {
+          "etf_code": "00982A",
+          "etf_name": "主動群益台灣強棒",
+          "adjustment": 1.0,
+          "new_lots": 158.0,
+          "weight": 0.4,
+          "lots": 158.0
+        },
+        {
+          "etf_code": "00985A",
+          "etf_name": "主動野村台灣50",
+          "adjustment": -16.0,
+          "new_lots": 106.0,
+          "weight": 1.01,
+          "lots": 106.0
         }
       ]
     },
@@ -139,7 +288,7 @@
       "etf_details": [
         {
           "etf_code": "00985A",
-          "etf_name": "Nomura ETF 00985A",
+          "etf_name": "主動野村台灣50",
           "adjustment": -58.0,
           "new_lots": 47.0,
           "weight": 0.29,
@@ -147,107 +296,11 @@
         },
         {
           "etf_code": "00995A",
-          "etf_name": "CTBC ETF 00995A",
+          "etf_name": "主動中信台灣卓越",
           "adjustment": 20.0,
           "new_lots": 269.0,
           "weight": 3.68,
           "lots": 269.0
-        }
-      ]
-    },
-    {
-      "stock_code": "6510",
-      "stock_name": "精測",
-      "total_adjustments": 1,
-      "net_change": 22.0,
-      "etf_details": [
-        {
-          "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
-          "adjustment": 22.0,
-          "new_lots": 287.0,
-          "weight": 1.65,
-          "lots": 287.0
-        }
-      ]
-    },
-    {
-      "stock_code": "2449",
-      "stock_name": "京元電子",
-      "total_adjustments": 1,
-      "net_change": 390.0,
-      "etf_details": [
-        {
-          "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
-          "adjustment": 390.0,
-          "new_lots": 2626.0,
-          "weight": 1.32,
-          "lots": 2626.0
-        }
-      ]
-    },
-    {
-      "stock_code": "1303",
-      "stock_name": "南亞",
-      "total_adjustments": 1,
-      "net_change": -6260.0,
-      "etf_details": [
-        {
-          "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
-          "adjustment": -6260.0,
-          "new_lots": 1.0,
-          "weight": 0.0,
-          "lots": 1.0
-        }
-      ]
-    },
-    {
-      "stock_code": "1326",
-      "stock_name": "臺化",
-      "total_adjustments": 1,
-      "net_change": -5789.0,
-      "etf_details": [
-        {
-          "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
-          "adjustment": -5789.0,
-          "new_lots": 1.0,
-          "weight": 0.0,
-          "lots": 1.0
-        }
-      ]
-    },
-    {
-      "stock_code": "2404",
-      "stock_name": "漢唐",
-      "total_adjustments": 1,
-      "net_change": 311.0,
-      "etf_details": [
-        {
-          "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
-          "adjustment": 311.0,
-          "new_lots": 535.0,
-          "weight": 0.93,
-          "lots": 535.0
-        }
-      ]
-    },
-    {
-      "stock_code": "3376",
-      "stock_name": "新日興",
-      "total_adjustments": 1,
-      "net_change": 299.0,
-      "etf_details": [
-        {
-          "etf_code": "00981A",
-          "etf_name": "00981A (EZMoney)",
-          "adjustment": 299.0,
-          "new_lots": 1343.0,
-          "weight": 0.43,
-          "lots": 1343.0
         }
       ]
     }
@@ -255,7 +308,8 @@
   "detailed_changes": [
     {
       "etf_code": "00981A",
-      "etf_name": "00981A (EZMoney)",
+      "etf_name": "主動統一台股增長",
+      "data_date": "2026-02-26",
       "total_changes": 12,
       "added": [
         {
@@ -357,8 +411,211 @@
       ]
     },
     {
+      "etf_code": "00982A",
+      "etf_name": "主動群益台灣強棒",
+      "data_date": "2026-02-25",
+      "total_changes": 24,
+      "added": [],
+      "removed": [],
+      "modified": [
+        {
+          "stock_code": "2330",
+          "stock_name": "台積電",
+          "old_lots": 1457.0,
+          "new_lots": 1470.0,
+          "diff": 13.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "6669",
+          "stock_name": "緯穎",
+          "old_lots": 425.0,
+          "new_lots": 429.0,
+          "diff": 4.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "6139",
+          "stock_name": "亞翔",
+          "old_lots": 2170.0,
+          "new_lots": 2185.0,
+          "diff": 15.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3264",
+          "stock_name": "欣銓",
+          "old_lots": 7184.0,
+          "new_lots": 7246.0,
+          "diff": 62.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2383",
+          "stock_name": "台光電",
+          "old_lots": 462.0,
+          "new_lots": 466.0,
+          "diff": 4.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2360",
+          "stock_name": "致茂",
+          "old_lots": 866.0,
+          "new_lots": 873.0,
+          "diff": 7.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2308",
+          "stock_name": "台達電",
+          "old_lots": 699.0,
+          "new_lots": 705.0,
+          "diff": 6.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "6257",
+          "stock_name": "矽格",
+          "old_lots": 6511.0,
+          "new_lots": 6567.0,
+          "diff": 56.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3017",
+          "stock_name": "奇鋐",
+          "old_lots": 544.0,
+          "new_lots": 548.0,
+          "diff": 4.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2449",
+          "stock_name": "京元電子",
+          "old_lots": 2557.0,
+          "new_lots": 2579.0,
+          "diff": 22.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3036",
+          "stock_name": "文曄",
+          "old_lots": 4587.0,
+          "new_lots": 4620.0,
+          "diff": 33.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2441",
+          "stock_name": "超豐",
+          "old_lots": 8418.0,
+          "new_lots": 8498.0,
+          "diff": 80.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "5439",
+          "stock_name": "高技",
+          "old_lots": 1979.0,
+          "new_lots": 1997.0,
+          "diff": 18.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2428",
+          "stock_name": "興勤",
+          "old_lots": 3138.0,
+          "new_lots": 3164.0,
+          "diff": 26.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "8210",
+          "stock_name": "勤誠",
+          "old_lots": 573.0,
+          "new_lots": 574.0,
+          "diff": 1.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2421",
+          "stock_name": "建準",
+          "old_lots": 3282.0,
+          "new_lots": 3311.0,
+          "diff": 29.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2316",
+          "stock_name": "楠梓電",
+          "old_lots": 4241.0,
+          "new_lots": 4279.0,
+          "diff": 38.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "1785",
+          "stock_name": "光洋科",
+          "old_lots": 4656.0,
+          "new_lots": 4698.0,
+          "diff": 42.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "5289",
+          "stock_name": "宜鼎",
+          "old_lots": 292.0,
+          "new_lots": 295.0,
+          "diff": 3.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2059",
+          "stock_name": "川湖",
+          "old_lots": 55.0,
+          "new_lots": 57.0,
+          "diff": 2.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3231",
+          "stock_name": "緯創",
+          "old_lots": 1255.0,
+          "new_lots": 1261.0,
+          "diff": 6.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "3711",
+          "stock_name": "日月光投控",
+          "old_lots": 356.0,
+          "new_lots": 359.0,
+          "diff": 3.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2368",
+          "stock_name": "金像電",
+          "old_lots": 157.0,
+          "new_lots": 158.0,
+          "diff": 1.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "2327",
+          "stock_name": "國巨*",
+          "old_lots": 415.0,
+          "new_lots": 419.0,
+          "diff": 4.0,
+          "direction": "up"
+        }
+      ]
+    },
+    {
       "etf_code": "00985A",
-      "etf_name": "Nomura ETF 00985A",
+      "etf_name": "主動野村台灣50",
+      "data_date": "2026-02-26",
       "total_changes": 16,
       "added": [
         {
@@ -491,7 +748,8 @@
     },
     {
       "etf_code": "00987A",
-      "etf_name": "TSIT ETF 00987A",
+      "etf_name": "主動台新優勢成長",
+      "data_date": "2026-02-26",
       "total_changes": 1,
       "added": [],
       "removed": [
@@ -505,7 +763,8 @@
     },
     {
       "etf_code": "00991A",
-      "etf_name": "FHTrust ETF 00991A",
+      "etf_name": "主動復華未來50",
+      "data_date": "2026-02-26",
       "total_changes": 1,
       "added": [],
       "removed": [],
@@ -522,7 +781,8 @@
     },
     {
       "etf_code": "00992A",
-      "etf_name": "Capital ETF 00992A",
+      "etf_name": "主動群益科技創新",
+      "data_date": "2026-02-26",
       "total_changes": 1,
       "added": [
         {
@@ -536,7 +796,8 @@
     },
     {
       "etf_code": "00994A",
-      "etf_name": "FSITC ETF 00994A",
+      "etf_name": "主動第一金台股優",
+      "data_date": "2026-02-26",
       "total_changes": 6,
       "added": [
         {
@@ -589,7 +850,8 @@
     },
     {
       "etf_code": "00995A",
-      "etf_name": "CTBC ETF 00995A",
+      "etf_name": "主動中信台灣卓越",
+      "data_date": "2026-02-26",
       "total_changes": 3,
       "added": [],
       "removed": [],
@@ -624,7 +886,8 @@
   "etf_holdings": [
     {
       "etf_code": "00980A",
-      "etf_name": "Nomura ETF 00980A",
+      "etf_name": "主動野村臺灣優選",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -930,7 +1193,8 @@
     },
     {
       "etf_code": "00981A",
-      "etf_name": "00981A (EZMoney)",
+      "etf_name": "主動統一台股增長",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -1241,8 +1505,400 @@
       ]
     },
     {
+      "etf_code": "00982A",
+      "etf_name": "主動群益台灣強棒",
+      "data_date": "2026-02-25",
+      "holdings": [
+        {
+          "stock_code": "2330",
+          "stock_name": "台積電",
+          "weight": 8.92,
+          "lots": 1470.0
+        },
+        {
+          "stock_code": "6669",
+          "stock_name": "緯穎",
+          "weight": 5.25,
+          "lots": 429.0
+        },
+        {
+          "stock_code": "5536",
+          "stock_name": "聖暉*",
+          "weight": 5.22,
+          "lots": 2470.0
+        },
+        {
+          "stock_code": "8299",
+          "stock_name": "群聯",
+          "weight": 4.95,
+          "lots": 854.0
+        },
+        {
+          "stock_code": "7769",
+          "stock_name": "鴻勁",
+          "weight": 3.81,
+          "lots": 263.0
+        },
+        {
+          "stock_code": "6139",
+          "stock_name": "亞翔",
+          "weight": 3.67,
+          "lots": 2185.0
+        },
+        {
+          "stock_code": "3264",
+          "stock_name": "欣銓",
+          "weight": 3.41,
+          "lots": 7246.0
+        },
+        {
+          "stock_code": "2383",
+          "stock_name": "台光電",
+          "weight": 3.4,
+          "lots": 466.0
+        },
+        {
+          "stock_code": "2360",
+          "stock_name": "致茂",
+          "weight": 3.3,
+          "lots": 873.0
+        },
+        {
+          "stock_code": "2345",
+          "stock_name": "智邦",
+          "weight": 3.18,
+          "lots": 729.0
+        },
+        {
+          "stock_code": "2308",
+          "stock_name": "台達電",
+          "weight": 3.05,
+          "lots": 705.0
+        },
+        {
+          "stock_code": "3017",
+          "stock_name": "奇鋐",
+          "weight": 2.77,
+          "lots": 548.0
+        },
+        {
+          "stock_code": "6257",
+          "stock_name": "矽格",
+          "weight": 2.71,
+          "lots": 6567.0
+        },
+        {
+          "stock_code": "3036",
+          "stock_name": "文曄",
+          "weight": 2.55,
+          "lots": 4620.0
+        },
+        {
+          "stock_code": "2454",
+          "stock_name": "聯發科",
+          "weight": 2.53,
+          "lots": 449.0
+        },
+        {
+          "stock_code": "3491",
+          "stock_name": "昇達科",
+          "weight": 2.5,
+          "lots": 547.0
+        },
+        {
+          "stock_code": "2449",
+          "stock_name": "京元電子",
+          "weight": 2.49,
+          "lots": 2579.0
+        },
+        {
+          "stock_code": "2441",
+          "stock_name": "超豐",
+          "weight": 2.39,
+          "lots": 8498.0
+        },
+        {
+          "stock_code": "6223",
+          "stock_name": "旺矽",
+          "weight": 2.26,
+          "lots": 280.0
+        },
+        {
+          "stock_code": "6274",
+          "stock_name": "台燿",
+          "weight": 2.05,
+          "lots": 1179.0
+        },
+        {
+          "stock_code": "3324",
+          "stock_name": "雙鴻",
+          "weight": 1.92,
+          "lots": 553.0
+        },
+        {
+          "stock_code": "2428",
+          "stock_name": "興勤",
+          "weight": 1.81,
+          "lots": 3164.0
+        },
+        {
+          "stock_code": "3665",
+          "stock_name": "貿聯-KY",
+          "weight": 1.78,
+          "lots": 438.136
+        },
+        {
+          "stock_code": "5439",
+          "stock_name": "高技",
+          "weight": 1.77,
+          "lots": 1997.0
+        },
+        {
+          "stock_code": "4958",
+          "stock_name": "臻鼎-KY",
+          "weight": 1.67,
+          "lots": 2691.0
+        },
+        {
+          "stock_code": "8210",
+          "stock_name": "勤誠",
+          "weight": 1.57,
+          "lots": 574.0
+        },
+        {
+          "stock_code": "2421",
+          "stock_name": "建準",
+          "weight": 1.51,
+          "lots": 3311.0
+        },
+        {
+          "stock_code": "6805",
+          "stock_name": "富世達",
+          "weight": 1.38,
+          "lots": 295.0
+        },
+        {
+          "stock_code": "2316",
+          "stock_name": "楠梓電",
+          "weight": 1.32,
+          "lots": 4279.0
+        },
+        {
+          "stock_code": "3008",
+          "stock_name": "大立光",
+          "weight": 1.24,
+          "lots": 170.0
+        },
+        {
+          "stock_code": "2404",
+          "stock_name": "漢唐",
+          "weight": 1.16,
+          "lots": 373.0
+        },
+        {
+          "stock_code": "8996",
+          "stock_name": "高力",
+          "weight": 1.04,
+          "lots": 378.0
+        },
+        {
+          "stock_code": "1785",
+          "stock_name": "光洋科",
+          "weight": 0.88,
+          "lots": 4698.0
+        },
+        {
+          "stock_code": "2606",
+          "stock_name": "裕民",
+          "weight": 0.82,
+          "lots": 4200.0
+        },
+        {
+          "stock_code": "5289",
+          "stock_name": "宜鼎",
+          "weight": 0.7,
+          "lots": 295.0
+        },
+        {
+          "stock_code": "8358",
+          "stock_name": "金居",
+          "weight": 0.69,
+          "lots": 781.0
+        },
+        {
+          "stock_code": "2059",
+          "stock_name": "川湖",
+          "weight": 0.58,
+          "lots": 57.0
+        },
+        {
+          "stock_code": "3231",
+          "stock_name": "緯創",
+          "weight": 0.52,
+          "lots": 1261.0
+        },
+        {
+          "stock_code": "2472",
+          "stock_name": "立隆電",
+          "weight": 0.45,
+          "lots": 1223.0
+        },
+        {
+          "stock_code": "3711",
+          "stock_name": "日月光投控",
+          "weight": 0.42,
+          "lots": 359.0
+        },
+        {
+          "stock_code": "2368",
+          "stock_name": "金像電",
+          "weight": 0.4,
+          "lots": 158.0
+        },
+        {
+          "stock_code": "2327",
+          "stock_name": "國巨*",
+          "weight": 0.38,
+          "lots": 419.0
+        },
+        {
+          "stock_code": "5425",
+          "stock_name": "台半",
+          "weight": 0.33,
+          "lots": 1770.0
+        },
+        {
+          "stock_code": "2451",
+          "stock_name": "創見",
+          "weight": 0.3,
+          "lots": 464.0
+        },
+        {
+          "stock_code": "2481",
+          "stock_name": "強茂",
+          "weight": 0.27,
+          "lots": 1028.0
+        },
+        {
+          "stock_code": "9938",
+          "stock_name": "百和",
+          "weight": 0.23,
+          "lots": 1461.0
+        },
+        {
+          "stock_code": "6446",
+          "stock_name": "藥華藥",
+          "weight": 0.23,
+          "lots": 100.583
+        },
+        {
+          "stock_code": "3376",
+          "stock_name": "新日興",
+          "weight": 0.22,
+          "lots": 360.0
+        },
+        {
+          "stock_code": "8464",
+          "stock_name": "億豐",
+          "weight": 0.18,
+          "lots": 144.0
+        },
+        {
+          "stock_code": "5274",
+          "stock_name": "信驊",
+          "weight": 0.18,
+          "lots": 6.0
+        },
+        {
+          "stock_code": "6177",
+          "stock_name": "達麗",
+          "weight": 0.17,
+          "lots": 1200.35
+        },
+        {
+          "stock_code": "8046",
+          "stock_name": "南電",
+          "weight": 0.17,
+          "lots": 104.0
+        },
+        {
+          "stock_code": "3529",
+          "stock_name": "力旺",
+          "weight": 0.17,
+          "lots": 23.0
+        },
+        {
+          "stock_code": "2885",
+          "stock_name": "元大金",
+          "weight": 0.16,
+          "lots": 1117.42
+        },
+        {
+          "stock_code": "1319",
+          "stock_name": "東陽",
+          "weight": 0.11,
+          "lots": 360.0
+        },
+        {
+          "stock_code": "4441",
+          "stock_name": "振大環球",
+          "weight": 0.05,
+          "lots": 60.0
+        },
+        {
+          "stock_code": "6768",
+          "stock_name": "志強-KY",
+          "weight": 0.01,
+          "lots": 41.0
+        },
+        {
+          "stock_code": "2548",
+          "stock_name": "華固",
+          "weight": 0.01,
+          "lots": 29.6
+        },
+        {
+          "stock_code": "3443",
+          "stock_name": "創意",
+          "weight": 0.01,
+          "lots": 1.0
+        },
+        {
+          "stock_code": "1519",
+          "stock_name": "華城",
+          "weight": 0.0,
+          "lots": 0.6
+        },
+        {
+          "stock_code": "7722",
+          "stock_name": "LINEPAY",
+          "weight": 0.0,
+          "lots": 1.0
+        },
+        {
+          "stock_code": "3706",
+          "stock_name": "神達",
+          "weight": 0.0,
+          "lots": 1.4
+        },
+        {
+          "stock_code": "2886",
+          "stock_name": "兆豐金",
+          "weight": 0.0,
+          "lots": 1.0
+        },
+        {
+          "stock_code": "2881",
+          "stock_name": "富邦金",
+          "weight": 0.0,
+          "lots": 0.25
+        }
+      ]
+    },
+    {
       "etf_code": "00984A",
-      "etf_name": "安聯台灣高息成長主動式ETF",
+      "etf_name": "主動安聯台灣高息",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -1932,7 +2588,8 @@
     },
     {
       "etf_code": "00985A",
-      "etf_name": "Nomura ETF 00985A",
+      "etf_name": "主動野村台灣50",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -2238,7 +2895,8 @@
     },
     {
       "etf_code": "00987A",
-      "etf_name": "TSIT ETF 00987A",
+      "etf_name": "主動台新優勢成長",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -2394,7 +3052,8 @@
     },
     {
       "etf_code": "00991A",
-      "etf_name": "FHTrust ETF 00991A",
+      "etf_name": "主動復華未來50",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -2700,7 +3359,8 @@
     },
     {
       "etf_code": "00992A",
-      "etf_name": "Capital ETF 00992A",
+      "etf_name": "主動群益科技創新",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -2988,7 +3648,8 @@
     },
     {
       "etf_code": "00993A",
-      "etf_name": "00993A (安聯投信)",
+      "etf_name": "主動安聯台灣",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "3036",
@@ -3294,7 +3955,8 @@
     },
     {
       "etf_code": "00994A",
-      "etf_name": "FSITC ETF 00994A",
+      "etf_name": "主動第一金台股優",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
@@ -3528,7 +4190,8 @@
     },
     {
       "etf_code": "00995A",
-      "etf_name": "CTBC ETF 00995A",
+      "etf_name": "主動中信台灣卓越",
+      "data_date": "2026-02-26",
       "holdings": [
         {
           "stock_code": "2330",
