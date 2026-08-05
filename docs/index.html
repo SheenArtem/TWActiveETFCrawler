@@ -1128,6 +1128,9 @@
                         if (countedEntries.has(entryKey)) return;
                         countedEntries.add(entryKey);
 
+                        // 每日欄位歸屬到這一檔實際的資料日期，不是報表日期
+                        const bucket = changeBucketDate(etfEntry, date, recentDates);
+
                         // Process modified stocks
                         (etfEntry.modified || []).forEach(stock => {
                             const code = stock.stock_code;
@@ -1147,7 +1150,7 @@
                                     totalLots: 0
                                 };
                             }
-                            stockAgg[code].etfMap[etfCode].perDay[date] = (stock.diff || 0);
+                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stock.diff || 0);
                             stockAgg[code].etfMap[etfCode].totalLots += (stock.diff || 0);
                         });
 
@@ -1171,7 +1174,7 @@
                                     totalLots: 0
                                 };
                             }
-                            stockAgg[code].etfMap[etfCode].perDay[date] = (stockAgg[code].etfMap[etfCode].perDay[date] || 0) + lots;
+                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stockAgg[code].etfMap[etfCode].perDay[bucket] || 0) + lots;
                             stockAgg[code].etfMap[etfCode].totalLots += lots;
                         });
 
@@ -1195,7 +1198,7 @@
                                     totalLots: 0
                                 };
                             }
-                            stockAgg[code].etfMap[etfCode].perDay[date] = (stockAgg[code].etfMap[etfCode].perDay[date] || 0) + lots;
+                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stockAgg[code].etfMap[etfCode].perDay[bucket] || 0) + lots;
                             stockAgg[code].etfMap[etfCode].totalLots += lots;
                         });
                     });
@@ -1518,6 +1521,21 @@
             return fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
+        // 一筆變動該記在哪一天。
+        //
+        // 變動是逐檔比對「各自最新可得的資料日期」得出的（見 HoldingsAnalyzer.detect_changes_batch），
+        // 來源停更時同一筆變動會在連續多個報表日期重複出現。去重後保留的是最新那個
+        // 報表日期，若直接用報表日期當每日欄位的 key，8/4 的調整就會被記在 8/6。
+        // 所以優先歸屬到 data_date。
+        //
+        // 但每日欄位只畫得出 dates 裡有的日期。資料日期落在視窗外時（停更超過視窗長度，
+        // 或那天沒產生報表）退回報表日期：日期偏一點比整筆從畫面消失好，而合計是
+        // 另外累加的，不受這個選擇影響。
+        function changeBucketDate(etfEntry, reportDate, dates) {
+            const dataDate = etfEntry.data_date;
+            return (dataDate && dates.includes(dataDate)) ? dataDate : reportDate;
+        }
+
         async function runStockLookup() {
             const inputEl = document.getElementById('lookup-input');
             const resultEl = document.getElementById('lookup-result');
@@ -1590,6 +1608,9 @@
                         if (countedEntries.has(entryKey)) return;
                         countedEntries.add(entryKey);
 
+                        // 每日欄位歸屬到這一檔實際的資料日期，不是報表日期
+                        const bucket = changeBucketDate(etfEntry, date, recentDates);
+
                         let diff = 0;
                         let nameHit = '';
 
@@ -1616,7 +1637,7 @@
                             if (!etfMap[etfCode]) {
                                 etfMap[etfCode] = { name: etfName, perDay: {}, total: 0 };
                             }
-                            etfMap[etfCode].perDay[date] = (etfMap[etfCode].perDay[date] || 0) + diff;
+                            etfMap[etfCode].perDay[bucket] = (etfMap[etfCode].perDay[bucket] || 0) + diff;
                             etfMap[etfCode].total += diff;
                             if (nameHit && !stockName) stockName = nameHit;
                         }
