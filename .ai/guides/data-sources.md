@@ -29,7 +29,7 @@
 | 富邦 Fubon | `src/fubon_scraper.py` | 解析網頁 DOM | ✅ 頁面「資料日期」 | 跳過 | SSR 直出表格；當日資料下午才更新 |
 | 第一金 FSITC | `src/fsitc_scraper.py` | **API（原則的已知例外）** | ✅ API `sdate` | 跳過 | 見下方「已知例外」 |
 | 台新 TSIT | `src/tsit_scraper.py` | 解析網頁 DOM | ✅ 有（2026-08-05 實測）：頁面唯一日期樣態 `2026/8/5`，在「日期：」附近，單位數月日 | 仍防護 | 轉 source_dated 排在第二批。**`#PUB_DATE` 是查詢框且實測值為未來日（08-06），絕不可當資料日期** |
-| 群益 Capital | `src/capital_scraper.py` | 網頁下載 Excel | ❌ **無法取得**（2026-08-05 實測）：頁面日期掛在「最新預估淨值」旁（淨值報價日）；Excel 四個 sheet 與檔名皆無日期 | 仍防護 | 同國泰終態。結案前可看一眼 portfolio 頁 XHR 有無日期欄位 |
+| 群益 Capital | `src/capital_scraper.py` | 網頁下載 Excel | ✅ 有，但在 XHR 不在檔案（2026-08-05 實測）：頁面日期是淨值報價日、Excel 無日期；`POST /CFWeb/api/etf/buyback {fundId}` 免認證可用，`date2`＝持股基準日（`date1` 是下一交易日的 PCF 適用日，同摩根前瞻模式，勿用） | 仍防護 | 轉 source_dated 排第二批（明早盤中複測 `date2` 語意後定案）。改走 API 可一併甩掉 Playwright；檔案優先原則的例外理由：Excel 缺資料日期欄位 |
 | 安聯 Allianz | `src/allianz_scraper.py` | 解析網頁 DOM | ✅ 有（2026-08-05 實測）：頁面標「資料日期 : YYYY/MM/DD」 | 仍防護 | 轉 source_dated 排在第二批（同富邦模式） |
 | 野村 Nomura | `src/nomura_scraper.py` | API | ✅ 結構安全（2026-08-05 實測）：API 嚴格遵守 `SearchDate`，未發布日回空、可查歷史、回應回帶資料日期 | 仍防護 | 用請求日期但**不會錯位**（要嘛拿到該日資料、要嘛空）。可選擇性標 source_dated 消滅同內容日誤擋 |
 | 復華 FHTrust | `src/fhtrust_scraper.py` | API 下載 Excel | ✅ 結構安全（2026-08-05 實測）：URL 帶日期且嚴格遵守，未發布日回 JSON 錯誤而非假 Excel | 仍防護 | 同野村，不會錯位 |
