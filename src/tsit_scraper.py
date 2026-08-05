@@ -1,9 +1,10 @@
 
+import re
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from loguru import logger
 from src.utils import get_user_agent
 import time
@@ -23,14 +24,49 @@ class TSITScraper:
             'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
         })
 
+    @staticmethod
+    def _extract_data_date(soup: BeautifulSoup, fallback: str) -> Tuple[str, bool]:
+        """
+        從 PCF 頁面取出台新自己標示的「資料日期」，取代請求日期。
+
+        真資料日期黏在表頭文字裡：`<th>2026/8/5每基數實際申購總價金(元)</th>`
+        （單位數月日，前綴於「每基數…總價金」類欄位），以「日期＋每基數」
+        為錨。頁面上所有這類日期應一致，出現多個不同值時視為改版，保守退回。
+
+        ⚠ 絕不可改用 `#PUB_DATE`：那是 PCF 適用日（下一交易日）。
+        2026-08-05 實測其值為 2026-08-06（未來日），用它必然錯位。
+
+        Args:
+            soup: 已解析的頁面
+            fallback: 找不到時使用的日期（請求日期）
+
+        Returns:
+            (YYYY-MM-DD, 是否真的取自來源)。第二個值為 False 時代表退回請求日期，
+            呼叫端不可標記 source_dated，寫入層的日期錯位防護要繼續生效。
+        """
+        text = soup.get_text(' ', strip=True)
+        found = set(re.findall(r'(20\d{2}/\d{1,2}/\d{1,2})(?=每基數)', text))
+        if len(found) != 1:
+            logger.warning(
+                f"TSIT: expected exactly one 每基數-anchored data date, got {sorted(found)}; "
+                f"falling back to requested date {fallback}"
+            )
+            return fallback, False
+
+        y, m, d = found.pop().split('/')
+        actual = f"{y}-{int(m):02d}-{int(d):02d}"
+        if actual != fallback:
+            logger.info(f"TSIT data date from page: {actual} (requested {fallback})")
+        return actual, True
+
     def get_etf_holdings(self, etf_code: str, date: str) -> List[Dict[str, Any]]:
         """
         獲取 ETF 持股明細
-        
+
         Args:
             etf_code: ETF 代碼 (例如: 00987A)
             date: 日期 (YYYY-MM-DD)
-            
+
         Returns:
             List[Dict]: 持股明細列表
         """
@@ -38,47 +74,37 @@ class TSITScraper:
         try:
             url = self.PCF_URL.format(etf_code=etf_code)
             logger.info(f"Fetching TSIT holdings for {etf_code} from {url}")
-            
-            # 台新投信的頁面是 SSR，但日期查詢是 POST 表單
-            # 如果是獲取最新日期的資料，直接 GET 即可
-            # 如果需要指定日期，可能需要分析 Form Data (ViewState 等)
-            
-            # 目前策略：先嘗試 GET 獲取預設頁面 (通常是最新交易日)
-            # 如果需要指定日期，這會比較複雜 (因為 ASP.NET 通常有大量隱藏欄位)
-            # 觀察 browser_subagent，日期選擇器是 #PUB_DATE
-            
+
+            # 台新投信的頁面是 SSR，直接 GET 拿到的是最新一份 PCF
+
             # Disable SSL verification
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-            
+
             response = self.session.get(url, timeout=10, verify=False)
-            
+
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # 檢查這是否是我們想要的日期
-                # 日期通常顯示在 #PUB_DATE 的 value 或頁面上某處
-                page_date_input = soup.select_one('#PUB_DATE')
-                page_date = page_date_input.get('value') if page_date_input else None
-                
-                if page_date:
-                    logger.info(f"Page date: {page_date}")
-                    # 簡單檢查：如果請求的 date 和頁面 date 差距過大，可能需要 POST
-                    pass
-                
-                holdings = self._parse_html_table(soup, date, etf_code)
-                logger.info(f"Parsed {len(holdings)} holdings for {etf_code}")
-                
+
+                # 資料日期以頁面自己標示的為準（見 _extract_data_date；
+                # #PUB_DATE 是下一交易日，絕不可用）
+                actual_date, source_dated = self._extract_data_date(soup, date)
+
+                holdings = self._parse_html_table(soup, actual_date, etf_code, source_dated)
+                logger.info(f"Parsed {len(holdings)} holdings for {etf_code} (data date: {actual_date})")
+
             else:
                 logger.error(f"Failed to fetch data: HTTP {response.status_code}")
-                
+
         except Exception as e:
             logger.error(f"Error fetching TSIT holdings: {e}")
             logger.exception(e)
-            
+
         return holdings
     
-    def _parse_html_table(self, soup: BeautifulSoup, date: str, etf_code: str = None) -> List[Dict[str, Any]]:
+    def _parse_html_table(
+        self, soup: BeautifulSoup, date: str, etf_code: str = None, source_dated: bool = False
+    ) -> List[Dict[str, Any]]:
         """解析 HTML 表格數據"""
         holdings = []
         try:
@@ -133,7 +159,8 @@ class TSITScraper:
                                 'shares': shares,
                                 'weight': weight,
                                 'market_value': 0,  # 台新投信網站沒有提供市值
-                                'date': date # 這裡使用傳入的 date
+                                'date': date,
+                                'source_dated': source_dated
                             })
                     except Exception as e:
                         logger.debug(f"Error parsing row: {e}")

@@ -3,9 +3,10 @@
 使用 Playwright 訪問持股頁面並從 DOM 提取數據
 """
 from playwright.sync_api import sync_playwright
+import re
 import time
 import random
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
 from loguru import logger
@@ -55,8 +56,41 @@ class AllianzScraper:
             logger.warning(f"ETF {etf_code} not found in Allianz code mapping")
         return fund_id
     
+    @staticmethod
+    def _extract_data_date(page_text: str, fallback: str) -> Tuple[str, bool]:
+        """
+        從頁面文字取出安聯自己標示的「資料日期」，取代請求日期。
+
+        持股比重頁明確標「資料日期 : 2026/08/05」（2026-08-05 實測）。
+        安聯歷史上是錯位最大戶（19 組），沿用請求日期時，盤中或當日
+        PCF 未發布時抓到的前一日內容會被標成當日。
+
+        Args:
+            page_text: 頁面的 innerText
+            fallback: 找不到時使用的日期（請求日期）
+
+        Returns:
+            (YYYY-MM-DD, 是否真的取自來源)。第二個值為 False 時代表退回請求日期，
+            呼叫端不可標記 source_dated，寫入層的日期錯位防護要繼續生效。
+        """
+        match = re.search(
+            r'資料日期\s*[:：]\s*(20\d{2})[/\-年](\d{1,2})[/\-月](\d{1,2})',
+            page_text,
+        )
+        if not match:
+            logger.warning(
+                f"Allianz: 資料日期 not found on page; falling back to requested date {fallback}"
+            )
+            return fallback, False
+
+        y, m, d = match.groups()
+        actual = f"{y}-{int(m):02d}-{int(d):02d}"
+        if actual != fallback:
+            logger.info(f"Allianz data date from page: {actual} (requested {fallback})")
+        return actual, True
+
     def get_holdings_with_playwright(
-        self, 
+        self,
         fund_id: str,
         date: str
     ) -> List[Dict[str, Any]]:
@@ -114,11 +148,15 @@ class AllianzScraper:
                         break
                 
                 logger.info(f"Clicked '顯示更多' {click_count} times")
-                
+
+                # 資料日期以頁面自己標示的為準（見 _extract_data_date）
+                page_text = page.evaluate("() => document.body.innerText")
+                actual_date, source_dated = self._extract_data_date(page_text, date)
+
                 # 提取表格數據
                 logger.debug("Extracting table data...")
-                holdings = self._extract_holdings_from_page(page, date)
-                
+                holdings = self._extract_holdings_from_page(page, actual_date, source_dated)
+
                 browser.close()
         
         except Exception as e:
@@ -128,17 +166,19 @@ class AllianzScraper:
         return holdings
     
     def _extract_holdings_from_page(
-        self, 
+        self,
         page,
-        date: str
+        date: str,
+        source_dated: bool = False
     ) -> List[Dict[str, Any]]:
         """
         從頁面 DOM 提取持股數據
-        
+
         Args:
             page: Playwright Page 對象
-            date: 日期 (YYYY-MM-DD)
-        
+            date: 資料日期 (YYYY-MM-DD)，正常情況來自頁面標示（見 _extract_data_date）
+            source_dated: 日期是否真的取自來源；退回請求日期時必須為 False
+
         Returns:
             List[Dict]: 持股明細列表
         """
@@ -194,7 +234,8 @@ class AllianzScraper:
                             'stock_name': stock_name,
                             'shares': self._parse_number(shares_text),
                             'weight': self._parse_percentage(weight_text),
-                            'date': date
+                            'date': date,
+                            'source_dated': source_dated
                         }
                         
                         holdings.append(holding)
