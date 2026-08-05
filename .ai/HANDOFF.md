@@ -45,8 +45,8 @@
 | commit | 內容 | 驗證 |
 | --- | --- | --- |
 | `81c7f24` | 台新＋安聯轉 source_dated | 實站 27／133 筆、date=08-05、source_dated=True |
-| （中間 commit） | 群益改走 buyback API（Excel 降備援） | 實站 00982A 55、00992A 37 筆；股數與權重和 DB 逐筆一致 |
-| （中間 commit） | 摩根估值日前瞻性＝新鮮度 | 實站 62 筆；今晚 VD=08-06 領先 → source_dated=True |
+| `1985310` | 群益改走 buyback API（Excel 降備援） | 實站 00982A 55、00992A 37 筆；股數與權重和 DB 逐筆一致 |
+| `16896c5` | 摩根估值日前瞻性＝新鮮度 | 實站 62 筆；今晚 VD=08-06 領先 → source_dated=True |
 | `f402b2a` | UPSERT 保留 created_at＋守衛註解＋測試 31→47 | red-before 已證：舊實作（REPLACE）會刷新 created_at，新測試對它是紅的 |
 | `d891a39` | 刪 52 組歷史錯位（3,234 列）＋重生 119 個已發布日期 | 刪除當下重新驗證清單、刪後全庫重掃歸零；抽驗 07-13 安聯正確回退 07-09、update_time 保留 |
 
