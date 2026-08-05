@@ -50,24 +50,12 @@ def main():
     logger.info(f"Regenerating {len(dates)} dates with normalized names")
 
     for date in dates:
-        # 建立持股資料（經 get_holdings_by_date 正規化名稱）
-        etf_holdings = []
-        for code in etf_codes:
-            holdings = db.get_holdings_by_date(date, code)
-            if holdings:
-                etf_holdings.append({
-                    "etf_code": code,
-                    "etf_name": etf_info_dict.get(code, code),
-                    "holdings": [
-                        {
-                            "stock_code": h.get("stock_code", ""),
-                            "stock_name": h.get("stock_name", ""),
-                            "weight": h.get("weight", 0),
-                            "lots": h.get("shares", 0) / 1000 if h.get("shares") else 0,
-                        }
-                        for h in holdings
-                    ],
-                })
+        # 建立持股資料（經 get_holdings_by_date 正規化名稱）。
+        # 必須走 ReportManager 的共用出口：它會逐檔回退到各自最新可得的資料日期
+        # 並帶上 data_date。這裡若自己組一份，回填出來的報表會少掉 data_date
+        # （首頁的「資料日期」欄會全部顯示 —），而且會與同樣逐檔回退的
+        # detect_changes_batch 對不起來，造成同一份報表兩半各用一套日期規則。
+        etf_holdings = mgr.build_etf_holdings(etf_info_dict, date)
 
         if not etf_holdings:
             logger.warning(f"{date}: no holdings in DB, skipped")

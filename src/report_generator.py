@@ -115,18 +115,30 @@ class HTMLReportGenerator:
         hot_stocks = hot_stocks[:10]  # 取前 10 名
         
         # 3. 詳細變動列表
+        #
+        # 每筆帶 data_date：變動是逐檔比對「各自最新可得的資料日期」得出的
+        # （HoldingsAnalyzer.detect_changes_batch），來源停更時同一筆變動會在
+        # 連續多個報表日期重複出現。沒有這個欄位，下游無法分辨「同一筆重複出現」
+        # 與「真的又動了一次」，個股反查的買賣張數就會把同一次調整重複計入。
+        # 來源與持股總覽同一個解析結果（get_latest_date_on_or_before），故直接沿用。
+        holdings_date_map = {
+            e['etf_code']: e.get('data_date')
+            for e in (etf_holdings or [])
+        }
+
         detailed_changes = []
         for etf_code, changes in sorted(changes_dict.items()):
             etf_name = etf_info_dict.get(etf_code, etf_code)
-            
+
             # 分類變動
             added = [c for c in changes if c.change_type == 'ADDED']
             removed = [c for c in changes if c.change_type == 'REMOVED']
             modified = [c for c in changes if c.change_type not in ['ADDED', 'REMOVED']]
-            
+
             etf_changes = {
                 'etf_code': etf_code,
                 'etf_name': etf_name,
+                'data_date': holdings_date_map.get(etf_code, date),
                 'total_changes': len(changes),
                 'added': [
                     {
@@ -977,11 +989,15 @@ class HTMLReportGenerator:
             holdings_table = '\n'.join(holdings_rows) if holdings_rows else '<tr><td colspan="4">無持股資料</td></tr>'
             total_count = len(etf.get('holdings', []))
 
-            
+            # 各家投信的資料日期不同步（當日 PCF 的發布時間各家不同），持股是逐檔
+            # 回退到各自最新可得的日期，所以要標出這一檔實際的資料日期。
+            data_date = etf.get('data_date')
+            date_note = f" · 資料日期 {data_date}" if data_date else ''
+
             cards_html.append(f"""
             <div class="etf-holdings-card">
                 <div class="etf-holdings-header">
-                    <h4>{etf.get('etf_code', '')} ({total_count} 檔成分股)</h4>
+                    <h4>{etf.get('etf_code', '')} ({total_count} 檔成分股){date_note}</h4>
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="etf-holdings-content">

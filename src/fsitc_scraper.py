@@ -193,10 +193,14 @@ class FSITCScraper:
         
         # 嘗試從第一筆數據中提取實際日期
         actual_date = date  # 默認使用傳入的日期
+        # source_dated：只有真的讀到 sdate 才算來源日期。退回請求日期時必須維持
+        # False，讓寫入層的日期錯位防護繼續生效（見 Database._reject_duplicate_snapshots）。
+        source_dated = False
         if data and len(data) > 0:
             first_item = data[0]
             if 'sdate' in first_item and first_item['sdate']:
                 actual_date = first_item['sdate']
+                source_dated = True
                 logger.info(f"Using actual date from API: {actual_date} (requested: {date})")
         
         for item in data:
@@ -230,7 +234,8 @@ class FSITCScraper:
                         'shares': shares,
                         'weight': weight,
                         'market_value': 0,
-                        'date': actual_date  # 使用從API提取的實際日期
+                        'date': actual_date,  # 使用從API提取的實際日期
+                        'source_dated': source_dated
                     })
             except Exception as e:
                 logger.warning(f"Error parsing JSON item: {e}")

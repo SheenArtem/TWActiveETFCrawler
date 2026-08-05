@@ -7,8 +7,11 @@ on:
   # 必須晚於主觸發跑完(約 10:30),否則早退守衛失效、後備會搶在主觸發前面。
     - cron: '0 13 * * *'
   workflow_dispatch:
-  push:
-    branches: [ main ]
+  # 已移除 push 觸發(2026-08-05)。原本 push 到 main 會立即跑一次完整爬蟲,
+  # 若 push 發生在盤中(投信當日 PCF 尚未發布),用請求日期的 scraper 會把前一日
+  # 資料寫成當日;跑完 commit db 後,當晚主班次又會被早退守衛跳過,錯誤資料因而留存。
+  # (2026-06-23 加守衛之前,這種誤寫還會被當晚排程覆蓋,加了守衛後才變成永久錯誤。)
+  # 程式碼改動請用 workflow_dispatch 手動觸發,或等排程。
 
 jobs:
   scrape:
@@ -18,17 +21,56 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # 需完整歷史,守衛才能查到 db 最後一次 commit 日期
+          # 守衛已改查 db 內容,不再需要完整歷史(舊版用 git log 找 db 的 commit 日期)。
+          # 這個 repo 每天 commit 一次 binary db,完整歷史的 clone 成本會一直長大,
+          # 所以只取最後一個 commit;commit/push 用淺歷史即可。
+          fetch-depth: 1
 
-      # 早退守衛: 若今天(UTC)已經有人(主班次)更新並 commit 過資料,就跳過整個爬蟲。
-      - name: Skip if today's data already committed
+      # 早退守衛: 看「今天實際寫入過幾檔 ETF」(holdings.created_at),達門檻才跳過。
+      #
+      # 演進與理由:
+      # 1. 最早看 db 檔案哪天被 commit(git log)。那只證明「今天寫過檔案」,不證明
+      #    寫進去的是今天的資料。盤中執行時投信當日 PCF 尚未發布,用請求日期的
+      #    scraper 會把前一日內容寫成當日,commit 後守衛即誤判當日已完成,
+      #    把當晚真正該跑的班次跳掉,錯誤資料因而永久留存。
+      # 2. 改看「資料日期是否等於今天」也不對。各家投信的資料日期天然不同步:
+      #    當日 PCF 的發布時間各家不同,晚發布的要到收盤後才更新,盤中抓到的還是前一日。
+      #    實測 2026-08-05 那天寫入了 15 檔,其中 4 檔(00403A/00404A/00408A/00994A)
+      #    的資料日期是 08-04——用資料日期當判準會把這 4 檔算成「還沒跑」。
+      # 3. 現在看 created_at: 那是寫入時間,與資料日期無關,才真正代表執行狀態。
+      #    受防護的來源被擋下時整組不寫入,不會有新的 created_at,所以「來源還沒更新」
+      #    會表現為未完成,當晚的後備班次就會再給來源一次機會。
+      #
+      #    ⚠ 這只對「受防護」的來源成立。insert_holdings 用 INSERT OR REPLACE 且欄位
+      #    清單沒有 created_at,重寫既有的列會重新蓋上當下時間;所以豁免防護的
+      #    source_dated 來源(中信/富邦/第一金/聯博/統一 Excel)即使來源沒有前進,
+      #    重寫同一個資料日期也會被算成「今天寫過」。目前豁免的是 8/19(42%),
+      #    遠低於門檻所以不影響判斷。日後若把台新/群益/安聯/野村/復華也改成
+      #    source_dated,豁免檔數一旦逼近門檻,「所有來源都沒更新」的日子也會達標而
+      #    跳過後備班次——那就必須改成只計「最新 date 有前進」的檔。
+      #
+      # 為什麼要用覆蓋率而不是「有沒有」: 主班次只要一檔成功就會讓「有資料」成立,
+      # 其餘因逾時或改版失敗的檔便再也沒有後備班次去補。實測每個寫入日通常
+      # 15-17/19 檔(79-89%),而 2026-08-05 若防護生效只會寫入約 8 檔(42%),
+      # 門檻取 70% 能區分這兩種情況。漏跑會讓資料永久缺一天,多跑只是多花幾分鐘
+      # 且 commit 步驟有 git diff --quiet 擋空提交,所以門檻刻意偏保守。
+      #
+      # 時區: 用 UTC。main.py 各 daily_update_* 用 datetime.now() 決定請求日期,
+      # 在 runner 上就是 UTC;sqlite 的 CURRENT_TIMESTAMP 也是 UTC。三者同基準,
+      # 否則台北凌晨 0-8 點手動觸發時守衛比的是今天、寫進去的卻是昨天。
+      - name: Skip if today's scrape already completed
         id: guard
+        env:
+          SKIP_COVERAGE_PCT: ${{ vars.SKIP_COVERAGE_PCT || '70' }}
         run: |
-          LAST=$(git log -1 --format=%cd --date=short -- data/etf_holdings.db)
           TODAY=$(date -u +%F)
-          echo "db 最後更新=$LAST / 今天(UTC)=$TODAY"
-          if [ "$LAST" = "$TODAY" ]; then
-            echo "今天的資料已存在,跳過爬蟲"
+          # 單行 python: 多行寫法在 yaml 裡會帶前導空白而觸發 IndentationError。
+          # 查詢失敗(檔案或表不存在)時輸出 0,結果是「不跳過」,寧可多跑一次也不漏跑。
+          WROTE=$(python3 -c "import os,sqlite3,sys;p='data/etf_holdings.db';print(sqlite3.connect(p).execute('select count(distinct etf_code) from holdings where substr(created_at,1,10)=?',(sys.argv[1],)).fetchone()[0] if os.path.exists(p) else 0)" "$TODAY" 2>/dev/null || echo 0)
+          TOTAL=$(python3 -c "import os,sqlite3;p='data/etf_holdings.db';print(sqlite3.connect(p).execute(\"select count(*) from etf_list where etf_code like '%A'\").fetchone()[0] if os.path.exists(p) else 0)" 2>/dev/null || echo 0)
+          echo "今天($TODAY, UTC)已寫入=$WROTE/$TOTAL 檔 / 跳過門檻=${SKIP_COVERAGE_PCT}%"
+          if [ "$TOTAL" -gt 0 ] && [ $((WROTE * 100)) -ge $((TOTAL * SKIP_COVERAGE_PCT)) ]; then
+            echo "今天已完成足夠的抓取,跳過爬蟲"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 

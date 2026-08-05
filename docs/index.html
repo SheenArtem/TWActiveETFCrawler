@@ -1111,6 +1111,10 @@
 
                 // 3. Aggregate: stock_code -> { name, totalLots, etfMap: { etf_code -> { name, perDay: { date -> lots }, totalLots } } }
                 const stockAgg = {};
+                // 變動是逐檔比對「各自最新可得的資料日期」得出的，來源停更時同一筆變動
+                // 會在連續多個報表日期重複出現。以 (ETF, 資料日期) 去重，
+                // 否則同一次調整會被重複計入買賣張數。
+                const countedEntries = new Set();
 
                 allData.forEach(dayData => {
                     const date = dayData.date;
@@ -1119,6 +1123,10 @@
                     dayData.detailed_changes.forEach(etfEntry => {
                         const etfCode = etfEntry.etf_code;
                         const etfName = etfEntry.etf_name;
+
+                        const entryKey = etfCode + '|' + (etfEntry.data_date || date);
+                        if (countedEntries.has(entryKey)) return;
+                        countedEntries.add(entryKey);
 
                         // Process modified stocks
                         (etfEntry.modified || []).forEach(stock => {
@@ -1552,7 +1560,10 @@
                                 etfCode: etf.etf_code,
                                 etfName: etf.etf_name,
                                 lots: h.lots || 0,
-                                weight: h.weight || 0
+                                weight: h.weight || 0,
+                                // 各家投信資料日期不同步，持股是逐檔回退到各自最新可得的
+                                // 日期，所以要逐檔標，不能用單一報表日期代表整份清單。
+                                dataDate: etf.data_date || null
                             });
                         }
                     });
@@ -1565,12 +1576,19 @@
                 // Aggregate buy/sell per ETF per day from detailed_changes
                 // etfMap: etfCode -> { name, perDay: {date -> diff}, total }
                 const etfMap = {};
+                // 同上：來源停更時同一筆變動會在連續多個報表日期重複出現，
+                // 以 (ETF, 資料日期) 去重，避免同一次調整被重複計入每日與 20 日合計。
+                const countedEntries = new Set();
                 recentDates.forEach(date => {
                     const day = lookupDataCache.get(date);
                     if (!day || !day.detailed_changes) return;
                     day.detailed_changes.forEach(etfEntry => {
                         const etfCode = etfEntry.etf_code;
                         const etfName = etfEntry.etf_name;
+
+                        const entryKey = etfCode + '|' + (etfEntry.data_date || date);
+                        if (countedEntries.has(entryKey)) return;
+                        countedEntries.add(entryKey);
 
                         let diff = 0;
                         let nameHit = '';
@@ -1630,7 +1648,6 @@
             // Current holdings table
             let currentBlock = '';
             if (hasCurrent) {
-                const latestDate = recentDates[0];
                 const totalLots = currentHoldings.reduce((s, h) => s + h.lots, 0);
 
                 const rows = currentHoldings.map(h => `
@@ -1638,20 +1655,22 @@
                         <td>${h.etfCode}</td>
                         <td>${fmtNum(h.lots, 1)}</td>
                         <td>${h.weight.toFixed(2)}%</td>
+                        <td>${h.dataDate || '—'}</td>
                     </tr>`).join('');
 
                 currentBlock = `
-                    <div class="lookup-block-title">📌 目前持有此股的 ETF（${currentHoldings.length} 檔，資料日期 ${latestDate}）</div>
+                    <div class="lookup-block-title">📌 目前持有此股的 ETF（${currentHoldings.length} 檔）</div>
                     <div class="lookup-table-wrap">
                         <table class="lookup-table">
                             <thead>
-                                <tr><th>ETF 代碼</th><th>持股（張）</th><th>權重</th></tr>
+                                <tr><th>ETF 代碼</th><th>持股（張）</th><th>權重</th><th>資料日期</th></tr>
                             </thead>
                             <tbody>${rows}</tbody>
                             <tfoot>
                                 <tr>
                                     <td>合計持股</td>
                                     <td>${fmtNum(totalLots, 1)}</td>
+                                    <td>—</td>
                                     <td>—</td>
                                 </tr>
                             </tfoot>

@@ -31,9 +31,61 @@ class ReportManager:
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.docs_dir.mkdir(parents=True, exist_ok=True)
     
+    def build_etf_holdings(self, etf_info_dict: Dict[str, str], date: str) -> List[dict]:
+        """
+        組出報表用的持股資料，逐檔回退到各自最新可得的資料日期。
+
+        逐檔取「不晚於報表日期的最新有資料日期」，而不是一律用報表日期。
+        原因：各家投信的資料日期天然不同步（當日 PCF 的發布時間各家不同），
+        且寫入層的日期錯位防護會擋掉來源未更新的當日資料。若固定用報表日期，
+        那些落後一天的 ETF 會整檔從持股總覽消失——2026-08-05 實測會從 18 檔
+        掉到 2 檔。改為逐檔回退後，每檔都顯示自己最新可得的持股，
+        並以 data_date 標示該檔實際的資料日期。
+
+        **這是持股總覽的唯一出口**：每日報表（generate_all_reports）與歷史回填
+        （scripts/regenerate_reports.py）都必須走這裡。兩邊各寫一份的話，
+        回填出來的報表會少掉 data_date，而且與逐檔回退的變動追蹤對不起來。
+
+        Args:
+            etf_info_dict: ETF 代碼 -> 名稱
+            date: 報表日期（上限，不會取到晚於這天的資料）
+
+        Returns:
+            List[dict]: 每檔含 etf_code / etf_name / data_date / holdings
+        """
+        etf_holdings = []
+        for etf_code in etf_info_dict.keys():
+            holdings_date = self.db.get_latest_date_on_or_before(etf_code, date)
+            holdings = (
+                self.db.get_holdings_by_date(holdings_date, etf_code)
+                if holdings_date else []
+            )
+            if not holdings:
+                continue
+            if holdings_date != date:
+                logger.info(
+                    f"{etf_code}: no holdings on {date}; "
+                    f"falling back to its latest available date {holdings_date}"
+                )
+            etf_holdings.append({
+                'etf_code': etf_code,
+                'etf_name': etf_info_dict.get(etf_code, etf_code),
+                'data_date': holdings_date,
+                'holdings': [
+                    {
+                        'stock_code': h.get('stock_code', ''),
+                        'stock_name': h.get('stock_name', ''),
+                        'weight': h.get('weight', 0),
+                        'lots': h.get('shares', 0) / 1000 if h.get('shares') else 0
+                    }
+                    for h in holdings
+                ]
+            })
+        return etf_holdings
+
     def generate_all_reports(
-        self, 
-        changes_dict: Dict[str, List[HoldingChange]], 
+        self,
+        changes_dict: Dict[str, List[HoldingChange]],
         date: str,
         append_txt: bool = False
     ):
@@ -79,25 +131,8 @@ class ReportManager:
         logger.info(f"Markdown report saved to: {md_file}")
         
         # 3. 生成 HTML 報告（GitHub Pages）
-        # 獲取 ETF 持股資料
-        etf_holdings = []
-        for etf_code in etf_info_dict.keys():
-            holdings = self.db.get_holdings_by_date(date, etf_code)
-            if holdings:
-                etf_holdings.append({
-                    'etf_code': etf_code,
-                    'etf_name': etf_info_dict.get(etf_code, etf_code),
-                    'holdings': [
-                        {
-                            'stock_code': h.get('stock_code', ''),
-                            'stock_name': h.get('stock_name', ''),
-                            'weight': h.get('weight', 0),
-                            'lots': h.get('shares', 0) / 1000 if h.get('shares') else 0
-                        }
-                        for h in holdings
-                    ]
-                })
-        
+        etf_holdings = self.build_etf_holdings(etf_info_dict, date)
+
         html_file = self.html_generator.generate_daily_report(
             changes_dict, 
             date, 

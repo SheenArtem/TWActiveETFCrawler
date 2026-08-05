@@ -33,6 +33,11 @@ wheels/
 *.swo
 *~
 
+# Claude Code 的本機設定（含自動允許規則，不該進共用 repo）
+# 只忽略這兩個設定檔，不忽略整個 .claude/，以免日後共用的 slash command 或 agent 設定被漏掉。
+.claude/settings.json
+.claude/settings.local.json
+
 # 日誌
 logs/
 *.log

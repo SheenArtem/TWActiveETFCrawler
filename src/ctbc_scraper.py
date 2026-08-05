@@ -3,9 +3,10 @@
 使用 Playwright 訪問持股頁面並從 DOM (div 結構) 提取數據
 """
 from playwright.sync_api import sync_playwright
+import re
 import time
 import random
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
 from loguru import logger
@@ -174,10 +175,60 @@ class CTBCScraper:
             
         return holdings
 
+    @staticmethod
+    def _extract_data_date(file_path, fallback: str) -> Tuple[str, bool]:
+        """
+        從 Excel 取出中信自己標示的「資料日期」，取代請求日期。
+
+        中信當日 PCF 的發布時間不固定，盤中下載到的可能仍是前一交易日的資料
+        （2026-08-05 16:44 實測已有當日；同日稍早則是前一日）。若沿用請求日期，
+        盤中抓到的前一日內容就會被標成當日。Excel 第 4 列格式為
+        ['資料日期', '2026/08/04']，檔名亦帶 -YYYYMMDD。
+
+        Args:
+            file_path: Excel 路徑
+            fallback: 找不到時使用的日期（請求日期）
+
+        Returns:
+            (YYYY-MM-DD, 是否真的取自來源)。第二個值為 False 時代表退回請求日期，
+            呼叫端不可標記 source_dated，寫入層的日期錯位防護要繼續生效。
+        """
+        import pandas as pd
+        try:
+            head = pd.read_excel(file_path, header=None, nrows=12)
+        except Exception as e:
+            logger.warning(f"Cannot read Excel header to find data date: {e}")
+            return fallback, False
+
+        for _, row in head.iterrows():
+            values = [str(v).strip() for v in row.tolist() if str(v) != 'nan']
+            if not any('資料日期' in v for v in values):
+                continue
+            for value in values:
+                match = re.search(r'(20\d{2})[/\-年](\d{1,2})[/\-月](\d{1,2})', value)
+                if match:
+                    y, m, d = match.groups()
+                    actual = f"{y}-{int(m):02d}-{int(d):02d}"
+                    if actual != fallback:
+                        logger.info(
+                            f"CTBC data date from Excel: {actual} (requested {fallback})"
+                        )
+                    return actual, True
+
+        logger.warning(
+            f"No 資料日期 found in Excel; falling back to requested date {fallback}"
+        )
+        return fallback, False
+
     def _parse_excel(self, file_path, date):
-        """解析下載的 Excel 檔案"""
+        """
+        解析下載的 Excel 檔案
+
+        date 僅作為找不到「資料日期」時的退路；正常情況以 Excel 內的資料日期為準。
+        """
         import pandas as pd
         holdings = []
+        date, source_dated = self._extract_data_date(file_path, date)
         try:
             # 讀取 Excel，可能有多個 sheet 或 header 位置不固定
             # 先讀取前幾行來判斷
@@ -227,7 +278,8 @@ class CTBCScraper:
                                     'stock_name': name,
                                     'shares': shares,
                                     'weight': weight,
-                                    'date': date
+                                    'date': date,
+                                    'source_dated': source_dated
                                 })
                     except Exception as e:
                         logger.warning(f"Error parsing row: {e}")

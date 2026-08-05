@@ -16,7 +16,7 @@ import io
 import re
 import random
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 import openpyxl
 import requests
@@ -121,10 +121,15 @@ class ABFundsScraper:
             return None
 
     @staticmethod
-    def _date_from_response(resp: requests.Response, fallback: str) -> str:
+    def _date_from_response(resp: requests.Response, fallback: str) -> Tuple[str, bool]:
+        """回傳 (資料日期, 是否真的取自來源)。
+
+        第二個值為 False 時代表 content-disposition 沒有日期、退回請求日期，
+        呼叫端不可標記 source_dated（見 Database._reject_duplicate_snapshots）。
+        """
         cd = resp.headers.get('content-disposition', '')
         m = re.search(r'(\d{4}-\d{2}-\d{2})', cd)
-        return m.group(1) if m else fallback
+        return (m.group(1), True) if m else (fallback, False)
 
     def get_etf_holdings(self, etf_code: str, date: str) -> List[Dict[str, Any]]:
         """從 holdings xlsx 解析持股清單。
@@ -140,7 +145,7 @@ class ABFundsScraper:
         if not resp:
             return []
 
-        actual_date = self._date_from_response(resp, date)
+        actual_date, source_dated = self._date_from_response(resp, date)
 
         try:
             wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True, read_only=True)
@@ -184,6 +189,7 @@ class ABFundsScraper:
                 'market_value': market_value,
                 'weight': weight,
                 'date': actual_date,
+                'source_dated': source_dated,
             })
 
         logger.info(f"AB: parsed {len(holdings)} holdings for {etf_code} on {actual_date}")

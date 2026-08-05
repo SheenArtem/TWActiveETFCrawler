@@ -1,7 +1,8 @@
 
+import re
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from loguru import logger
 from src.utils import get_user_agent
 import urllib3
@@ -45,8 +46,9 @@ class FubonScraper:
 
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                holdings = self._parse_html_table(soup, date, etf_code)
-                logger.info(f"Parsed {len(holdings)} holdings for {etf_code}")
+                actual_date, source_dated = self._extract_data_date(soup, date)
+                holdings = self._parse_html_table(soup, actual_date, etf_code, source_dated)
+                logger.info(f"Parsed {len(holdings)} holdings for {etf_code} (data date: {actual_date})")
             else:
                 logger.error(f"Fubon: Failed to fetch {etf_code}: HTTP {response.status_code}")
 
@@ -56,7 +58,42 @@ class FubonScraper:
 
         return holdings
 
-    def _parse_html_table(self, soup: BeautifulSoup, date: str, etf_code: str) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _extract_data_date(soup: BeautifulSoup, fallback: str) -> Tuple[str, bool]:
+        """
+        從頁面取出富邦標示的「資料日期」，取代請求日期。
+
+        頁面上有「資料日期：2026/08/04」。富邦當日資料的發布時間不固定，
+        盤中抓到的可能仍是前一交易日（2026-08-05 16:44 實測已有當日），
+        沿用請求日期就會把前一日內容標成當日。
+
+        Args:
+            soup: 已解析的頁面
+            fallback: 找不到時使用的日期（請求日期）
+
+        Returns:
+            (YYYY-MM-DD, 是否真的取自來源)。第二個值為 False 時代表退回請求日期，
+            呼叫端不可標記 source_dated，寫入層的日期錯位防護要繼續生效。
+        """
+        match = re.search(
+            r'資料日期[：:\s]*(20\d{2})[/\-年](\d{1,2})[/\-月](\d{1,2})',
+            soup.get_text(' ', strip=True),
+        )
+        if not match:
+            logger.warning(
+                f"Fubon: 資料日期 not found on page; falling back to requested date {fallback}"
+            )
+            return fallback, False
+
+        y, m, d = match.groups()
+        actual = f"{y}-{int(m):02d}-{int(d):02d}"
+        if actual != fallback:
+            logger.info(f"Fubon data date from page: {actual} (requested {fallback})")
+        return actual, True
+
+    def _parse_html_table(
+        self, soup: BeautifulSoup, date: str, etf_code: str, source_dated: bool = False
+    ) -> List[Dict[str, Any]]:
         """解析持股 HTML 表格
 
         定位表頭含「股數」與「權重」的股票表（排除含「口數」的期貨表、無這些欄位的資產彙總表）。
@@ -101,7 +138,8 @@ class FubonScraper:
                         'shares': shares,
                         'weight': weight,
                         'market_value': market_value,
-                        'date': date
+                        'date': date,
+                        'source_dated': source_dated
                     })
                 except Exception as e:
                     logger.debug(f"Fubon: error parsing row: {e}")

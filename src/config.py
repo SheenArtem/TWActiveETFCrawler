@@ -29,6 +29,21 @@ BATCH_DELAY_MAX = float(os.getenv("BATCH_DELAY_MAX", "10.0"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_PATH = BASE_DIR / os.getenv("LOG_PATH", "logs/etf_crawler.log")
 
+# 日期錯位防護
+# 若某 ETF 這次抓到的持股與「前一交易日」逐列完全相同（股票、股數、權重都一樣），
+# 判定為投信尚未更新當日 PCF，不寫入並記錄警告，避免把前一日資料標成當日。
+#
+# 只對「用請求日期當資料日期」的來源生效：群益、安聯、台新、國泰、野村、復華，
+# 以及統一的 API 路徑；摩根雖然讀 PCF 估值日，但估值日領先一日、夾到請求日之後
+# 就失去辨識來源是否更新的能力，因此仍受防護。
+# 已從來源取得資料日期的（中信、富邦、第一金、聯博、統一 Excel 路徑）由 scraper
+# 標記 source_dated=True 而跳過防護——那些來源不會錯位，擋下來只會誤擋，
+# 而且誤擋無法補救（來源日期會往前走，被擋掉那天再也抓不回來）。
+# 判斷邏輯與理由見 Database._reject_duplicate_snapshots。
+#
+# 背景：2026-02~08 期間錯位共發生 15 個交易日。詳見 AGENTS.md「日期錯位防護」。
+REJECT_DUPLICATE_OF_PREVIOUS_DAY = os.getenv("REJECT_DUPLICATE_OF_PREVIOUS_DAY", "True").lower() == "true"
+
 # 變動追蹤設定
 ENABLE_CHANGE_TRACKING = os.getenv("ENABLE_CHANGE_TRACKING", "True").lower() == "true"
 WEIGHT_CHANGE_THRESHOLD = float(os.getenv("WEIGHT_CHANGE_THRESHOLD", "0.5"))  # 權重變動閾值（%）

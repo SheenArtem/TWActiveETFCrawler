@@ -2,12 +2,14 @@
 資料庫管理模組
 """
 import sqlite3
+from collections import defaultdict
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime
 from loguru import logger
 
 from .stock_names import canonical_name
+from .config import REJECT_DUPLICATE_OF_PREVIOUS_DAY
 
 
 class Database:
@@ -111,25 +113,144 @@ class Database:
         
         logger.info(f"Inserted/Updated {len(etf_list)} ETFs")
     
+    @staticmethod
+    def _holdings_fingerprint(rows) -> Set[Tuple[str, int, float]]:
+        """
+        建立持股指紋：{(股票代號, 股數, 權重)} 的集合。
+
+        用 set 而非 list，避免排序差異或重複列造成假性不同；
+        權重取到小數 4 位，容忍浮點表示誤差。
+        """
+        fingerprint = set()
+        for stock_code, shares, weight in rows:
+            fingerprint.add((
+                str(stock_code),
+                int(shares or 0),
+                round(float(weight or 0), 4),
+            ))
+        return fingerprint
+
+    def _previous_trading_date(self, cursor, etf_code: str, date: str) -> Optional[str]:
+        """取該 ETF 在 date 之前、最近一個有資料的交易日"""
+        cursor.execute(
+            "SELECT MAX(date) FROM holdings WHERE etf_code=? AND date<?",
+            (etf_code, date),
+        )
+        row = cursor.fetchone()
+        return row[0] if row and row[0] else None
+
+    def _duplicates_previous_day(
+        self, cursor, etf_code: str, date: str, incoming_rows
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        判斷待寫入的持股是否與前一交易日逐列完全相同。
+
+        Returns:
+            (是否重複, 前一交易日)。無前一交易日或前一日無資料時回傳 (False, prev)。
+        """
+        prev_date = self._previous_trading_date(cursor, etf_code, date)
+        if not prev_date:
+            return False, None
+
+        cursor.execute(
+            "SELECT stock_code, shares, weight FROM holdings WHERE etf_code=? AND date=?",
+            (etf_code, prev_date),
+        )
+        previous = self._holdings_fingerprint(cursor.fetchall())
+        if not previous:
+            return False, prev_date
+
+        return self._holdings_fingerprint(incoming_rows) == previous, prev_date
+
+    def _reject_duplicate_snapshots(
+        self, cursor, holdings: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        日期錯位防護：剔除「與前一交易日完全相同」的 (ETF, 日期) 群組。
+
+        投信當日 PCF 尚未發布時，用請求日期當資料日期的 scraper 會把前一日內容
+        寫成當日。逐列完全相同即視為來源未更新，不寫入並記錄警告，
+        讓當日資料維持缺漏，而非留下假資料。
+
+        **只對「用請求日期」的來源生效。** 若群組內每一列都帶
+        `source_dated=True`（scraper 已從來源本身取得資料日期），則跳過防護：
+        那種來源不會有錯位，防護對它只會誤擋，而且誤擋無法補救——來源日期
+        會往前走（隔天只給隔天的檔案），被擋掉的那天再也抓不回來。
+        用請求日期的來源則相反，被擋掉後當天稍後的班次還有機會補上真實資料。
+
+        `source_dated` 由 scraper 在「確實解析到來源日期」時才設 True；
+        解析失敗退回請求日期時必須不設或設 False。夾住過的日期（如摩根 PCF
+        估值日夾到請求日）也不算 source_dated——夾住後就失去辨識來源是否
+        更新的能力，仍需要防護。
+
+        Returns:
+            過濾後的持股列表；未啟用或無重複時原樣回傳。
+        """
+        grouped: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
+        for holding in holdings:
+            grouped[(holding.get('etf_code'), holding.get('date'))].append(holding)
+
+        rejected: Set[Tuple[str, str]] = set()
+        for (etf_code, date), rows in grouped.items():
+            if not etf_code or not date:
+                continue
+            # all() 而非 any()：混合來源時保守地繼續防護
+            if rows and all(r.get('source_dated') for r in rows):
+                logger.debug(
+                    f"Skipping duplicate guard for {etf_code} {date}: "
+                    f"date came from the source itself"
+                )
+                continue
+            incoming = [
+                (r.get('stock_code'), r.get('shares'), r.get('weight')) for r in rows
+            ]
+            is_duplicate, prev_date = self._duplicates_previous_day(
+                cursor, etf_code, date, incoming
+            )
+            if is_duplicate:
+                rejected.add((etf_code, date))
+                logger.warning(
+                    f"Rejected {etf_code} {date}: {len(rows)} holdings are identical "
+                    f"row-for-row to {prev_date}; source has likely not published "
+                    f"today's PCF yet. Nothing written for {date}."
+                )
+
+        if not rejected:
+            return holdings
+
+        return [
+            h for h in holdings
+            if (h.get('etf_code'), h.get('date')) not in rejected
+        ]
+
     def insert_holdings(self, holdings: List[Dict[str, Any]]):
         """
         插入或更新持股明細
-        
+
         當同一 ETF、股票、日期的記錄已存在時，會更新為最新資料。
         這允許一天內多次執行爬蟲時能夠更新資料。
-        
+
+        寫入前會執行日期錯位防護（見 _reject_duplicate_snapshots），
+        可用環境變數 REJECT_DUPLICATE_OF_PREVIOUS_DAY=False 關閉。
+
         Args:
             holdings: 持股明細列表
-        
+
         Returns:
             int: 新插入或更新的記錄數
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         inserted_count = 0
         updated_count = 0
-        
+
+        if REJECT_DUPLICATE_OF_PREVIOUS_DAY and holdings:
+            holdings = self._reject_duplicate_snapshots(cursor, holdings)
+            if not holdings:
+                conn.close()
+                return 0
+
         for holding in holdings:
             try:
                 etf_code = holding.get('etf_code')
@@ -277,9 +398,37 @@ class Database:
         
         result = cursor.fetchone()[0]
         conn.close()
-        
+
         return result
-    
+
+    def get_latest_date_on_or_before(self, etf_code: str, date: str) -> Optional[str]:
+        """
+        取某 ETF 在 date（含）之前最新的有資料日期。
+
+        各家投信的資料日期天然不同步：當日 PCF 的發布時間各家不同，早發布的當日就有，
+        晚發布的要到收盤後才更新。改用來源日期後，報表日期那天本來就不會每檔 ETF 都有資料，
+        用單一日期去撈會讓那些落後一天的 ETF 整檔從報表消失。報表因此改為
+        逐檔取各自最新可得的日期（見 ReportManager.generate_all_reports）。
+
+        Args:
+            etf_code: ETF 代碼
+            date: 上限日期（含），避免取到晚於報表日期的資料
+
+        Returns:
+            str: YYYY-MM-DD；該 ETF 在期限內完全沒有資料時回傳 None
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT MAX(date) FROM holdings WHERE etf_code=? AND date<=?",
+            (etf_code, date),
+        )
+        result = cursor.fetchone()[0]
+        conn.close()
+
+        return result
+
     def get_previous_trading_date(self, current_date: str, etf_code: str = None) -> str:
         """
         獲取指定日期的前一個交易日

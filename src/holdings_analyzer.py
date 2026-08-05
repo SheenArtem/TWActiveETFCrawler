@@ -163,23 +163,37 @@ class HoldingsAnalyzer:
     
     def detect_changes_batch(self, etf_codes: List[str], current_date: str) -> Dict[str, List[HoldingChange]]:
         """
-        偵測指定列表中 ETF 在指定日期的變動
-        
+        偵測指定列表中 ETF 的變動，逐檔取各自最新可得的資料日期
+
+        各家投信的資料日期天然不同步（當日 PCF 的發布時間各家不同），加上寫入層的
+        日期錯位防護會擋掉來源未更新的當日資料，所以 current_date 那天本來就不會每檔
+        ETF 都有資料。若一律用 current_date 去比對，detect_changes() 會在「當日無持股」
+        那個分支直接跳過，落後一天的 ETF 就永遠不會出現在變動報表裡。
+        持股總覽已在 ReportManager 逐檔回退，這裡是另一半。
+
+        代價：來源某天沒有前進時（歷史模擬中信 8 次、富邦 3 次），該檔會以同一個資料
+        日期再被報一次。重複顯示比整檔消失好，且持股卡片上的 data_date 會標出實際日期。
+
         Args:
             etf_codes: ETF 代碼列表
-            current_date: 當前日期 (YYYY-MM-DD)
-            
+            current_date: 報表日期，作為上限（不會取到晚於這天的資料）
+
         Returns:
             Dict[str, List[HoldingChange]]: ETF代碼 -> 變動列表的字典
         """
         all_changes = {}
-        
+
         for etf_code in etf_codes:
-            changes = self.detect_changes(etf_code, current_date)
-            
+            # 上限之前完全沒有資料的 ETF 直接跳過
+            etf_date = self.db.get_latest_date_on_or_before(etf_code, current_date)
+            if not etf_date:
+                continue
+
+            changes = self.detect_changes(etf_code, etf_date)
+
             if changes:
                 all_changes[etf_code] = changes
-                
+
         return all_changes
 
     def detect_all_changes(self, current_date: str) -> Dict[str, List[HoldingChange]]:

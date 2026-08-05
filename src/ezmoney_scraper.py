@@ -351,7 +351,11 @@ class EZMoneyScraper:
         
         holdings = []
         actual_date = date  # 預設使用傳入的日期
-        
+        # source_dated：只有真的從 Excel 表頭解析到資料日期才算來源日期。
+        # 退回請求日期時必須維持 False，讓寫入層的日期錯位防護繼續生效
+        # （見 Database._reject_duplicate_snapshots）。
+        source_dated = False
+
         try:
             # ===== 步驟 1: 從 Excel 第一行提取實際資料日期 =====
             df_header = pd.read_excel(excel_path, header=None, nrows=1)
@@ -367,7 +371,8 @@ class EZMoneyScraper:
                     day = int(match.group(3))
                     west_year = roc_year + 1911
                     actual_date = f"{west_year}-{month:02d}-{day:02d}"
-                    
+                    source_dated = True
+
                     if actual_date != date:
                         logger.info(f"Excel actual date: {actual_date} (expected: {date})")
                     else:
@@ -441,7 +446,8 @@ class EZMoneyScraper:
                         'shares': self._parse_number(row[col_mapping['shares']]) if col_mapping['shares'] else 0,
                         'market_value': 0,  # Excel 檔案中沒有市值欄位
                         'weight': self._parse_percentage(row[col_mapping['weight']]) if col_mapping['weight'] else 0.0,
-                        'date': actual_date  # 使用從 Excel 提取的實際日期
+                        'date': actual_date,  # 使用從 Excel 提取的實際日期
+                        'source_dated': source_dated
                     }
                     
                     holdings.append(holding)

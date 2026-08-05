@@ -1,0 +1,36 @@
+name: Tests
+
+# 為什麼要獨立一支 workflow:
+# 抓取用的 daily-scraper.yml 已刻意移除 push 觸發(盤中跑會把前一日資料寫成當日),
+# 移除之後改動程式碼就沒有任何 workflow 會跑,日期錯位防護的回歸只能靠人工記得跑。
+# 這支只跑測試:不連投信網站、不碰 data/etf_holdings.db(測試自己開 temp DB),
+# 所以可以安全地掛在每次 push / PR 上。
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        # 不跑 playwright install chromium: 測試只呼叫 CTBCScraper 的靜態解析函式,
+        # 需要的是 playwright 這個 python 套件本身,不需要瀏覽器二進位檔。
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run date-misalignment guard regression suite
+        run: python test_duplicate_guard.py
