@@ -1,4 +1,18 @@
+"""
+第一金投信 (FSITC) 爬蟲
 
+【資料來源原則的已知例外】見 AGENTS.md「資料來源原則」。
+本專案優先採用官網下載檔案，但第一金官網沒有任何持股檔案可下載
+（2026-08-05 實測：「檔案下載」區只有公開說明書/月報 PDF，
+「申購買回清單」是頁面內分頁、由 API 動態渲染，無匯出按鈕）。
+
+不改成解析網頁 DOM 的原因：網頁上的「資料日期」是查詢輸入框的值（今天），
+不是資料實際日期；只有 API 回傳的 sdate 是真正的資料日期。
+改走 DOM 會失去可靠日期來源，使 commit ce87043 修掉的日期錯位問題回歸。
+
+已知風險：此 API 的欄位是 A/B/C/D 這種無語意代號，改版時容易無聲失效；
+若日後官網提供檔案下載，或在 DOM 明確標示資料日期，應改回原則路徑。
+"""
 import requests
 import pandas as pd
 from datetime import datetime
@@ -14,10 +28,12 @@ class FSITCScraper:
     BASE_URL = "https://www.fsitc.com.tw"
     API_URL = "https://www.fsitc.com.tw/WebAPI.aspx/Get_hd"
     
-    # 基金代碼映射 (Fund ID -> ETF Code)
-    # 目前已知 00994A -> 182
+    # 基金代碼映射 (ETF Code -> Fund ID)
+    # 查法：官網首頁的 FundDetail.aspx?ID=<n> 的 n 即為此處 fund_id，
+    #       開該頁確認基金全名（優「選」=00994A、優「股息」=00408A，名稱只差一字）
     FUND_ID_MAP = {
-        "00994A": "182"
+        "00994A": "182",  # 第一金台股趨勢優選主動式ETF基金
+        "00408A": "183",  # 第一金台股趨勢優股息主動式ETF基金（2026/7/15 掛牌）
     }
     
     def __init__(self):

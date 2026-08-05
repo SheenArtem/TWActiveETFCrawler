@@ -19,7 +19,10 @@ from .config import (
 # 中信投信 ETF 基金代碼對照表
 CTBC_ETF_CODES = {
     '00995A': '00653201',  # 中國信託台灣卓越成長主動式ETF基金
+    '00406A': '00682450',  # 中國信託台灣收益成長主動式ETF基金（2026/6/11 掛牌）
     # 未來可以新增其他中信投信 ETF
+    # 查法：瀏覽器開 https://www.ctbcinvestments.com/Etf 點進目標 ETF，
+    #       網址 /Etf/<fund_id>/Combination 中的數字即為此處的值
 }
 
 

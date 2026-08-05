@@ -17,6 +17,7 @@ from src.config import (
     REPORTS_DIR
 )
 from src.database import Database
+from src.etf_names import get_etf_name
 # TWSE 爬蟲已移除，改為使用各家投信官網直接爬取
 from src.ezmoney_scraper import EZMoneyScraper
 from src.nomura_scraper import NomuraScraper
@@ -65,7 +66,7 @@ def daily_update_ezmoney(generate_report=True):
     for etf_code in ezmoney_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'{etf_code} (EZMoney)',  # 可以之後手動更新名稱
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'EZMoney',
             'listing_date': ''
         })
@@ -148,7 +149,7 @@ def daily_update_nomura(generate_report=True):
     for etf_code, fund_id in nomura_etfs.items():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'Nomura ETF {etf_code}',
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'Nomura',
             'listing_date': ''
         })
@@ -216,7 +217,7 @@ def daily_update_capital(generate_report=True):
     for etf_code in capital_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'Capital ETF {etf_code}',
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'Capital',
             'listing_date': ''
         })
@@ -283,7 +284,7 @@ def daily_update_fhtrust(generate_report=True):
     for etf_code in fhtrust_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'FHTrust ETF {etf_code}',
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'FHTrust',
             'listing_date': ''
         })
@@ -350,7 +351,7 @@ def daily_update_ctbc(generate_report=True):
     for etf_code in ctbc_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'CTBC ETF {etf_code}',
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'CTBC',
             'listing_date': ''
         })
@@ -417,7 +418,7 @@ def daily_update_fsitc(generate_report=True):
     for etf_code in fsitc_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'FSITC ETF {etf_code}',
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'FSITC',
             'listing_date': ''
         })
@@ -496,7 +497,7 @@ def daily_update_tsit(generate_report=True):
     for etf_code in tsit_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': f'TSIT ETF {etf_code}',
+            'etf_name': get_etf_name(etf_code),
             'issuer': 'TSIT',
             'listing_date': ''
         })
@@ -556,7 +557,7 @@ def daily_update_cathay(generate_report=True):
 
     etf_list_data = [{
         'etf_code': etf_code,
-        'etf_name': '主動國泰動能高息' if etf_code == '00400A' else f'{etf_code} (Cathay)',
+        'etf_name': get_etf_name(etf_code),
         'issuer': 'Cathay',
         'listing_date': ''
     } for etf_code in cathay_etfs.keys()]
@@ -610,7 +611,7 @@ def daily_update_morgan(generate_report=True):
 
     etf_list_data = [{
         'etf_code': etf_code,
-        'etf_name': '主動摩根台灣鑫收' if etf_code == '00401A' else f'{etf_code} (Morgan)',
+        'etf_name': get_etf_name(etf_code),
         'issuer': 'Morgan',
         'listing_date': ''
     } for etf_code in morgan_etfs.keys()]
@@ -665,7 +666,7 @@ def daily_update_fubon(generate_report=True):
 
     etf_list_data = [{
         'etf_code': etf_code,
-        'etf_name': '主動富邦台灣龍躍' if etf_code == '00405A' else f'{etf_code} (富邦投信)',
+        'etf_name': get_etf_name(etf_code),
         'issuer': '富邦投信',
         'listing_date': ''
     } for etf_code in fubon_etfs.keys()]
@@ -719,7 +720,7 @@ def daily_update_abfunds(generate_report=True):
 
     etf_list_data = [{
         'etf_code': etf_code,
-        'etf_name': '聯博台灣動能收益50主動式ETF' if etf_code == '00404A' else f'{etf_code} (聯博投信)',
+        'etf_name': get_etf_name(etf_code),
         'issuer': '聯博投信',
         'listing_date': ''
     } for etf_code in ab_etfs.keys()]
@@ -781,7 +782,7 @@ def daily_update_allianz(generate_report=True):
     for etf_code in allianz_etfs.keys():
         etf_list_data.append({
             'etf_code': etf_code,
-            'etf_name': '安聯台灣高息成長主動式ETF' if etf_code == '00984A' else f'{etf_code} (安聯投信)',
+            'etf_name': get_etf_name(etf_code),
             'issuer': '安聯投信',
             'listing_date': ''
         })
