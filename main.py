@@ -31,6 +31,9 @@ from src.cathay_scraper import CathayScraper
 from src.morgan_scraper import MorganScraper
 from src.fubon_scraper import FubonScraper
 from src.abfunds_scraper import ABFundsScraper
+from src.megafunds_scraper import MegaFundsScraper
+from src.kgi_scraper import KGIScraper
+from src.sinopac_scraper import SinoPacScraper
 from src.utils import setup_logging, cleanup_old_data, get_trading_days
 from src.report_manager import ReportManager
 from src.etf_market_data import ETFMarketDataFetcher
@@ -836,6 +839,168 @@ def daily_update_allianz(generate_report=True):
     logger.info(f"  Date range: {stats['date_range']['start']} to {stats['date_range']['end']}")
 
 
+def daily_update_megafunds(generate_report=True):
+    """每日更新兆豐投信 ETF 作業（申購買回清單 WebForms postback）"""
+    logger.info("Starting Mega Funds ETF daily update...")
+
+    db = Database(DB_FULL_PATH)
+    scraper = MegaFundsScraper()
+
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:
+        target_date -= timedelta(days=1)
+    date_str = target_date.strftime('%Y-%m-%d')
+    logger.info(f"Fetching Mega Funds ETF data for {date_str}")
+
+    mega_etfs = scraper.get_all_mappings()
+    logger.info(f"Found {len(mega_etfs)} Mega Funds ETFs to update")
+
+    etf_list_data = [{
+        'etf_code': etf_code,
+        'etf_name': get_etf_name(etf_code),
+        'issuer': '兆豐投信',
+        'listing_date': ''
+    } for etf_code in mega_etfs.keys()]
+    if etf_list_data:
+        db.insert_etf_list(etf_list_data)
+
+    total_inserted = 0
+    for i, etf_code in enumerate(mega_etfs.keys(), 1):
+        logger.info(f"[{i}/{len(mega_etfs)}] Updating {etf_code}")
+        try:
+            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            if holdings:
+                inserted = db.insert_holdings(holdings)
+                total_inserted += inserted
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (data date: {holdings[0]['date']})")
+            else:
+                logger.warning(f"{etf_code}: No holdings data found")
+        except Exception as e:
+            logger.error(f"Error updating {etf_code}: {e}")
+            logger.exception(e)
+
+    logger.info(f"Mega Funds ETF daily update complete: {total_inserted} new holdings inserted")
+
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+        logger.info("Analyzing holdings changes...")
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(mega_etfs.keys()), date_str)
+        if changes_dict:
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
+        else:
+            logger.info("No significant changes detected.")
+
+
+def daily_update_kgi(generate_report=True):
+    """每日更新凱基投信 ETF 作業（申購買回清單 partial view）"""
+    logger.info("Starting KGI ETF daily update...")
+
+    db = Database(DB_FULL_PATH)
+    scraper = KGIScraper()
+
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:
+        target_date -= timedelta(days=1)
+    date_str = target_date.strftime('%Y-%m-%d')
+    logger.info(f"Fetching KGI ETF data for {date_str}")
+
+    kgi_etfs = scraper.get_all_mappings()
+    logger.info(f"Found {len(kgi_etfs)} KGI ETFs to update")
+
+    etf_list_data = [{
+        'etf_code': etf_code,
+        'etf_name': get_etf_name(etf_code),
+        'issuer': '凱基投信',
+        'listing_date': ''
+    } for etf_code in kgi_etfs.keys()]
+    if etf_list_data:
+        db.insert_etf_list(etf_list_data)
+
+    total_inserted = 0
+    for i, etf_code in enumerate(kgi_etfs.keys(), 1):
+        logger.info(f"[{i}/{len(kgi_etfs)}] Updating {etf_code}")
+        try:
+            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            if holdings:
+                inserted = db.insert_holdings(holdings)
+                total_inserted += inserted
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (data date: {holdings[0]['date']})")
+            else:
+                logger.warning(f"{etf_code}: No holdings data found")
+        except Exception as e:
+            logger.error(f"Error updating {etf_code}: {e}")
+            logger.exception(e)
+
+    logger.info(f"KGI ETF daily update complete: {total_inserted} new holdings inserted")
+
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+        logger.info("Analyzing holdings changes...")
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(kgi_etfs.keys()), date_str)
+        if changes_dict:
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
+        else:
+            logger.info("No significant changes detected.")
+
+
+def daily_update_sinopac(generate_report=True):
+    """每日更新永豐投信 ETF 作業（現金申購買回清單頁面 SSR）"""
+    logger.info("Starting SinoPac ETF daily update...")
+
+    db = Database(DB_FULL_PATH)
+    scraper = SinoPacScraper()
+
+    target_date = datetime.now()
+    while target_date.weekday() >= 5:
+        target_date -= timedelta(days=1)
+    date_str = target_date.strftime('%Y-%m-%d')
+    logger.info(f"Fetching SinoPac ETF data for {date_str}")
+
+    sinopac_etfs = scraper.get_all_mappings()
+    logger.info(f"Found {len(sinopac_etfs)} SinoPac ETFs to update")
+
+    etf_list_data = [{
+        'etf_code': etf_code,
+        'etf_name': get_etf_name(etf_code),
+        'issuer': '永豐投信',
+        'listing_date': ''
+    } for etf_code in sinopac_etfs.keys()]
+    if etf_list_data:
+        db.insert_etf_list(etf_list_data)
+
+    total_inserted = 0
+    for i, etf_code in enumerate(sinopac_etfs.keys(), 1):
+        logger.info(f"[{i}/{len(sinopac_etfs)}] Updating {etf_code}")
+        try:
+            holdings = scraper.get_etf_holdings(etf_code, date_str)
+            if holdings:
+                inserted = db.insert_holdings(holdings)
+                total_inserted += inserted
+                logger.info(f"{etf_code}: Inserted {inserted} new holdings (data date: {holdings[0]['date']})")
+            else:
+                logger.warning(f"{etf_code}: No holdings data found")
+        except Exception as e:
+            logger.error(f"Error updating {etf_code}: {e}")
+            logger.exception(e)
+
+    logger.info(f"SinoPac ETF daily update complete: {total_inserted} new holdings inserted")
+
+    if generate_report and ENABLE_CHANGE_TRACKING and SAVE_CHANGE_REPORTS:
+        logger.info("Analyzing holdings changes...")
+        report_mgr = ReportManager(db, REPORTS_DIR)
+        changes_dict = report_mgr.analyzer.detect_changes_batch(list(sinopac_etfs.keys()), date_str)
+        if changes_dict:
+            report = report_mgr.analyzer.generate_report(changes_dict, date_str)
+            logger.info(report)
+            report_mgr.generate_all_reports(changes_dict, date_str, append_txt=True)
+        else:
+            logger.info("No significant changes detected.")
+
+
 def show_stats():
     """顯示資料庫統計資訊"""
     db = Database(DB_FULL_PATH)
@@ -1017,6 +1182,24 @@ def main():
     )
 
     parser.add_argument(
+        '--megafunds',
+        action='store_true',
+        help='每日更新模式：抓取兆豐投信 ETF 最新資料'
+    )
+
+    parser.add_argument(
+        '--kgi',
+        action='store_true',
+        help='每日更新模式：抓取凱基投信 ETF 最新資料'
+    )
+
+    parser.add_argument(
+        '--sinopac',
+        action='store_true',
+        help='每日更新模式：抓取永豐投信 ETF 最新資料'
+    )
+
+    parser.add_argument(
         '--all',
         action='store_true',
         help='每日更新模式：抓取所有投信 ETF 最新資料'
@@ -1054,7 +1237,7 @@ def main():
             update_etf_market_data()
             return
 
-        if not (args.ezmoney or args.nomura or args.capital or args.fhtrust or args.ctbc or args.fsitc or args.tsit or args.allianz or args.cathay or args.morgan or args.fubon or args.abfunds or args.all):
+        if not (args.ezmoney or args.nomura or args.capital or args.fhtrust or args.ctbc or args.fsitc or args.tsit or args.allianz or args.cathay or args.morgan or args.fubon or args.abfunds or args.megafunds or args.kgi or args.sinopac or args.all):
             logger.info("No arguments provided, running default scrapers (EZMoney)")
             daily_update_ezmoney()
         else:
@@ -1096,6 +1279,15 @@ def main():
 
             if args.abfunds or args.all:
                 daily_update_abfunds(generate_report=not skip_individual_reports)
+
+            if args.megafunds or args.all:
+                daily_update_megafunds(generate_report=not skip_individual_reports)
+
+            if args.kgi or args.all:
+                daily_update_kgi(generate_report=not skip_individual_reports)
+
+            if args.sinopac or args.all:
+                daily_update_sinopac(generate_report=not skip_individual_reports)
 
             # 當使用 --all 時，在所有更新完成後生成完整報告
             if args.all:

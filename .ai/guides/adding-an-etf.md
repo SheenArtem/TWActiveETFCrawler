@@ -8,6 +8,9 @@
 2. 若該投信已有 scraper，只要在對應的代碼對照表加一筆：
    - `CTBC_ETF_CODES`（中信，值是 ETF 頁網址 `/Etf/<fund_id>/Combination` 中的數字）
    - `FSITCScraper.FUND_ID_MAP`（第一金，值是官網 `FundDetail.aspx?ID=<n>` 的 n）
+   - `MEGA_ETF_CODES`（兆豐，值是 `trade_pcf.aspx` 上 `fund_id` 下拉選單的 value）
+   - `KGI_ETF_CODES`（凱基，值是官網內部 fundID，見清單頁 `AllFundName` hidden 欄位）
+   - `SINOPAC_ETF_CODES`（永豐，值就是 ETF 代號，直接組進 PCF 頁網址最後一段）
    - 其他投信同理，見各檔案頂端常數
 3. **對照表的值必須用基金全名驗證，不能靠猜或掃號。**
    例：第一金「台股趨勢優**選**」是 00994A、「台股趨勢優**股息**」是 00408A，只差一字。
@@ -18,6 +21,11 @@
 若該投信還沒有 scraper，要新寫一支，先讀 `data-sources.md` 的優先順序與踩雷筆記。
 
 ## 怎麼確認還缺哪些 ETF
+
+**最新盤點（2026-08-09）：上市 `00xxxA` 共 29 檔，扣掉 7 檔海外股票型
+（00402A／00983A／00986A／00988A／00989A／00990A／00997A）＝ 22 檔純台股，
+目前 22 檔全部已追蹤，缺口為零。** 最後補上的是 00996A（兆豐）／00407A（凱基）／
+00410A（永豐），三家都是新寫的 scraper。
 
 用 TWSE OpenData `STOCK_DAY_ALL`（`https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL`）
 撈出所有 `00xxxA` 代號，再與 `etf_list` 比對。兩個坑：

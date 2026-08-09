@@ -204,6 +204,118 @@ def check_batch2_parsers():
           MorganScraper._parse_valuation_date(None) == "")
 
 
+def check_batch3_parsers():
+    """
+    第三批新增來源的日期解析與表格定位：兆豐／凱基／永豐（2026-08-09 新增）。
+
+    三家頁面最顯眼的日期都是 PCF 適用日（下一營業日），資料日期在別的地方；
+    抓錯就直接錯位，而且三家都標 source_dated（寫入層防護會放行），
+    所以解析錯誤不會被防護攔住。全部可離線測。
+    """
+    from bs4 import BeautifulSoup
+
+    print("--- 兆豐：日期黏在「每基數」金額欄位前，「查詢日期」是適用日 ---")
+    from src.megafunds_scraper import MegaFundsScraper
+    ok = BeautifulSoup(
+        '<p>申購買回清單 查詢日期 2026/08/10 現金申購買回清單公告</p>'
+        '<p>每申購基數之預收申購總價金(元) TWD$ 7,320,000 '
+        '2026/08/07 每基數申購總價金差異額(元) TWD$ -795,999 '
+        '2026/08/07 每基數實際申購總價金(元) TWD$ 6,654,001</p>',
+        'html.parser')
+    check("兆豐：取「每基數」前的日期，不受「查詢日期」干擾",
+          MegaFundsScraper._extract_data_date(ok, "2026-08-10") == ("2026-08-07", True))
+    bare = BeautifulSoup('<p>申購買回清單 查詢日期 2026/08/10</p>', 'html.parser')
+    check("兆豐：找不到錨點 -> 退回請求日且不標記",
+          MegaFundsScraper._extract_data_date(bare, "2026-08-10") == ("2026-08-10", False))
+    conflict = BeautifulSoup(
+        '<p>2026/08/07 每基數實際申購總價金 2026/08/06 每基數申購總價金差異額</p>',
+        'html.parser')
+    check("兆豐：頁面出現兩個不同日期 -> 視為改版，保守退回",
+          MegaFundsScraper._extract_data_date(conflict, "2026-08-10") == ("2026-08-10", False))
+
+    stock_table = (
+        '<table class="table-stock">'
+        '<tr><td>股票代號</td><td>股票名稱</td><td>股數</td><td>持股權重</td></tr>'
+        '<tr><td>2330</td><td>台積電</td><td>179,000</td><td>9.95%</td></tr></table>'
+        '<table class="table-futures">'
+        '<tr><td>期貨代號</td><td>期貨名稱</td><td>契約年月</td><td>口數</td><td>持股權重</td></tr>'
+        '<tr><td>MTX</td><td>小型臺指期貨</td><td>2026/08</td><td>38</td><td>1.35%</td></tr></table>'
+    )
+    mega_rows = MegaFundsScraper()._parse_html_table(
+        BeautifulSoup(stock_table, 'html.parser'), "2026-08-07", "00996A", True)
+    check("兆豐：只取股票表，期貨表不混進來",
+          len(mega_rows) == 1 and mega_rows[0]["stock_code"] == "2330"
+          and mega_rows[0]["shares"] == 179000 and mega_rows[0]["source_dated"] is True,
+          f"取得 {len(mega_rows)} 列")
+
+    print("--- 凱基：括號內的淨值基準日，#DataDate 是適用日 ---")
+    from src.kgi_scraper import KGIScraper
+    kgi_ok = BeautifulSoup(
+        '<input id="DataDate" name="DataDate" value="2026/08/10" />'
+        '<p>主動凱基台灣(00407A) 2026/08/10 現金申購買回清單公告 '
+        '基金淨資產價值(元) TWD$28,702,559,786 '
+        '(2026/08/07)每受益權單位淨資產價值(元) TWD$9.31</p>',
+        'html.parser')
+    check("凱基：取括號內基準日，不受 #DataDate 干擾",
+          KGIScraper._extract_data_date(kgi_ok, "2026-08-10") == ("2026-08-07", True))
+    kgi_bare = BeautifulSoup(
+        '<input id="DataDate" value="2026/08/10" /><p>現金申購買回清單公告</p>', 'html.parser')
+    check("凱基：找不到錨點 -> 退回請求日且不標記",
+          KGIScraper._extract_data_date(kgi_bare, "2026-08-10") == ("2026-08-10", False))
+
+    kgi_rows = KGIScraper()._parse_html_table(
+        BeautifulSoup(
+            '<table class="responsive-table">'
+            '<tr><th>股票代號</th><th>股票名稱</th><th>股數</th><th>權重(%)</th></tr>'
+            '<tr><td>2330</td><td>台積電</td><td>991,000</td><td>8.18</td></tr>'
+            '<tr><td>合計</td><td></td><td></td><td>96.25</td></tr></table>',
+            'html.parser'),
+        "2026-08-07", "00407A", True)
+    check("凱基：解析持股列並排除合計列",
+          len(kgi_rows) == 1 and kgi_rows[0]["shares"] == 991000
+          and kgi_rows[0]["weight"] == 8.18,
+          f"取得 {len(kgi_rows)} 列")
+
+    print("--- 永豐：頁面「資料日期：」，qdate 是適用日 ---")
+    from src.sinopac_scraper import SinoPacScraper
+    # fixture 照抄真實頁面的排列：適用日 08/10 緊貼在「每申購基數」前面
+    # （與兆豐／台新相反！那兩家「每基數」前面才是基準日）。
+    # 這樣若有人把永豐改成「每基數」錨或泛抓日期，這個 check 會變紅。
+    spf_ok = BeautifulSoup(
+        '<input id="qdate" value="2026-08-10" /><input id="hDate" name="hDate" value="2026-08-10" />'
+        '<p>永豐台灣科技趨勢主動式ETF（證劵代碼：00410A）2026/08/10 '
+        '每申購基數之預收申購總價金(元) NT$ 5,847,000 '
+        '2026/08/07 基金淨資產價值(元) NT$ 1,729,928,119 資料日期：2026/08/07</p>',
+        'html.parser')
+    check("永豐：取「資料日期」，不受 qdate／hDate／「每基數」前的適用日干擾",
+          SinoPacScraper._extract_data_date(spf_ok, "2026-08-10") == ("2026-08-07", True))
+    spf_bare = BeautifulSoup('<input id="qdate" value="2026-08-10" /><p>基金資產</p>', 'html.parser')
+    check("永豐：找不到資料日期 -> 退回請求日且不標記",
+          SinoPacScraper._extract_data_date(spf_bare, "2026-08-10") == ("2026-08-10", False))
+    spf_conflict = BeautifulSoup(
+        '<p>資料日期：2026/08/07 ... 資料日期：2026/08/06</p>', 'html.parser')
+    check("永豐：桌機／手機版標了兩個不同日期 -> 視為改版，保守退回",
+          SinoPacScraper._extract_data_date(spf_conflict, "2026-08-10") == ("2026-08-10", False))
+
+    # 桌機版一大表 + 手機版每檔一小表：盲抓會重複計算，只能取桌機版
+    spf_rows = SinoPacScraper()._parse_html_table(
+        BeautifulSoup(
+            '<table class="tab_sh tab_sh-w">'
+            '<tr><th>證券代碼</th><th>證券名稱</th><th>股數</th><th>佔基金淨資產之權重(%)</th></tr>'
+            '<tr><td>2330</td><td>台積電</td><td>50,000</td><td>6.86</td></tr></table>'
+            '<table class="tab_sh tab_sh-m">'
+            '<tr><th>證券代碼</th><td>2330</td></tr>'
+            '<tr><th>證券名稱</th><td>台積電</td></tr>'
+            '<tr><th>股數</th><td>50,000</td></tr>'
+            '<tr><th>佔基金淨資產之權重(%)</th><td>6.86</td></tr></table>',
+            'html.parser'),
+        "2026-08-07", "00410A", True)
+    check("永豐：手機版重複表格不會被重複計算",
+          len(spf_rows) == 1 and spf_rows[0]["stock_code"] == "2330"
+          and spf_rows[0]["shares"] == 50000,
+          f"取得 {len(spf_rows)} 列")
+
+
 def check_upsert_created_at():
     """
     UPSERT 的 created_at 語意：「該列首次寫入時間」。
@@ -423,6 +535,9 @@ def main():
 
     print("=== 第二批來源日期解析（台新/安聯/群益/摩根）===")
     check_batch2_parsers()
+
+    print("=== 第三批來源日期解析（兆豐/凱基/永豐）===")
+    check_batch3_parsers()
 
     print("=== UPSERT：created_at＝首次寫入時間 ===")
     check_upsert_created_at()
