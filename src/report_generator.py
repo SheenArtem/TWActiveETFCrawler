@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 from datetime import datetime, timedelta, timezone
 from .holdings_analyzer import HoldingChange
+from .stock_markets import lot_unit, market_of
 
 
 class HTMLReportGenerator:
@@ -105,6 +106,7 @@ class HTMLReportGenerator:
             {
                 'stock_code': code,
                 'stock_name': data['name'],
+                'market': market_of(code),
                 'total_adjustments': data['up_count'] + data['down_count'],
                 'net_change': round(data['net_change'], 2),
                 'etf_details': data['etf_details']
@@ -140,10 +142,13 @@ class HTMLReportGenerator:
                 'etf_name': etf_name,
                 'data_date': holdings_date_map.get(etf_code, date),
                 'total_changes': len(changes),
+                # market：'TW' 或 Bloomberg 市場後綴（US/JP/KS…）。海外成分股（00988A）的
+                # lots 數值同樣是 股數/1000，但單位是「千股」不是「張」，前端據此換單位名稱。
                 'added': [
                     {
                         'stock_code': c.stock_code,
                         'stock_name': c.stock_name,
+                        'market': market_of(c.stock_code),
                         'lots': round(c.new_lots, 2)
                     }
                     for c in added
@@ -152,6 +157,7 @@ class HTMLReportGenerator:
                     {
                         'stock_code': c.stock_code,
                         'stock_name': c.stock_name,
+                        'market': market_of(c.stock_code),
                         'lots': round(c.old_lots, 2)
                     }
                     for c in removed
@@ -160,6 +166,7 @@ class HTMLReportGenerator:
                     {
                         'stock_code': c.stock_code,
                         'stock_name': c.stock_name,
+                        'market': market_of(c.stock_code),
                         'old_lots': round(c.old_lots, 2),
                         'new_lots': round(c.new_lots, 2),
                         'diff': round(c.lots_diff, 2),
@@ -764,7 +771,14 @@ class HTMLReportGenerator:
     
     <script>
         const data = {json.dumps(data, ensure_ascii=False)};
-        
+
+        // 台股代號是純數字；海外成分股沿用來源的 Bloomberg 代號「代號 市場」（含空格，如 SNDK US、6981 JP）。
+        // 「張」（1 張＝1000 股）只是台股習慣，海外部位數值相同（股數/1000）但標「千股」。
+        // 判定規則與 src/stock_markets.py 一致。
+        function lotUnit(code) {{
+            return /^[0-9A-Z][0-9A-Z./-]* [A-Z]{{2}}$/.test(String(code || '').trim().toUpperCase()) ? '千股' : '張';
+        }}
+
         // 持股總覽摺疊（有 max-height 捲動，用 CSS 切換即可）
         function toggleHoldingsCard(header) {{
             header.classList.toggle('expanded');
@@ -833,6 +847,7 @@ class HTMLReportGenerator:
             let html = '';
             
             data.hot_stocks.forEach((stock, index) => {{
+                const unit = lotUnit(stock.stock_code);
                 html += `
                     <div class="hot-stock-item">
                         <div class="hot-stock-header" onclick="toggleHotStock(this)">
@@ -841,7 +856,7 @@ class HTMLReportGenerator:
                                 <span class="hot-stock-name">${{stock.stock_code}} ${{stock.stock_name}}</span>
                                 <div class="hot-stock-stats">
                                     <span>📊 ${{stock.total_adjustments}} 次調整</span>
-                                    <span>合計: ${{stock.net_change > 0 ? '+' : ''}}${{stock.net_change}} 張</span>
+                                    <span>合計: ${{stock.net_change > 0 ? '+' : ''}}${{stock.net_change}} ${{unit}}</span>
                                 </div>
                             </div>
                             <span class="toggle-icon">▼</span>
@@ -852,7 +867,7 @@ class HTMLReportGenerator:
                                     <tr>
                                         <th>ETF代碼</th>
                                         <th>調整</th>
-                                        <th>持股張數</th>
+                                        <th>持股（${{unit}}）</th>
                                         <th>權重</th>
                                     </tr>
                                 </thead>
@@ -866,12 +881,12 @@ class HTMLReportGenerator:
                         const adjArrow = detail.adjustment > 0 ? '▲' : '▼';
                         const adjSign = detail.adjustment > 0 ? '+' : '';
                         const weight = detail.weight ? `${{detail.weight.toFixed(2)}}%` : '-';
-                        const lots = detail.lots ? `${{detail.lots.toLocaleString()}} 張` : '-';
+                        const lots = detail.lots ? `${{detail.lots.toLocaleString()}} ${{unit}}` : '-';
                         
                         html += `
                             <tr>
                                 <td>${{detail.etf_code}}</td>
-                                <td class="${{adjClass}}">${{adjArrow}} ${{adjSign}}${{detail.adjustment}} 張</td>
+                                <td class="${{adjClass}}">${{adjArrow}} ${{adjSign}}${{detail.adjustment}} ${{unit}}</td>
                                 <td>${{lots}}</td>
                                 <td>${{weight}}</td>
                             </tr>
@@ -920,18 +935,20 @@ class HTMLReportGenerator:
             if etf_data['added']:
                 content_parts.append('<h4><span class="badge badge-add">➕ 新增成分股</span></h4>')
                 content_parts.append('<table class="changes-table">')
-                content_parts.append('<tr><th>股票代碼</th><th>股票名稱</th><th>持股張數</th></tr>')
+                content_parts.append('<tr><th>股票代碼</th><th>股票名稱</th><th>持股</th></tr>')
                 for stock in etf_data['added']:
-                    content_parts.append(f"<tr><td>{stock['stock_code']}</td><td>{stock['stock_name']}</td><td>{stock['lots']:,.0f}張</td></tr>")
+                    unit = lot_unit(stock['stock_code'])  # 台股「張」、海外成分股「千股」
+                    content_parts.append(f"<tr><td>{stock['stock_code']}</td><td>{stock['stock_name']}</td><td>{stock['lots']:,.0f}{unit}</td></tr>")
                 content_parts.append('</table>')
             
             # 移除成分股
             if etf_data['removed']:
                 content_parts.append('<h4><span class="badge badge-remove">➖ 移除成分股</span></h4>')
                 content_parts.append('<table class="changes-table">')
-                content_parts.append('<tr><th>股票代碼</th><th>股票名稱</th><th>原持股張數</th></tr>')
+                content_parts.append('<tr><th>股票代碼</th><th>股票名稱</th><th>原持股</th></tr>')
                 for stock in etf_data['removed']:
-                    content_parts.append(f"<tr><td>{stock['stock_code']}</td><td>{stock['stock_name']}</td><td>{stock['lots']:,.0f}張</td></tr>")
+                    unit = lot_unit(stock['stock_code'])
+                    content_parts.append(f"<tr><td>{stock['stock_code']}</td><td>{stock['stock_name']}</td><td>{stock['lots']:,.0f}{unit}</td></tr>")
                 content_parts.append('</table>')
             
             # 持股變動
@@ -943,10 +960,11 @@ class HTMLReportGenerator:
                     diff_class = 'up' if stock['direction'] == 'up' else 'down'
                     arrow = '▲' if stock['direction'] == 'up' else '▼'
                     sign = '+' if stock['diff'] > 0 else ''
+                    unit = lot_unit(stock['stock_code'])
                     content_parts.append(
                         f"<tr><td>{stock['stock_code']}</td><td>{stock['stock_name']}</td>"
-                        f"<td>{stock['old_lots']:,.0f}張</td><td>{stock['new_lots']:,.0f}張</td>"
-                        f"<td class='{diff_class}'>{arrow} {sign}{stock['diff']:,.0f}張</td></tr>"
+                        f"<td>{stock['old_lots']:,.0f}{unit}</td><td>{stock['new_lots']:,.0f}{unit}</td>"
+                        f"<td class='{diff_class}'>{arrow} {sign}{stock['diff']:,.0f}{unit}</td></tr>"
                     )
                 content_parts.append('</table>')
             
@@ -976,9 +994,14 @@ class HTMLReportGenerator:
         for etf in etf_holdings:
             # 生成持股表格
             holdings_rows = []
+            foreign_count = 0
             for holding in etf.get('holdings', []):  # 顯示所有持股
                 weight_str = f"{holding.get('weight', 0):.2f}%" if holding.get('weight') else '-'
-                lots_str = f"{holding.get('lots', 0):,.0f}張" if holding.get('lots') else '-'
+                # 海外成分股（代號帶 Bloomberg 市場後綴）的數值同樣是 股數/1000，但單位標「千股」不標「張」
+                unit = lot_unit(holding.get('stock_code', ''))
+                if unit != '張':
+                    foreign_count += 1
+                lots_str = f"{holding.get('lots', 0):,.0f}{unit}" if holding.get('lots') else '-'
                 holdings_rows.append(
                     f"<tr><td>{holding.get('stock_code', '')}</td>"
                     f"<td>{holding.get('stock_name', '')}</td>"
@@ -993,6 +1016,8 @@ class HTMLReportGenerator:
             # 回退到各自最新可得的日期，所以要標出這一檔實際的資料日期。
             data_date = etf.get('data_date')
             date_note = f" · 資料日期 {data_date}" if data_date else ''
+            if foreign_count:
+                date_note += f" · 含 {foreign_count} 檔海外成分股（單位千股）"
 
             cards_html.append(f"""
             <div class="etf-holdings-card">

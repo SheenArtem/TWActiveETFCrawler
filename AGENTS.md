@@ -16,6 +16,10 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 
 **不要在 `main.py` 寫死 ETF 名稱**，一律用 `get_etf_name(etf_code)`。
 
+**成分股代號：台股是純數字；海外股票照抄來源的 Bloomberg 代號「代號 市場」（含空格與市場後綴），
+絕不能只留數字。** 00988A 有 5 檔日／港股的數字部分就是真實台股代號，去掉後綴會被改名成台股、
+並在跨 ETF 統計裡被加總。scraper 篩選列時也不能用「4 位數字」當股票的判準。判定在 `src/stock_markets.py`。
+
 ## 什麼時候讀哪一份
 
 | 什麼時候 | 讀這份 |
@@ -23,6 +27,7 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 | 改任何 scraper、新增投信來源、或懷疑某家的資料日期不對 | `.ai/guides/data-sources.md` |
 | 改 `Database.insert_holdings()`、scraper 日期欄位、報表日期邏輯、CI 早退守衛 | `.ai/guides/date-alignment.md` |
 | 新增一檔 ETF、盤點還缺哪些 ETF、改 ETF 中文名稱 | `.ai/guides/adding-an-etf.md` |
+| 處理含海外成分股的 ETF（目前只有 00988A）、改代號判定或報表單位 | `.ai/guides/adding-an-etf.md` 的「含海外成分股的 ETF」 |
 | 接手進行中的工作、暫停、換手 | `.ai/HANDOFF.md` |
 
 ## 環境與慣例
@@ -44,4 +49,5 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 | `.ai/HANDOFF.md` | 目前進行中的狀態與下一步，隨工作更新 |
 | `src/etf_names.py` | ETF 中文名稱唯一來源 |
 | `data/stock_names.json` | 成分股中文簡稱唯一來源 |
+| `src/stock_markets.py` | 成分股代號慣例（台股／海外）、市場判定與報表單位「張／千股」 |
 | `src/config.py` | 開關與門檻（含 `REJECT_DUPLICATE_OF_PREVIOUS_DAY`） |

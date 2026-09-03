@@ -10,6 +10,8 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
    旗標漏設或群組內不一致時要保守地繼續防護
 3. 報表逐檔回退日期 `get_latest_date_on_or_before()`
 4. 中信／富邦 `_extract_data_date()`：決定要不要標 source_dated 的解析邏輯
+5. 海外成分股（00988A 主動統一全球創新）：Bloomberg 代號要連市場後綴一起收與存、
+   名稱正規化不可碰海外代號、報表單位台股「張」／海外「千股」
 
 跑法：
     python test_duplicate_guard.py
@@ -316,13 +318,117 @@ def check_batch3_parsers():
           f"取得 {len(spf_rows)} 列")
 
 
+def check_foreign_holdings():
+    """
+    00988A（主動統一全球創新，2026-09-03 加入）含海外成分股。三件事不能壞：
+
+    1. 統一 Excel 解析器要同時收「台股純數字代號」與「Bloomberg 海外代號（代號 市場）」，
+       表頭／合計列仍要跳過。改回舊的「只收 4 位數字」會讓這裡變紅（實站 48 檔會被丟 39 檔）。
+    2. 海外代號必須連市場後綴一起存：實測 5 檔日／港股的數字部分等於真實台股代號
+       （6997 JP↔博弘、3308 HK↔聯德、6871 JP↔新鑫、5801 JP↔建弘投信、4180 JP↔安成藥）。
+    3. 名稱正規化只能碰台股：`6997 JP` 不可被改名成台股 6997。
+
+    報表層：海外部位單位標「千股」、台股維持「張」，且 JSON 帶 market 欄位。全部離線可測。
+    """
+    from src.stock_markets import market_of, lot_unit, normalize_code
+    from src.stock_names import canonical_name
+
+    print("--- 代號市場判定（src/stock_markets.py）---")
+    check("台股純數字 -> TW／張", market_of("2330") == "TW" and lot_unit("2330") == "張")
+    check("台股 ETF 尾碼字母 -> TW", market_of("00981A") == "TW")
+    check("Bloomberg 海外代號 -> 市場後綴／千股",
+          [market_of(c) for c in ("SNDK US", "6981 JP", "009150 KS", "3308 HK", "300408 CH", "IFX GY", "285A JP")]
+          == ["US", "JP", "KS", "HK", "CH", "GY", "JP"] and lot_unit("SNDK US") == "千股")
+    check("表頭／空白／期貨或選擇權描述 -> None（呼叫端跳過）",
+          all(market_of(c) is None for c in ("股票代號", "nan", "", None, "FTM6", "TWSE 06/17/26 C37400")))
+    check("代號正規化：壓空白、轉大寫", normalize_code(" sndk   us ") == "SNDK US")
+
+    print("--- 名稱正規化不可碰海外代號 ---")
+    tw_name = canonical_name("6997", "x")
+    check("台股 6997 查得到對照名稱（前提）", tw_name != "x", f"得 {tw_name}")
+    check("日股 6997 JP 維持來源名稱、不被改成台股名",
+          canonical_name("6997 JP", "NIPPON CHEMI-CON CORP") == "NIPPON CHEMI-CON CORP")
+    check("港股 3308 HK 同樣不被改名",
+          canonical_name("3308 HK", "ZHONGJI INNOLIGHT CO LTD-H") == "ZHONGJI INNOLIGHT CO LTD-H")
+
+    print("--- 統一 Excel 解析：海外代號要收、表頭與合計列要跳過 ---")
+    try:
+        import pandas as pd
+        from src.ezmoney_scraper import EZMoneyScraper
+    except ImportError as e:
+        results.append((SKIP, "統一 Excel 海外代號解析（缺套件）", str(e)[:60]))
+        print(f"  [{SKIP}] 統一 Excel 海外代號解析 — {str(e)[:60]}")
+        return
+
+    # 照抄 2026-09-03 實際下載的 61YTW Excel 版面：第 0 列資料日期、第 19 列表頭、第 20 列起持股
+    layout = [["資料日期：115/09/01", None, None, None]] + [[None] * 4 for _ in range(18)] + [
+        ["股票代號", "股票名稱", "股數", "持股權重"],
+        ["LITE US", "LUMENTUM HOLDINGS INC", "117,000", "6.20%"],
+        ["3037", "欣興", "2,600,000", "4.86%"],
+        ["009150 KS", "Samsung Electro-Mechanics co(009150 ks)", "70,000", "4.36%"],
+        ["6997 JP", "NIPPON CHEMI-CON CORP", "1,275,100", "1.43%"],
+        ["285A JP", "KIOXIA HOLDINGS CORP", "110,000", "2.14%"],
+        ["合計", None, None, "97.55%"],
+    ]
+    fixture = Path(tempfile.mkdtemp()) / "61YTW_fixture.xlsx"
+    pd.DataFrame(layout).to_excel(fixture, index=False, header=False)
+    parsed = EZMoneyScraper().parse_excel_file(fixture, "00988A", "2026-09-03")
+    codes = [r["stock_code"] for r in parsed]
+    check("台股與海外代號都收進來、表頭與合計列跳過",
+          codes == ["LITE US", "3037", "009150 KS", "6997 JP", "285A JP"], f"codes={codes}")
+    check("海外代號保留市場後綴（不是只剩數字）", "6997 JP" in codes and "6997" not in codes)
+    check("股數與權重解析正確",
+          bool(parsed) and parsed[0]["shares"] == 117000 and parsed[0]["weight"] == 6.2
+          and parsed[3]["shares"] == 1275100)
+    check("資料日期取自 Excel 表頭（民國 115/09/01）且標 source_dated",
+          bool(parsed) and all(r["date"] == "2026-09-01" and r["source_dated"] is True for r in parsed))
+
+    print("--- 報表層：海外部位標「千股」、台股標「張」、JSON 帶 market ---")
+    from src.holdings_analyzer import HoldingChange
+    from src.report_generator import HTMLReportGenerator
+    from src.report_manager import ReportManager
+
+    db_f, _ = fresh_db()
+    db_f.insert_holdings(rows_sd("00988A", "2026-09-01", [("2330", 550000, 2.58), ("SNDK US", 13000, 1.22)]))
+    mgr = ReportManager(db_f, Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp()))
+    built = mgr.build_etf_holdings({"00988A": "主動統一全球創新"}, "2026-09-01")
+    markets = {h["stock_code"]: h["market"] for h in built[0]["holdings"]} if built else {}
+    check("持股總覽每列帶 market（TW／US）", markets == {"2330": "TW", "SNDK US": "US"}, f"{markets}")
+
+    gen = HTMLReportGenerator(Path(tempfile.mkdtemp()))
+    holdings_html = gen._generate_etf_holdings_html(built)
+    check("持股總覽 HTML：台股列「張」、海外列「千股」、卡片標示含海外成分股",
+          "550張" in holdings_html and "13千股" in holdings_html and "13張" not in holdings_html
+          and "含 1 檔海外成分股" in holdings_html)
+
+    changes = {"00988A": [
+        HoldingChange(change_type="ADDED", stock_code="SNDK US", stock_name="SANDISK CORP",
+                      new_shares=13000, new_lots=13.0),
+        HoldingChange(change_type="SHARES_UP", stock_code="2330", stock_name="台積電",
+                      old_shares=500000, new_shares=550000, shares_diff=50000,
+                      old_lots=500.0, new_lots=550.0, lots_diff=50.0),
+    ]}
+    dash = gen.generate_dashboard_data(changes, "2026-09-01", {"00988A": "主動統一全球創新"}, built)
+    entry = dash["detailed_changes"][0]
+    check("變動明細 JSON 帶 market（新增 US／變動 TW）",
+          entry["added"][0]["market"] == "US" and entry["modified"][0]["market"] == "TW")
+    details_html = gen._generate_details_html(dash["detailed_changes"])
+    check("變動明細 HTML：海外新增列「千股」、台股變動列「張」",
+          "13千股" in details_html and "+50張" in details_html)
+    txt = mgr.analyzer.generate_report(changes, "2026-09-01")
+    check("TXT 報告：海外列「千股」、台股列「張」", "13.00千股" in txt and "550.00張" in txt)
+    md = mgr.analyzer.generate_markdown_report(changes, "2026-09-01")
+    check("Markdown 報告：海外列「千股」、台股列「張」", "13.00千股" in md and "550張" in md)
+
+
 def check_upsert_created_at():
     """
     UPSERT 的 created_at 語意：「該列首次寫入時間」。
 
     停更重寫（source_dated 豁免下，同一個資料日期整組重寫）不可刷新 created_at，
     否則 CI 早退守衛會把「來源沒更新」算成今天有進度；豁免檔數過 70% 門檻後
-    （第二批轉換後 14/19；2026-08-09 新增兆豐／凱基／永豐後 17/22），
+    （第二批轉換後 14/19；2026-08-09 新增兆豐／凱基／永豐後 17/22；
+    2026-09-03 新增 00988A（統一 Excel 路徑）後 18/23），
     「全來源停更」的傍晚會誤跳過後備班次。
     這組測試對舊實作（INSERT OR REPLACE）是紅的。
     """
@@ -539,6 +645,9 @@ def main():
 
     print("=== 第三批來源日期解析（兆豐/凱基/永豐）===")
     check_batch3_parsers()
+
+    print("=== 海外成分股（00988A）：代號慣例／解析／名稱／單位 ===")
+    check_foreign_holdings()
 
     print("=== UPSERT：created_at＝首次寫入時間 ===")
     check_upsert_created_at()

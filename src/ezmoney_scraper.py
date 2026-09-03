@@ -4,11 +4,17 @@ EZMoney ETF 爬蟲模組
 支援兩種方式：
 1. Playwright 網頁下載 Excel (主要方式，更可靠)
 2. API 直接抓取 PCF 數據 (備用方式)
+
+00988A（主動統一全球創新）含海外成分股：來源以 Bloomberg 代號「代號 市場」標示
+（`SNDK US`、`6981 JP`、`009150 KS`…），台股仍是純數字代號。解析時**兩種都要收**，
+且海外代號必須連市場後綴一起保留（理由見 src/stock_markets.py）。
+2026-09-03 實測 Excel 與 API 的欄位結構與純台股 ETF 相同，只有代號形態不同。
 """
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from playwright.sync_api import sync_playwright
+import numbers
 import time
 import random
 from typing import List, Dict, Any, Optional
@@ -22,12 +28,16 @@ from .config import (
     REQUEST_DELAY_MAX,
     MAX_RETRIES
 )
+from .stock_markets import market_of, normalize_code
 
 
 # EZMoney ETF 基金代碼對照表
 EZMONEY_ETF_CODES = {
     '00981A': '49YTW',  # 主動統一台股增長
-    '00403A': '63YTW',  # 統一投信新增主動式 ETF
+    '00403A': '63YTW',  # 主動統一升級50
+    # 全球型：約 4/5 的持股是海外股票（美／日／韓／中／港／德），代號為 Bloomberg 格式。
+    # fundCode 取自官網 ETF 清單頁連結 /ETF/Fund/Info?fundCode=61YTW（標題「00988A 主動統一全球創新」）。
+    '00988A': '61YTW',  # 主動統一全球創新
     # 未來可以新增其他 ETF 的對照
 }
 
@@ -428,17 +438,21 @@ class EZMoneyScraper:
             # 解析每一行
             for idx, row in df.iterrows():
                 try:
-                    stock_code = str(row[col_mapping['code']]).strip()
+                    stock_code = normalize_code(row[col_mapping['code']])
                     stock_name = str(row[col_mapping['name']]).strip()
-                    
-                    # 跳過空白行或非股票行
-                    if not stock_code or stock_code == 'nan':
+
+                    # 只收「台股純數字代號」與「Bloomberg 海外代號（代號 市場）」，
+                    # 其餘（空白列、表頭「股票代號」、合計或備註列）跳過。
+                    # 2026-09-03 之前這裡只收 4 位數字：對純台股 ETF 沒差，但 00988A
+                    # 的 39 檔海外持股會被整批靜默丟掉、權重少掉約四分之三。
+                    # 海外代號連市場後綴一起存，不可只留數字部分（會撞到真實台股代號，
+                    # 見 src/stock_markets.py）。
+                    market = market_of(stock_code)
+                    if market is None:
+                        if stock_code and stock_code != '股票代號':
+                            logger.debug(f"Skipping non-holding row {idx}: {stock_code!r}")
                         continue
-                    
-                    # 只處理4位數字的台股代碼
-                    if not stock_code.isdigit() or len(stock_code) != 4:
-                        continue
-                    
+
                     holding = {
                         'etf_code': etf_code,
                         'stock_code': stock_code,
@@ -560,12 +574,24 @@ class EZMoneyScraper:
             logger.info(f"Found {len(details)} stock holdings")
             
             for item in details:
+                stock_code = normalize_code(item.get('DetailCode', ''))
+                if market_of(stock_code) is None:
+                    # API 的 Details 都是真實部位：形態不認得時保留原始代號、不丟資料，但留下記錄
+                    logger.warning(f"{etf_code}: unrecognised stock code {stock_code!r} "
+                                   f"({item.get('DetailName', '')}); storing as-is")
+                # Amount 是各部位自己計價幣別的金額（00988A 有 USD/JPY/KRW/CNH/EUR/HKD），
+                # 而 USD_EXRATE 欄位對非美元部位一律是 1，無法換算成新台幣，
+                # 所以只有新台幣部位才存市值，避免把外幣金額混進 market_value。
+                money_type = (item.get('MoneyType') or 'NTD').strip().upper()
+                market_value = (
+                    self._parse_number(item.get('Amount', 0)) if money_type in ('NTD', 'TWD') else 0
+                )
                 holding = {
                     'etf_code': etf_code,
-                    'stock_code': item.get('DetailCode', ''),
-                    'stock_name': item.get('DetailName', ''),
+                    'stock_code': stock_code,
+                    'stock_name': (item.get('DetailName') or '').strip(),
                     'shares': self._parse_number(item.get('Share', 0)),
-                    'market_value': self._parse_number(item.get('Amount', 0)),
+                    'market_value': market_value,
                     'weight': self._parse_percentage(item.get('NavRate', 0)),
                     'date': date
                 }
@@ -590,10 +616,11 @@ class EZMoneyScraper:
         Returns:
             int: 解析後的整數
         """
-        if isinstance(value, (int, float)):
+        # numbers.Number 也涵蓋 pandas 讀出的 numpy 數值（numpy.int64 不是 int 的子類別）
+        if isinstance(value, numbers.Number) and not isinstance(value, bool):
             return int(value)
         if isinstance(value, str):
-            return int(value.replace(',', '').replace(' ', ''))
+            return int(float(value.replace(',', '').replace(' ', '')))
         return 0
     
     @staticmethod
@@ -607,7 +634,7 @@ class EZMoneyScraper:
         Returns:
             float: 解析後的浮點數
         """
-        if isinstance(value, (int, float)):
+        if isinstance(value, numbers.Number) and not isinstance(value, bool):
             return float(value)
         if isinstance(value, str):
             return float(value.replace('%', '').replace(',', '').replace(' ', ''))

@@ -894,12 +894,12 @@
                 <h2>🔍 個股反查 ETF 持倉</h2>
                 <form class="lookup-form" id="lookup-form" onsubmit="return false;">
                     <input type="text" id="lookup-input" class="lookup-input"
-                           placeholder="輸入股票代碼，例如 2330"
-                           autocomplete="off" inputmode="numeric" />
+                           placeholder="輸入股票代碼，例如 2330 或 SNDK US"
+                           autocomplete="off" />
                     <button type="submit" class="lookup-btn" id="lookup-btn">查詢</button>
                     <button type="button" class="lookup-btn secondary" id="lookup-clear-btn">清除</button>
                 </form>
-                <div class="lookup-hint">查詢該股票目前在各檔追蹤 ETF 中的持股數量與權重，以及近 20 個交易日的買賣明細。</div>
+                <div class="lookup-hint">查詢該股票目前在各檔追蹤 ETF 中的持股數量與權重，以及近 20 個交易日的買賣明細。海外成分股請輸入完整 Bloomberg 代號（含市場，如 SNDK US、6981 JP），單位為千股。</div>
                 <div class="lookup-result" id="lookup-result"></div>
             </div>
 
@@ -1255,9 +1255,10 @@
                 const li = document.createElement('li');
                 li.className = 'rank-item';
 
+                const unit = lotUnit(stock.code);
                 const lotsDisplay = type === 'sell'
-                    ? `${stock.totalLots.toFixed(1)} 張`
-                    : `+${stock.totalLots.toFixed(1)} 張`;
+                    ? `${stock.totalLots.toFixed(1)} ${unit}`
+                    : `+${stock.totalLots.toFixed(1)} ${unit}`;
 
                 // Build detail table
                 const etfEntries = Object.entries(stock.etfMap)
@@ -1448,17 +1449,21 @@
                         const totalCls = stock.total > 0 ? 'val-pos' : 'val-neg';
                         const totalPrefix = stock.total > 0 ? '+' : '';
 
+                        // 海外成分股（Bloomberg 代號）的數值是千股，標出來以免與台股「張」混讀
+                        const unitTag = lotUnit(stock.code) === '張' ? '' : ' · 千股';
                         rows += `<tr>
-                            <td>${stock.name}<br><small style="color:#aaa">${stock.code}</small></td>
+                            <td>${stock.name}<br><small style="color:#aaa">${stock.code}${unitTag}</small></td>
                             ${dayCells}
                             <td class="${totalCls}" style="font-weight:700">${totalPrefix}${stock.total.toFixed(1)}</td>
                         </tr>`;
                     });
 
+                    // 卡片內只要有海外成分股，合計就標「千股」（台股 1 張＝1 千股，數值不變）
+                    const cardUnit = stocks.some(s => lotUnit(s.code) !== '張') ? '千股' : '張';
                     const buyLabel = totalBuy > 0
-                        ? `<span class="per-etf-buy">買 ${buyCount} 檔 +${totalBuy.toFixed(0)}張</span>` : '';
+                        ? `<span class="per-etf-buy">買 ${buyCount} 檔 +${totalBuy.toFixed(0)}${cardUnit}</span>` : '';
                     const sellLabel = totalSell < 0
-                        ? `<span class="per-etf-sell">賣 ${sellCount} 檔 ${totalSell.toFixed(0)}張</span>` : '';
+                        ? `<span class="per-etf-sell">賣 ${sellCount} 檔 ${totalSell.toFixed(0)}${cardUnit}</span>` : '';
 
                     html += `
                     <div class="per-etf-card">
@@ -1531,6 +1536,13 @@
         // 但每日欄位只畫得出 dates 裡有的日期。資料日期落在視窗外時（停更超過視窗長度，
         // 或那天沒產生報表）退回報表日期：日期偏一點比整筆從畫面消失好，而合計是
         // 另外累加的，不受這個選擇影響。
+        // 台股代號是純數字；海外成分股沿用來源的 Bloomberg 代號「代號 市場」（含空格，如 SNDK US、6981 JP）。
+        // 「張」（1 張＝1000 股）只是台股習慣，海外部位數值相同（股數/1000）但標「千股」。
+        // 判定規則與 src/stock_markets.py 一致；資料檔的 market 欄位（TW／US／JP…）是同一件事的宣告版。
+        function lotUnit(code) {
+            return /^[0-9A-Z][0-9A-Z./-]* [A-Z]{2}$/.test(String(code || '').trim().toUpperCase()) ? '千股' : '張';
+        }
+
         function changeBucketDate(etfEntry, reportDate, dates) {
             const dataDate = etfEntry.data_date;
             return (dataDate && dates.includes(dataDate)) ? dataDate : reportDate;
@@ -1539,7 +1551,8 @@
         async function runStockLookup() {
             const inputEl = document.getElementById('lookup-input');
             const resultEl = document.getElementById('lookup-result');
-            const code = (inputEl.value || '').trim().toUpperCase();
+            // 海外代號含空格（如 SNDK US），多打的空白壓成一個再比對
+            const code = (inputEl.value || '').trim().replace(/\s+/g, ' ').toUpperCase();
 
             if (!code) {
                 resultEl.innerHTML = '<div class="lookup-empty">請輸入股票代碼</div>';
@@ -1654,6 +1667,7 @@
 
         function renderLookupResult(code, stockName, currentHoldings, etfMap, recentDates) {
             const resultEl = document.getElementById('lookup-result');
+            const unit = lotUnit(code);  // 台股「張」、海外成分股「千股」
 
             const hasCurrent = currentHoldings.length > 0;
             const tradedEtfs = Object.keys(etfMap);
@@ -1684,7 +1698,7 @@
                     <div class="lookup-table-wrap">
                         <table class="lookup-table">
                             <thead>
-                                <tr><th>ETF 代碼</th><th>持股（張）</th><th>權重</th><th>資料日期</th></tr>
+                                <tr><th>ETF 代碼</th><th>持股（${unit}）</th><th>權重</th><th>資料日期</th></tr>
                             </thead>
                             <tbody>${rows}</tbody>
                             <tfoot>
@@ -1752,7 +1766,7 @@
                 const grandPrefix = grandTotal > 0 ? '+' : '';
 
                 tradesBlock = `
-                    <div class="lookup-block-title">📊 近 ${recentDates.length} 個交易日各 ETF 買賣明細（單位：張，正值=買超 / 負值=賣超）</div>
+                    <div class="lookup-block-title">📊 近 ${recentDates.length} 個交易日各 ETF 買賣明細（單位：${unit}，正值=買超 / 負值=賣超）</div>
                     <div class="lookup-table-wrap">
                         <table class="lookup-table">
                             <thead>

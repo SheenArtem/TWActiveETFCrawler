@@ -25,7 +25,7 @@
 | 中信 CTBC | `src/ctbc_scraper.py` | 網頁下載 Excel | ✅ Excel 內「資料日期」欄 | 跳過 | Playwright 點「下載EXCEL」；當日資料下午才更新 |
 | 摩根 Morgan | `src/morgan_scraper.py` | 下載 PCF xlsx | ✅ 估值日（領先一日＝新檔的判準） | 條件式：新檔跳過、舊檔防護 | VD>請求日＝當日新檔，夾回請求日後標 source_dated；VD=請求日＝舊檔維持防護。必須帶 `Referer` = 產品頁，否則 Akamai 403 |
 | 聯博 ABFunds | `src/abfunds_scraper.py` | 下載 holdings xlsx | ✅ content-disposition 檔名 | 跳過 | 「代碼」欄是 ISIN，台股取 `isin[5:9]` |
-| 統一 EZMoney | `src/ezmoney_scraper.py` | 下載 Excel | ✅ Excel 表頭（民國年） | 跳過（僅 Excel 路徑） | 另有一條 API 路徑仍用請求日期，維持防護 |
+| 統一 EZMoney | `src/ezmoney_scraper.py` | 下載 Excel | ✅ Excel 表頭（民國年） | 跳過（僅 Excel 路徑） | 另有一條 API 路徑仍用請求日期，維持防護。00988A（全球型）走同一條路徑：海外持股代號是 Bloomberg「代號 市場」，解析器兩種代號都收（見 `adding-an-etf.md`「含海外成分股的 ETF」）。API 的 `TranDate`＝持股基準日、`PostDate`＝PCF 適用日（2026-09-03 09:53 實測：請求 09/03 → PostDate 09/03、TranDate 09/01，Excel 表頭同標 115/09/01） |
 | 富邦 Fubon | `src/fubon_scraper.py` | 解析網頁 DOM | ✅ 頁面「資料日期」 | 跳過 | SSR 直出表格；當日資料下午才更新 |
 | 第一金 FSITC | `src/fsitc_scraper.py` | **API（原則的已知例外）** | ✅ API `sdate` | 跳過 | 見下方「已知例外」 |
 | 台新 TSIT | `src/tsit_scraper.py` | 解析網頁 DOM | ✅ 黏在表頭文字裡：`2026/8/5每基數實際申購總價金(元)`，以「日期＋每基數」為錨 | 跳過 | **`#PUB_DATE` 是 PCF 適用日（下一交易日），絕不可當資料日期**（2026-08-05 實測值為未來日 08-06）。頁面出現多個不同日期時視為改版、保守退回 |
@@ -104,3 +104,6 @@
   真的是目標 ETF，否則會把別檔的持股寫進這一檔。
 - 手機版重複表格（永豐）：同一份持股會同時以桌機版一大表與手機版每檔一小表輸出，
   盲抓 `find_all('table')` 會重複計算。用「第一列前兩格是不是真表頭」來區分。
+- 海外成分股（00988A）：來源代號是 Bloomberg「代號 市場」（`SNDK US`、`6981 JP`）。
+  篩選持股列時不能用「4 位數字」當判準（會整批丟掉海外持股），也不能把市場後綴去掉
+  （5 檔日／港股的數字部分就是真實台股代號）。用 `src/stock_markets.py` 的 `market_of()`。

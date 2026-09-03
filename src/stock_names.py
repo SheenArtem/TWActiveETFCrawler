@@ -9,12 +9,18 @@
 
 非台股項目（期貨、選擇權、現金/存款、海外股等代號不在表中者）
 維持原始名稱不變。
+
+海外股票的代號一律帶 Bloomberg 市場後綴（如 `6997 JP`），本來就不會撞到表裡的台股代號；
+canonical_name() 仍明確只對台股形態的代號查表，避免日後有人把後綴去掉時，
+日股 6997 被改名成台股 6997 博弘（對照風險見 src/stock_markets.py）。
 """
 import json
 from pathlib import Path
 from typing import Dict, Optional
 
 from loguru import logger
+
+from .stock_markets import TW_MARKET, market_of
 
 _NAMES_PATH = Path(__file__).resolve().parent.parent / "data" / "stock_names.json"
 _names: Optional[Dict[str, str]] = None
@@ -46,4 +52,6 @@ def canonical_name(stock_code: str, fallback: str = "") -> str:
         標準中文簡稱；若代號不在台股對照表中，回傳 fallback。
     """
     code = (stock_code or "").strip()
+    if market_of(code) != TW_MARKET:
+        return fallback
     return _load().get(code, fallback)

@@ -5,6 +5,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from loguru import logger
 
+from .stock_markets import lot_unit
+
 
 @dataclass
 class HoldingChange:
@@ -253,7 +255,7 @@ class HoldingsAnalyzer:
                     prefix = "├─" if i < len(added) - 1 else "└─"
                     report_lines.append(
                         f"    {prefix} {change.stock_code} {change.stock_name} "
-                        f"(持股: {change.new_lots:.2f}張)"
+                        f"(持股: {change.new_lots:.2f}{lot_unit(change.stock_code)})"
                     )
                 report_lines.append("")
             
@@ -264,7 +266,7 @@ class HoldingsAnalyzer:
                     prefix = "├─" if i < len(removed) - 1 else "└─"
                     report_lines.append(
                         f"    {prefix} {change.stock_code} {change.stock_name} "
-                        f"(昨日持股: {change.old_lots:.2f}張)"
+                        f"(昨日持股: {change.old_lots:.2f}{lot_unit(change.stock_code)})"
                     )
                 report_lines.append("")
             
@@ -274,12 +276,13 @@ class HoldingsAnalyzer:
                 for i, change in enumerate(modified):
                     prefix = "├─" if i < len(modified) - 1 else "└─"
                     
-                    # 持股變動
+                    # 持股變動（台股「張」、海外成分股「千股」，見 src/stock_markets.py）
                     lots_arrow = "▲" if change.lots_diff > 0 else "▼"
+                    unit = lot_unit(change.stock_code)
                     report_lines.append(
                         f"    {prefix} {change.stock_code} {change.stock_name} "
-                        f"持股: {change.old_lots:.2f}張 → {change.new_lots:.2f}張 "
-                        f"({lots_arrow}{abs(change.lots_diff):.2f}張)"
+                        f"持股: {change.old_lots:.2f}{unit} → {change.new_lots:.2f}{unit} "
+                        f"({lots_arrow}{abs(change.lots_diff):.2f}{unit})"
                     )
                 
                 report_lines.append("")
@@ -336,19 +339,19 @@ class HoldingsAnalyzer:
             # 新增成分股
             if added:
                 md_lines.append("### ➕ 新增成分股\n")
-                md_lines.append("| 股票代碼 | 股票名稱 | 持股張數 |")
+                md_lines.append("| 股票代碼 | 股票名稱 | 持股 |")
                 md_lines.append("|---------|---------|---------|")
                 for change in added:
-                    md_lines.append(f"| {change.stock_code} | {change.stock_name} | {change.new_lots:.2f}張 |")
+                    md_lines.append(f"| {change.stock_code} | {change.stock_name} | {change.new_lots:.2f}{lot_unit(change.stock_code)} |")
                 md_lines.append("")
             
             # 移除成分股
             if removed:
                 md_lines.append("### ➖ 移除成分股\n")
-                md_lines.append("| 股票代碼 | 股票名稱 | 原持股張數 |")
+                md_lines.append("| 股票代碼 | 股票名稱 | 原持股 |")
                 md_lines.append("|---------|---------|----------|")
                 for change in removed:
-                    md_lines.append(f"| {change.stock_code} | {change.stock_name} | {change.old_lots:.2f}張 |")
+                    md_lines.append(f"| {change.stock_code} | {change.stock_name} | {change.old_lots:.2f}{lot_unit(change.stock_code)} |")
                 md_lines.append("")
             
             # 持股變動
@@ -359,10 +362,11 @@ class HoldingsAnalyzer:
                 for change in modified:
                     emoji = "📈" if change.lots_diff > 0 else "📉"
                     sign = "+" if change.lots_diff > 0 else ""
+                    unit = lot_unit(change.stock_code)
                     md_lines.append(
                         f"| {change.stock_code} | {change.stock_name} | {emoji} | "
-                        f"{change.old_lots:,.0f}張 | {change.new_lots:,.0f}張 | "
-                        f"{sign}{change.lots_diff:,.0f}張 |"
+                        f"{change.old_lots:,.0f}{unit} | {change.new_lots:,.0f}{unit} | "
+                        f"{sign}{change.lots_diff:,.0f}{unit} |"
                     )
                 md_lines.append("")
             
@@ -373,6 +377,7 @@ class HoldingsAnalyzer:
         md_lines.append("### 📝 說明\n")
         md_lines.append("- 📈 表示持股增加\n")
         md_lines.append("- 📉 表示持股減少\n")
+        md_lines.append("- 海外成分股（代號含 Bloomberg 市場後綴，如 `SNDK US`）以「千股」計，1 千股＝1000 股\n")
         md_lines.append("- 資料來源：各投信公司官網\n")
         md_lines.append(f"- 報告生成時間：{current_time}\n")
         

@@ -1,10 +1,71 @@
 # HANDOFF
 
-最後更新：2026-08-12
+最後更新：2026-09-03
 
-目前有兩條工作線：**（A）三檔 ETF 補齊**（見下一節，已完成並生產驗證，兩個開放項在
-2026-08-10 班次全部收斂）、**（B）日期錯位第二批**（見「第二批」一節，技術驗收項已全部
-結清，程式碼**沒有經過獨立審查**）。
+目前有三條工作線：**（C）00988A 含海外成分股**（見下一節，程式與測試完成、實站唯讀驗證通過，
+**尚未 commit、尚未生產驗證**）、**（A）三檔 ETF 補齊**（已完成並生產驗證，兩個開放項在
+2026-08-10 班次全部收斂）、**（B）日期錯位第二批**（技術驗收項已全部結清，
+程式碼**沒有經過獨立審查**）。
+
+## 第四批：00988A 主動統一全球創新（含海外成分股，2026-09-03）
+
+使用者決定收錄 00988A（統一投信，全球型）。這是第一檔**含海外成分股**的追蹤標的，
+「純台股」原則因此多了一個例外（`.ai/guides/adding-an-etf.md` 第 1 步與新節「含海外成分股的 ETF」）。
+
+**狀態：程式已寫、離線測試 76/76、實站唯讀抓取驗證通過；尚未 commit、尚未在 GitHub Actions
+生產驗證。** 沒有跑 `main.py --ezmoney`（它會寫 DB，並以只含統一三檔變動的字典覆蓋整份日報，
+見 08-05 的教訓）；本機 DB 與報表都沒動。
+
+### 改了什麼
+
+| 檔案 | 內容 |
+| --- | --- |
+| `src/stock_markets.py`（新） | 代號慣例：台股純數字、海外照抄 Bloomberg「代號 市場」；`market_of()`／`lot_unit()`／`normalize_code()` |
+| `src/ezmoney_scraper.py` | 加 `'00988A': '61YTW'`；Excel 解析改用 `market_of()` 篩列（原本只收 4 位數字，會丟掉 39/48 檔）；API 備援路徑外幣部位不存 `market_value`；`_parse_number` 接受 numpy 數值 |
+| `src/etf_names.py` | `00988A: 主動統一全球創新`（TWSE 官方簡稱，09-03 取得） |
+| `src/stock_names.py` | `canonical_name()` 明確只對台股形態代號查表（防日後有人把後綴去掉） |
+| `src/report_manager.py`、`src/report_generator.py` | 持股總覽與變動明細每列帶 `market`；HTML 台股「張」、海外「千股」；持股卡片標「含 N 檔海外成分股（單位千股）」 |
+| `src/holdings_analyzer.py` | TXT／Markdown 報告同樣分單位 |
+| `docs/index.html` | `lotUnit()`；個股反查接受含空格代號並切換單位；各 ETF 卡片海外列標「· 千股」、含海外的卡片合計標「千股」 |
+| `test_duplicate_guard.py` | 新增 `check_foreign_holdings()` 18 項（58 → 76） |
+| 文件與註解 | `AGENTS.md` 鐵則＋路由＋擁有者；`adding-an-etf.md`（第 1 步、盤點改 30 檔、新節）；`data-sources.md`；`date-alignment.md`；README 22 → 23；workflow／config／database 註解 17/22 → 18/23 |
+
+### 為什麼要小心（實測依據，2026-09-03 09:53–10:13）
+
+- Excel 與 API 的欄位結構與純台股 ETF 完全相同，只有代號形態不同：48 檔＝台股 9（純數字）＋
+  海外 39（`LITE US`、`6981 JP`、`009150 KS`、`300408 CH`、`3308 HK`、`IFX GY`；幣別 USD/JPY/KRW/CNH/HKD/EUR）。
+- 舊解析器對真實 61YTW Excel 只留 9 檔（權重 22.96%）；新解析器 48 檔（97.58%）。
+- **5 檔海外代號的數字部分等於真實台股代號**（6997 JP↔博弘、3308 HK↔聯德、6871 JP↔新鑫、
+  5801 JP↔建弘投信、4180 JP↔安成藥）——市場後綴一去掉就會被 `canonical_name()` 改名、
+  被跨 ETF 統計加總。這是 `AGENTS.md` 新鐵則「絕不能只留數字」的依據。
+- 資料日期：Excel 表頭 115/09/01（source_dated=True）；API `TranDate`=09-01、`PostDate`=09-03。
+  來源本身比 PCF 適用日早兩個交易日，照常以來源日期寫入、報表逐檔回退，不是錯位。
+- API 備援的 `Amount` 是各幣別原幣金額、`USD_EXRATE` 對非美元一律 1，無法換算，故只存新台幣部位。
+
+### 已實跑的檢查
+
+- `python test_duplicate_guard.py` → **76/76 通過**（原 58 項全數不變，新增 18 項）
+- **red-before 已證**：以 HEAD 版本的 `parse_excel_file` 跑同一份 fixture 只剩 `['3037']`，
+  新測試對舊程式是紅的
+- 實站唯讀（不寫 DB）：`EZMoneyScraper().get_etf_holdings('00988A')` → 48 筆、日期 2026-09-01、
+  `source_dated=True`、權重合計 97.58%、市場分布 US 25／TW 9／JP 6／KS 3／CH 2／GY 2／HK 1、
+  股數為 0／名稱為空／代號重複皆 0、無裸數字碰撞代號；`canonical_name('6997 JP')` 維持來源名稱
+- 以暫存 DB 產生一份含 00988A（台股＋海外）與 00981A 的報表：JSON 每列帶 `market`；HTML 出現
+  `550張`／`13千股`／`117千股`／「含 2 檔海外成分股」；TXT／MD 同樣分單位；
+  index.html 與報表的內嵌 JS 都通過 `node --check`
+- `python main.py --help` 正常；以 `-W error` 編譯所有改動的 .py 無 SyntaxWarning
+- TWSE `STOCK_DAY_ALL` 重查：上市 `00xxxA` 30 檔（08-09 之後多了 00409A 主動復華全球50，海外型）
+
+### 還開著的
+
+1. **生產驗證**：等主班次（Cloudflare 台北 18:25）或手動 `workflow_dispatch`。要看：
+   00988A 首次寫入約 48 筆、資料日期比當天早兩個交易日、`etf_list` 變 23、守衛輸出分母 23
+   （門檻換算 ≥17 檔）、首頁 00988A 卡片與個股反查（輸入 `SNDK US`）顯示「千股」。
+2. **這份 diff 沒有經過獨立審查**；要複核就對當前 diff 跑內建 code review，並照實說那是自我審查。
+3. 歷史 `docs/data_*.json` 沒有 `market` 欄位——前端從代號形態判斷單位，不需要回填；
+   若要讓 JSON 一致可跑 `scripts/regenerate_reports.py`（會重寫所有已發布日期，非必要）。
+4. 統一 API 備援路徑仍用請求日期（防護生效）。對 00988A 這種來源日期落後兩天的檔，備援若觸發
+   會標成請求日，目前靠「內容與前一日相同」的防護擋，未改。
 
 ## 第三批：補完最後 3 檔純台股主動式 ETF（2026-08-09）
 

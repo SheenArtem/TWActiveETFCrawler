@@ -7,6 +7,7 @@ import json
 from loguru import logger
 from .holdings_analyzer import HoldingsAnalyzer, HoldingChange
 from .report_generator import HTMLReportGenerator
+from .stock_markets import market_of
 
 
 class ReportManager:
@@ -75,6 +76,8 @@ class ReportManager:
                     {
                         'stock_code': h.get('stock_code', ''),
                         'stock_name': h.get('stock_name', ''),
+                        # 'TW' 或 Bloomberg 市場後綴（US/JP/KS…）；海外部位的 lots 是「千股」不是「張」
+                        'market': market_of(h.get('stock_code', '')),
                         'weight': h.get('weight', 0),
                         'lots': h.get('shares', 0) / 1000 if h.get('shares') else 0
                     }
