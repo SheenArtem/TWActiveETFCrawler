@@ -52,4 +52,4 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 | `data/stock_names.json` | 成分股中文簡稱唯一來源 |
 | `src/stock_markets.py` | 成分股代號慣例（台股／海外）、市場判定與報表單位「張／千股」 |
 | `src/config.py` | 開關與門檻（含 `REJECT_DUPLICATE_OF_PREVIOUS_DAY`） |
-| `src/trading_calendar.py` | 證交所休市日清單與交易日判定（每年要補下一年） |
+| `src/trading_calendar.py` | 證交所休市日清單與交易日判定（下一年由 `trading-calendar.yml` 每週檢查、公布後自動開 PR） |
