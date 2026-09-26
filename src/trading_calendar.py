@@ -5,14 +5,15 @@
 摩根 PCF 的估值日是下一交易日，會被夾回假日寫進 DB，DB 最新日期變成假日，
 產生一份內容等於前一交易日的假報表（2026-09-25 中秋即為一例）。
 
-休市日取自證交所 OpenAPI（Date 為民國年 YYYMMDD）：
-    https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule
+休市日取自證交所「市場開休市日期」（網站查詢可指定年份；OpenAPI holidaySchedule 只有當年）：
+    https://www.twse.com.tw/rwd/zh/holidaySchedule/holidaySchedule?response=json&date=<年>0101
 這份清單混有「國曆新年開始交易日」「農曆春節前最後交易日」等**有開盤**的日子，
 只收名稱不含「開始交易」「最後交易」的列；「市場無交易，僅辦理結算交割作業」要收。
 週末本來就休市，不必列。
 
-**每年要補下一年的清單**，未涵蓋的年份只排除週末（假日又會產生假報表）。
-颱風假不在證交所的清單內，發生時手動補上。
+**每年要補下一年的清單**：.github/workflows/trading-calendar.yml 每週檢查，證交所公布後
+由 scripts/update_trading_calendar.py 補上並開 PR（也可在本機手動跑）。未涵蓋的年份只排除
+週末（假日又會產生假報表）。颱風假不在證交所的清單內，發生時手動補上。
 """
 from datetime import date, timedelta
 

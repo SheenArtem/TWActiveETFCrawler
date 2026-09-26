@@ -1,0 +1,71 @@
+name: Trading Calendar Update
+
+# 每週檢查證交所有沒有公布今年／明年的市場開休市日期。src/trading_calendar.py 還沒收錄、
+# 證交所已經公布時：補進清單、跑回歸測試、推到 auto/trading-calendar-<年> 分支並開 PR。
+# 還沒公布或已經收錄就什麼都不做；證交所回應格式不對時這支 workflow 會失敗（GitHub 寄信）。
+#
+# 為什麼要自動化：清單沒涵蓋的年份只排除週末，國定假日又會把摩根的估值日夾回假日、
+# 產生假報表（2026-09-25 中秋，見 .ai/guides/date-alignment.md）。
+#
+# 用 GITHUB_TOKEN 開的 PR 不會觸發 tests.yml，所以回歸測試在這裡先跑過才開 PR。
+# PR 關掉不合併時要一併刪掉 auto/trading-calendar-<年> 分支，否則之後每週都會因分支已存在而跳過。
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # 每週一 UTC 02:00（台北 10:00），與每日抓取的班次錯開
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Add newly published TWSE holidays
+        id: update
+        env:
+          PR_BODY_FILE: ${{ runner.temp }}/trading-calendar-pr.md
+        run: python scripts/update_trading_calendar.py
+
+      - name: Run regression suite
+        if: steps.update.outputs.years != ''
+        run: python test_duplicate_guard.py
+
+      - name: Open pull request
+        if: steps.update.outputs.years != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          YEARS: ${{ steps.update.outputs.years }}
+          PR_BODY_FILE: ${{ runner.temp }}/trading-calendar-pr.md
+        run: |
+          BRANCH="auto/trading-calendar-${YEARS// /-}"
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
+            echo "分支 $BRANCH 已存在，PR 應該還在等合併，這次跳過"
+            exit 0
+          fi
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git checkout -b "$BRANCH"
+          git add src/trading_calendar.py
+          git commit -m "data: 交易日曆補上 ${YEARS} 年證交所休市日"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "交易日曆補上 ${YEARS} 年證交所休市日" --body-file "$PR_BODY_FILE"

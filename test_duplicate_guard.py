@@ -643,7 +643,7 @@ def check_holiday_dates():
     這裡把各 daily_update_* 的 scraper 換成只記錄請求日期的替身、把 main 的時鐘固定在
     連假各天，確認每個來源拿到的請求日期都是 09-24。
     """
-    from datetime import date, datetime
+    from datetime import date, datetime, timedelta
     from loguru import logger
     import main as app
 
@@ -668,8 +668,11 @@ def check_holiday_dates():
         check("連假各天退回 09-24，09-29 維持當天",
               backs == {24: "2026-09-24", 25: "2026-09-24", 26: "2026-09-24", 27: "2026-09-24",
                         28: "2026-09-24", 29: "2026-09-29"}, f"{backs}")
+        # 清單每年自動補（trading-calendar.yml），所以挑一個遠未來、不會被收錄的年份
+        june = date(max(TWSE_CLOSED_WEEKDAYS) + 50, 6, 1)
+        monday = june + timedelta(days=-june.weekday() % 7)
         check("清單未涵蓋的年份只排除週末",
-              is_trading_day(date(2030, 1, 1)) and not is_trading_day(date(2030, 1, 5)))
+              is_trading_day(monday) and not is_trading_day(monday + timedelta(days=5)))
 
     def frozen_clock(*when):
         class Frozen(datetime):
@@ -748,6 +751,42 @@ def check_holiday_dates():
             setattr(app, name, value)
         logger.enable("main")
         logger.enable("src")
+
+
+def check_calendar_updater():
+    """
+    scripts/update_trading_calendar.py：證交所清單的篩選規則，以及寫回 src/trading_calendar.py。
+
+    trading-calendar.yml 每週跑它，證交所公布下一年後自動開 PR；這裡不連網，用 2026 年的
+    實際列驗證篩選（開始／最後交易日有開盤、週末不列、無交易僅結算日算休市）與寫回。
+    """
+    import importlib.util
+
+    path = Path(__file__).parent / "scripts" / "update_trading_calendar.py"
+    spec = importlib.util.spec_from_file_location("update_trading_calendar", path)
+    updater = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(updater)
+
+    rows = [
+        ["2026-01-01", "中華民國開國紀念日", "依規定放假1日。"],
+        ["2026-01-02", "國曆新年開始交易日", "國曆新年開始交易。"],
+        ["2026-02-11", "農曆春節前最後交易日", "農曆春節前最後交易。"],
+        ["2026-02-12", "市場無交易，僅辦理結算交割作業", ""],
+        ["2026-02-15", "農曆除夕及春節", "2月15日適逢星期日，於2月20日（星期五）補假。"],
+        ["2026-02-16", "農曆除夕及春節", ""],
+    ]
+    closed = updater.closed_weekdays(rows)
+    check("篩選：只留休市的平日（排除開始／最後交易日與週末）",
+          sorted(closed) == ["2026-01-01", "2026-02-12", "2026-02-16"], f"{sorted(closed)}")
+
+    text = updater.CALENDAR.read_bytes().decode("utf-8")
+    new_text = updater.insert_years(text, [updater.render_year(2099, {"2099-01-01": "測試"})])
+    namespace = {}
+    exec(compile(new_text, "trading_calendar_rewritten", "exec"), namespace)
+    days = namespace["TWSE_CLOSED_WEEKDAYS"]
+    check("寫回：新年份接在最後、原有年份不變",
+          days.get(2099) == frozenset({"2099-01-01"}) and days.get(2026) == updater.load_closed_weekdays()[2026],
+          f"years={sorted(days)}")
 
 
 def main():
@@ -879,6 +918,9 @@ def main():
 
     print("=== 國定假日：請求日期與報表日期退回最近一個交易日 ===")
     check_holiday_dates()
+
+    print("=== 交易日曆自動更新：證交所清單篩選與寫回 ===")
+    check_calendar_updater()
 
     # 13. red-before：關閉防護後，重複資料應該會被寫進去
     #    （在子行程執行，因為 config 於 import 時讀取環境變數）
