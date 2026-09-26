@@ -9,16 +9,21 @@ EZMoney ETF 爬蟲模組
 （`SNDK US`、`6981 JP`、`009150 KS`…），台股仍是純數字代號。解析時**兩種都要收**，
 且海外代號必須連市場後綴一起保留（理由見 src/stock_markets.py）。
 2026-09-03 實測 Excel 與 API 的欄位結構與純台股 ETF 相同，只有代號形態不同。
+
+API 的日期語意（2026-09-26 實測）：GetPCF 的 `date` 是 PCF 適用日（`PostDate`），
+回來的持股是前一交易日收盤（`TranDate`，與 Excel 表頭「資料日期」相同）。
+`specificDate=False` 則不看 `date`、直接回最新一份。資料日期一律取 `TranDate`。
 """
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from playwright.sync_api import sync_playwright
 import numbers
+import re
 import time
 import random
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from loguru import logger
 import pandas as pd
@@ -40,6 +45,9 @@ EZMONEY_ETF_CODES = {
     '00988A': '61YTW',  # 主動統一全球創新
     # 未來可以新增其他 ETF 的對照
 }
+
+# API 的 /Date(ms)/ 是台北午夜的 epoch 毫秒；runner 在 UTC，必須明確用台北時區換算
+TAIPEI_TZ = timezone(timedelta(hours=8))
 
 
 class EZMoneyScraper:
@@ -373,7 +381,6 @@ class EZMoneyScraper:
             
             if first_cell and isinstance(first_cell, str):
                 # 嘗試解析民國日期格式 (例如: "資料日期：115/02/03")
-                import re
                 match = re.search(r'(\d{3})/(\d{2})/(\d{2})', first_cell)
                 if match:
                     roc_year = int(match.group(1))
@@ -393,48 +400,49 @@ class EZMoneyScraper:
                 logger.warning(f"Excel header is empty or invalid, using passed date: {date}")
             
             # ===== 步驟 2: 解析持股資料 =====
-            # EZMoney 的 Excel 格式特殊：
-            # - 前面有基金資訊（淨資產、單位淨值等）
-            # - 第 18 行（索引 18）是表頭：股票代號、股票名稱、股數、持股權重
-            # - 第 19 行開始是股票數據
-            
-            # 直接跳過前 19 行，手動指定列名
-            df = pd.read_excel(
-                excel_path, 
-                skiprows=19,
-                names=['股票代號', '股票名稱', '股數', '持股權重']
+            # EZMoney 的 Excel 前面是基金資訊（淨資產、單位淨值、資產配置…），
+            # 股票表的位置與整張表的欄數會隨版面變：00981A 自 2026-07-31 起在股票表前
+            # 多了一段期貨明細（5 欄），股票表頭從第 19 列移到第 22 列。舊寫法固定
+            # skiprows=19 並只給 4 個欄名，pandas 把多出的第一欄當成索引，「股票代號」欄
+            # 拿到的是股名，整張表被當成非持股列跳過、每天退回 API。
+            # 所以先找「股票代號」表頭列，再依表頭欄名取欄。
+            raw = pd.read_excel(excel_path, header=None)
+            logger.debug(f"Excel shape: {raw.shape}")
+
+            header_idx = next(
+                (i for i in range(len(raw)) if str(raw.iat[i, 0]).strip() in ('股票代號', '股票代碼')),
+                None
             )
-            
-            logger.debug(f"Loaded {len(df)} rows from Excel")
-            
-            logger.debug(f"Excel columns: {df.columns.tolist()}")
-            logger.debug(f"Excel shape: {df.shape}")
-            
-            # 欄位名稱對照
+            if header_idx is None:
+                logger.error("Cannot find stock table header (股票代號) in Excel file")
+                return []
+
+            # 欄位名稱對照（依表頭列的欄名）
             col_mapping = {
                 'code': None,
                 'name': None,
                 'shares': None,
                 'weight': None
             }
-            
-            for col in df.columns:
-                col_str = str(col)
-                if '股票代號' in col_str or '股票代碼' in col_str or '代碼' in col_str:
+
+            for col, label in enumerate(str(v).strip() for v in raw.iloc[header_idx]):
+                if col_mapping['code'] is None and ('股票代號' in label or '股票代碼' in label):
                     col_mapping['code'] = col
-                elif '股票名稱' in col_str or '名稱' in col_str:
+                elif col_mapping['name'] is None and '名稱' in label:
                     col_mapping['name'] = col
-                elif '股數' in col_str:
+                elif col_mapping['shares'] is None and '股數' in label:
                     col_mapping['shares'] = col
-                elif '權重' in col_str or '比例' in col_str or '持股權重' in col_str:
+                elif col_mapping['weight'] is None and ('權重' in label or '比例' in label):
                     col_mapping['weight'] = col
-            
-            logger.debug(f"Column mapping: {col_mapping}")
-            
-            if not col_mapping['code'] or not col_mapping['name']:
+
+            logger.debug(f"Stock table header at row {header_idx}, column mapping: {col_mapping}")
+
+            if col_mapping['code'] is None or col_mapping['name'] is None:
                 logger.error("Cannot find required columns in Excel file")
                 return []
-            
+
+            df = raw.iloc[header_idx + 1:]
+
             # 解析每一行
             for idx, row in df.iterrows():
                 try:
@@ -457,9 +465,9 @@ class EZMoneyScraper:
                         'etf_code': etf_code,
                         'stock_code': stock_code,
                         'stock_name': stock_name,
-                        'shares': self._parse_number(row[col_mapping['shares']]) if col_mapping['shares'] else 0,
+                        'shares': self._parse_number(row[col_mapping['shares']]) if col_mapping['shares'] is not None else 0,
                         'market_value': 0,  # Excel 檔案中沒有市值欄位
-                        'weight': self._parse_percentage(row[col_mapping['weight']]) if col_mapping['weight'] else 0.0,
+                        'weight': self._parse_percentage(row[col_mapping['weight']]) if col_mapping['weight'] is not None else 0.0,
                         'date': actual_date,  # 使用從 Excel 提取的實際日期
                         'source_dated': source_dated
                     }
@@ -526,24 +534,49 @@ class EZMoneyScraper:
         date: str
     ) -> List[Dict[str, Any]]:
         """
-        從 API 獲取持股數據（原有方法）
-        
+        從 API 獲取最新一份 PCF 的持股（Excel 失敗時的備援）
+
         Args:
             etf_code: ETF 代碼
             fund_code: 基金代碼
-            date: 日期
-        
+            date: 請求日期；僅在回應沒有 TranDate 時當資料日期
+
         Returns:
             List[Dict]: 持股明細列表
         """
-        # 抓取 PCF 數據
-        data = self.get_pcf_data(fund_code, date)
+        # 指定日期查詢（specificDate=True）時，date 是 PCF 適用日、持股是前一交易日的，
+        # 2026-07-31 ~ 09-24 的 00981A 就是這樣整串晚了一個交易日。
+        # 備援要的是「最新持股」，所以取最新一份，資料日期交給 _parse_pcf_holdings 用 TranDate。
+        data = self.get_pcf_data(fund_code, date, specific_date=False)
         if not data:
             logger.error(f"Failed to fetch PCF data for {etf_code}")
             return []
-        
+        return self._parse_pcf_holdings(data, etf_code, date)
+
+    @staticmethod
+    def _parse_ms_date(value: Any) -> Optional[str]:
+        """'/Date(1790092800000)/'（台北午夜的 epoch 毫秒）-> '2026-09-23'"""
+        match = re.search(r'/Date\((-?\d+)\)/', str(value or ''))
+        if not match:
+            return None
+        return datetime.fromtimestamp(int(match.group(1)) / 1000, TAIPEI_TZ).strftime('%Y-%m-%d')
+
+    def _parse_pcf_holdings(
+        self,
+        data: Dict[str, Any],
+        etf_code: str,
+        request_date: str
+    ) -> List[Dict[str, Any]]:
+        """
+        解析 GetPCF 回應的股票部位。
+
+        資料日期取 TranDate（持股基準日，與 Excel 表頭「資料日期」相同），並標
+        source_dated=True；回應沒有 TranDate 時退回 request_date 且不標，讓寫入層的
+        日期錯位防護繼續生效。
+        """
         holdings = []
-        
+        date = request_date
+
         try:
             # 解析 API 數據結構
             asset_list = data.get('asset', [])
@@ -572,7 +605,20 @@ class EZMoneyScraper:
             # 解析持股明細
             details = stock_asset.get('Details', [])
             logger.info(f"Found {len(details)} stock holdings")
-            
+
+            pcf = data.get('pcf') or [{}]
+            tran_date = self._parse_ms_date(pcf[0].get('TranDate')) or next(
+                (d for d in (self._parse_ms_date(item.get('TranDate')) for item in details) if d), None
+            )
+            source_dated = tran_date is not None
+            if source_dated:
+                date = tran_date
+                if tran_date != request_date:
+                    logger.info(f"{etf_code}: PCF holdings date (TranDate) {tran_date} "
+                                f"(request date {request_date})")
+            else:
+                logger.warning(f"{etf_code}: PCF has no TranDate; using request date {request_date}")
+
             for item in details:
                 stock_code = normalize_code(item.get('DetailCode', ''))
                 if market_of(stock_code) is None:
@@ -593,7 +639,8 @@ class EZMoneyScraper:
                     'shares': self._parse_number(item.get('Share', 0)),
                     'market_value': market_value,
                     'weight': self._parse_percentage(item.get('NavRate', 0)),
-                    'date': date
+                    'date': date,
+                    'source_dated': source_dated
                 }
                 holdings.append(holding)
             
