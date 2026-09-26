@@ -14,6 +14,7 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
    名稱正規化不可碰海外代號、報表單位台股「張」／海外「千股」
 6. 統一 00981A：Excel 股票表位置會隨版面移動（期貨段在前）、API 備援要以 TranDate
    （持股基準日）而非請求日期當資料日期
+7. 國定假日：請求日期與報表日期要比照週末退回最近一個交易日（2026-09-25 中秋的假報表）
 
 跑法：
     python test_duplicate_guard.py
@@ -632,6 +633,123 @@ def check_report_layer():
     check("回填腳本沒有自己組一份持股總覽", '"stock_code": h.get' not in regen)
 
 
+def check_holiday_dates():
+    """
+    國定假日要比照週末，請求日期與報表日期都退回最近一個交易日。
+
+    main.py 原本只避開週末：2026-09-25（中秋）照樣拿當天當請求日期，摩根 PCF 的估值日
+    （下一交易日 09-29）被夾回 09-25 寫進 DB，DB 最新日變成假日，產生一份內容等於 09-24
+    的假報表；連假中的週末班次（退回週五 09-25）與 09-28（教師節）也一樣。
+    這裡把各 daily_update_* 的 scraper 換成只記錄請求日期的替身、把 main 的時鐘固定在
+    連假各天，確認每個來源拿到的請求日期都是 09-24。
+    """
+    from datetime import date, datetime
+    from loguru import logger
+    import main as app
+
+    print("--- 交易日曆：休市日、補假、無交易僅結算日；開始／最後交易日有開盤 ---")
+    try:
+        from src.trading_calendar import TWSE_CLOSED_WEEKDAYS, is_trading_day, last_trading_day
+    except ImportError as e:
+        check("交易日曆模組存在（src/trading_calendar.py）", False, str(e)[:80])
+    else:
+        closed = ["2026-01-01", "2026-02-12", "2026-02-13", "2026-02-16", "2026-02-20",
+                  "2026-09-25", "2026-09-28", "2026-10-09", "2026-10-26", "2026-12-25"]
+        opened = ["2026-01-02", "2026-02-11", "2026-02-23", "2026-09-24", "2026-09-29"]
+        wrong_closed = [d for d in closed if is_trading_day(date.fromisoformat(d))]
+        wrong_open = [d for d in opened if not is_trading_day(date.fromisoformat(d))]
+        check("休市日（含補假、無交易僅結算日）不是交易日", not wrong_closed, f"誤判為交易日：{wrong_closed}")
+        check("開始交易日、最後交易日與一般平日是交易日", not wrong_open, f"誤判為休市：{wrong_open}")
+        check("週末不是交易日", not is_trading_day(date(2026, 9, 26)) and not is_trading_day(date(2026, 9, 27)))
+        bad_entries = [d for year, days in TWSE_CLOSED_WEEKDAYS.items() for d in days
+                       if date.fromisoformat(d).weekday() >= 5 or date.fromisoformat(d).year != year]
+        check("休市清單只列平日、且放在正確年份", not bad_entries, f"有問題的列：{bad_entries}")
+        backs = {d: last_trading_day(date(2026, 9, d)).isoformat() for d in (24, 25, 26, 27, 28, 29)}
+        check("連假各天退回 09-24，09-29 維持當天",
+              backs == {24: "2026-09-24", 25: "2026-09-24", 26: "2026-09-24", 27: "2026-09-24",
+                        28: "2026-09-24", 29: "2026-09-29"}, f"{backs}")
+        check("清單未涵蓋的年份只排除週末",
+              is_trading_day(date(2030, 1, 1)) and not is_trading_day(date(2030, 1, 5)))
+
+    def frozen_clock(*when):
+        class Frozen(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(*when)
+        return Frozen
+
+    requested = []
+
+    def recording_scraper(returns_tuple):
+        class Recorder:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def get_all_mappings(self):
+                return {"00TEST": "1"}
+
+            def get_etf_holdings(self, etf_code, date_str, *args, **kwargs):
+                requested.append(date_str)
+                return ([], date_str) if returns_tuple else []  # 第一金回 (持股, 實際日期)
+        return Recorder
+
+    sources = ["EZMoney", "Nomura", "Capital", "FHTrust", "CTBC", "FSITC", "TSIT", "Allianz",
+               "Cathay", "Morgan", "Fubon", "ABFunds", "MegaFunds", "KGI", "SinoPac"]
+    patched = [f"{s}Scraper" for s in sources] + [
+        "datetime", "DB_FULL_PATH", "ReportManager", "update_etf_market_data"]
+    saved = {name: getattr(app, name) for name in patched}
+    work = Path(tempfile.mkdtemp())
+    logger.disable("main")
+    logger.disable("src")
+    try:
+        print("--- main.py 各來源的請求日期（連假 09-25 ~ 09-28）---")
+        for s in sources:
+            setattr(app, f"{s}Scraper", recording_scraper(s == "FSITC"))
+        app.DB_FULL_PATH = work / "requests.db"
+        updaters = sorted(n for n in dir(app) if n.startswith("daily_update_"))
+        cases = [((2026, 9, 25, 10, 25), "2026-09-24", "09-25 中秋主班次"),
+                 ((2026, 9, 26, 10, 25), "2026-09-24", "09-26 週六（週五是假日）"),
+                 ((2026, 9, 28, 10, 25), "2026-09-24", "09-28 教師節"),
+                 ((2026, 9, 29, 10, 25), "2026-09-29", "09-29 一般交易日")]
+        for when, expected, label in cases:
+            app.datetime = frozen_clock(*when)
+            requested.clear()
+            for name in updaters:
+                getattr(app, name)(generate_report=False)
+            got = sorted(set(requested))
+            check(f"{label}：{len(updaters)} 個來源的請求日期都是 {expected}",
+                  len(requested) == len(updaters) and got == [expected],
+                  f"{len(requested)} 次請求，日期 {got}")
+
+        print("--- 合併報表日期：DB 已有假日的列時要夾回最近一個交易日 ---")
+        db = Database(str(work / "report.db"))
+        db.insert_etf_list([{"etf_code": "00401A", "etf_name": "摩根", "issuer": "Morgan"}])
+        db.insert_holdings(rows_sd("00401A", "2026-09-24", DAY1))
+        db.insert_holdings(rows_sd("00401A", "2026-09-25", DAY1))  # 09-25 中秋寫進去的假資料
+        report_dates = []
+
+        class RecordingReportManager:
+            def __init__(self, *args, **kwargs):
+                self.analyzer = self
+
+            def detect_changes_batch(self, etf_codes, date_str):
+                report_dates.append(date_str)
+                return {}
+
+        app.DB_FULL_PATH = work / "report.db"
+        app.ReportManager = RecordingReportManager
+        app.update_etf_market_data = lambda db=None: None
+        app.datetime = frozen_clock(2026, 9, 26, 10, 25)
+        app.generate_consolidated_reports()
+        check("09-26 週六：報表日期夾回 09-24，不用假日 09-25",
+              report_dates == ["2026-09-24"], f"報表日期 {report_dates}")
+    finally:
+        for name, value in saved.items():
+            setattr(app, name, value)
+        logger.enable("main")
+        logger.enable("src")
+
+
 def main():
     print("=== 日期錯位防護（REJECT_DUPLICATE_OF_PREVIOUS_DAY=True）===")
     db, _ = fresh_db()
@@ -758,6 +876,9 @@ def main():
 
     print("=== 報表層：落後的 ETF 不可從任一半消失 ===")
     check_report_layer()
+
+    print("=== 國定假日：請求日期與報表日期退回最近一個交易日 ===")
+    check_holiday_dates()
 
     # 13. red-before：關閉防護後，重複資料應該會被寫進去
     #    （在子行程執行，因為 config 於 import 時讀取環境變數）
