@@ -35,7 +35,7 @@
 | 野村 Nomura | `src/nomura_scraper.py` | API | ✅ 結構安全（2026-08-05 實測）：API 嚴格遵守 `SearchDate`，未發布日回空、可查歷史、回應回帶資料日期 | 仍防護 | 用請求日期但**不會錯位**（要嘛拿到該日資料、要嘛空）。可選擇性標 source_dated 消滅同內容日誤擋 |
 | 復華 FHTrust | `src/fhtrust_scraper.py` | API 下載 Excel | ✅ 結構安全（2026-08-05 實測）：URL 帶日期且嚴格遵守，未發布日回 JSON 錯誤而非假 Excel | 仍防護 | 同野村，不會錯位 |
 | 國泰 Cathay | `src/cathay_scraper.py` | API | ❌ **無法取得** | 仍防護 | 見下方「國泰 API 無法信任日期」 |
-| 兆豐 Mega | `src/megafunds_scraper.py` | 解析網頁 DOM（WebForms postback） | ✅ 黏在金額欄位文字前：`2026/08/07 每基數實際申購總價金(元)`，以「日期＋每基數」為錨（同台新樣態） | 跳過 | 換基金要帶 `__VIEWSTATE` postback（`fund_id=23`＝00996A），**只能回送頁面實際有的 hidden**；頁面最顯眼的「查詢日期」是 PCF 適用日（下一營業日），絕不可用。`qdt` 填適用日（`YYYY/MM/DD`）可查歷史，回補用（scraper 只取最新一份）。2026-09-21 起 GitHub runner 一律 HTTP 403，本機正常 |
+| 兆豐 Mega | `src/megafunds_scraper.py` | 解析網頁 DOM（WebForms postback） | ✅ 黏在金額欄位文字前：`2026/08/07 每基數實際申購總價金(元)`，以「日期＋每基數」為錨（同台新樣態） | 跳過 | 換基金要帶 `__VIEWSTATE` postback（`fund_id=23`＝00996A），**只能回送頁面實際有的 hidden**；頁面最顯眼的「查詢日期」是 PCF 適用日（下一營業日），絕不可用。`qdt` 填適用日（`YYYY/MM/DD`）可查歷史，回補用（scraper 只取最新一份）。2026-09-21 起前端 Akamai 依來源 IP 擋 GitHub runner（整個網域 403，開發機正常），見下方「兆豐：GitHub runner 被 Akamai 依來源 IP 擋」 |
 | 凱基 KGI | `src/kgi_scraper.py` | 解析網頁 DOM（partial view） | ✅ `(2026/08/07)每受益權單位淨資產價值` 括號內即基準日 | 跳過 | 持股表由 `/Fund/RedemptionVC` 回 HTML 片段（`fundID=J024`＝00407A）；hidden `#DataDate` 是適用日，絕不可用 |
 | 永豐 SinoPac | `src/sinopac_scraper.py` | 解析網頁 DOM（SSR） | ✅ 頁面標「資料日期：YYYY/MM/DD」 | 跳過 | 官網**有** xlsx 下載卻不採用，見下方「已知例外：永豐的下載檔案拿不到最新」；`qdate`／`hDate` 是適用日，絕不可用；頁面同時輸出桌機版與手機版表格，只能取桌機版 |
 
@@ -93,6 +93,32 @@
 
 也就是說它對「已過去但當日資料未產出」的日期會**靜默回退到前一日**，而回應中沒有任何日期欄位
 可以識破。因此國泰無法改用來源日期，只能靠寫入層防護攔截。
+
+## 兆豐：GitHub runner 被 Akamai 依來源 IP 擋
+
+`www.megafunds.com.tw` 以 CNAME 指到 Akamai（`edgekey.net`）。runner 最後一次成功是 2026-09-20 16:46Z，
+09-21 10:27Z 起每次跑到兆豐都在第一個 GET 就拿到 403；這段期間我們的程式、runner 映像檔、套件版本都沒變。
+2026-09-26 用臨時分支在 runner 上診斷（run `36238141227`：ubuntu 與 windows 各一，出口都是
+Azure AS8075、美國）：
+
+| 測試 | runner | 開發機（台灣 HiNet） |
+| --- | --- | --- |
+| requests（scraper 標頭／預設 UA） | 403 | 200 |
+| curl（runner：OpenSSL 與 Schannel、HTTP/2 與 1.1；開發機：Schannel） | 403 | 200 |
+| Playwright 真 Chromium | 403 | 200 |
+| 首頁 `/`（requests） | 403 | 200 |
+| `robots.txt`（requests） | 403 | 404（兆豐 IIS 自己的 404 頁） |
+| 對照：證交所 | 200 | 200 |
+
+403 的內文是 Akamai 的「Access Denied」＋`Reference #18.…`（連到 `errors.edgesuite.net`）；
+連 `robots.txt` 都被擋，代表請求在 Akamai 邊緣就被拒、沒到兆豐主機。**換 client 結果不變、換網路結果就變**，
+所以是依來源 IP 封鎖，改 UA、補標頭、改用 Playwright 都無效。
+
+- 還沒分辨只擋雲端／Azure IP，還是擋所有非台灣 IP；這決定海外代理能不能用，台灣出口 IP 兩種情況都可行。
+- 向兆豐詢問時附上 `Reference #`，他們可以用它查到是哪一條規則擋的。
+- 正式班次的 log 只有狀態碼；要知道是誰擋的，得在 runner 上印出回應標頭與內文。
+  找海外對照點前先確認它的出口 IP（例如打 `ipinfo.io/json`）：這次 agent 的網頁抓取工具實際走開發機的網路，
+  一度被誤當成海外對照。
 
 ## 寫新 scraper 的踩雷筆記
 

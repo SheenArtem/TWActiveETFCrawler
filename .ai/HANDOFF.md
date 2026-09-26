@@ -33,9 +33,11 @@ Excel 依表頭找股票表、API 備援改用 `TranDate`；機制寫在 `date-a
      （09-26 手動班次 Excel 已解析成功、沒有退回 API，但那天沒有新交易日）。
    - 00988A：寫入資料日期 09-24（在適用日 09-30 那份裡）。
    - 00408A／00994A 會再拿到 09-24（UPSERT，不增列）；00996A 預期仍 403（第 3 項）。
-3. **00996A 兆豐 403**：只擋 GitHub runner（本機 GET／POST 都 200），推測是封鎖 runner IP。
-   09-21 ~ 09-24 已從本機補齊，09-29 起每個交易日會再缺；長期解法未定。
-   回補：POST `qdt`＝適用日（`data-sources.md` 兆豐列）。
+3. **00996A 兆豐 403——原因已確認：兆豐前端的 Akamai 依來源 IP 擋 GitHub runner（Azure），與程式、標頭無關。**
+   runner 上 requests／curl／真 Chromium 一律 403、連 `robots.txt` 也被擋，開發機同類 client 全 200（證據與判別方法見
+   `data-sources.md`「兆豐：GitHub runner 被 Akamai 依來源 IP 擋」）。未分辨只擋雲端 IP 還是擋所有非台灣 IP。
+   09-21 ~ 09-24 已從本機補齊，09-29 起每個交易日會再缺；長期解法未定（要台灣出口 IP，或附 Akamai
+   `Reference #` 請兆豐放行）。回補：POST `qdt`＝適用日（`data-sources.md` 兆豐列）。
 4. **每年補交易日曆**：`src/trading_calendar.py` 只有 2026，2027 在 2026-09-26 查仍未公布。
    `trading-calendar.yml` 每週一檢查，公布後自動開 PR；**2026-12-31 前要合併**，否則 2027 的國定假日
    又會產生假報表。自動開 PR 這條路徑要等證交所公布才會第一次真正跑到。颱風休市不在清單內，當天要手動補。
