@@ -505,6 +505,15 @@ def check_ezmoney_layout_and_pcf_date():
     check("API：以來源日期標 source_dated", bool(api_rows) and all(r.get("source_dated") is True for r in api_rows))
     check("API：備援取最新一份 PCF（specificDate=False）", calls == [False], f"specific_date={calls}")
 
+    # 同一個請求有時回 /Date(ms)/、有時回 ISO（2026-09-26 回補時 40 次請求有 7 次是 ISO），兩種都要認得
+    payload["pcf"][0]["TranDate"] = "2026-09-23T00:00:00"
+    for d in payload["asset"][1]["Details"]:
+        d["TranDate"] = "2026-09-23T00:00:00"
+    iso_rows = scraper._get_holdings_from_api("00981A", "49YTW", "2026-09-24")
+    check("API：TranDate 為 ISO 格式時同樣取用並標 source_dated",
+          bool(iso_rows) and all(r["date"] == "2026-09-23" and r.get("source_dated") is True for r in iso_rows),
+          f"dates={sorted({r['date'] for r in iso_rows})}")
+
     payload["pcf"] = []
     for d in payload["asset"][1]["Details"]:
         d.pop("TranDate")
