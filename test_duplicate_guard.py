@@ -15,6 +15,8 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 6. 統一 00981A：Excel 股票表位置會隨版面移動（期貨段在前）、API 備援要以 TranDate
    （持股基準日）而非請求日期當資料日期
 7. 國定假日：請求日期與報表日期要比照週末退回最近一個交易日（2026-09-25 中秋的假報表）
+8. 首頁「各 ETF 近 5 日買賣明細」：來源停更時同一次調整不可在每個報表日重複計入
+   （需要 node；找不到時跳過）
 
 跑法：
     python test_duplicate_guard.py
@@ -789,6 +791,110 @@ def check_calendar_updater():
           f"years={sorted(days)}")
 
 
+def check_homepage_per_etf_dedup():
+    """
+    首頁「各 ETF 近 5 日買賣明細」（docs/index.html 的 loadPerETFData）要以 (ETF, 資料日期) 去重。
+
+    變動是逐檔比對各自最新可得的資料日期得出的，來源停更時同一筆變動會在連續多個報表日期
+    重複出現（歷史上 00987A 04-27 那次調整連續出現在 10 份報表）。同步買賣超與個股反查早已去重，
+    這個面板原本沒有：同一次調整在每個報表日的欄位各畫一次，合計與卡片摘要重複計入。
+    這裡用 node 執行頁內腳本（document 與 fetch 換成最小替身），餵三份報表：
+    00995A 停在 8/4、00981A 每天都有新資料、00994A 停在視窗外的 7/31。
+    """
+    import re
+    import shutil
+
+    node = shutil.which("node")
+    if not node:
+        results.append((SKIP, "首頁各 ETF 買賣明細去重（找不到 node）", "需要 node 執行頁內腳本"))
+        print(f"  [{SKIP}] 首頁各 ETF 買賣明細去重 — 找不到 node")
+        return
+
+    def entry(etf, data_date, modified=(), added=(), removed=()):
+        return {
+            "etf_code": etf, "etf_name": etf, "data_date": data_date,
+            "modified": [{"stock_code": c, "stock_name": f"股票{c}", "diff": d} for c, d in modified],
+            "added": [{"stock_code": c, "stock_name": f"股票{c}", "lots": n} for c, n in added],
+            "removed": [{"stock_code": c, "stock_name": f"股票{c}", "lots": n} for c, n in removed],
+        }
+
+    stalled = entry("00995A", "2026-08-04", modified=[("2330", 5)], removed=[("2454", 2)])
+    outside = entry("00994A", "2026-07-31", added=[("2383", 4)])
+    reports = {  # 新到舊，與 reports_index.json 相同
+        "2026-08-06": [stalled, entry("00981A", "2026-08-06", modified=[("2330", 3)]), outside],
+        "2026-08-05": [stalled, entry("00981A", "2026-08-05", modified=[("2330", 2)]), outside],
+        "2026-08-04": [stalled, entry("00981A", "2026-08-04", modified=[("2330", 1)]), outside],
+    }
+    work = Path(tempfile.mkdtemp())
+    (work / "reports_index.json").write_text(
+        json.dumps([{"date": d} for d in reports]), encoding="utf-8")
+    for d, changes in reports.items():
+        (work / f"data_{d}.json").write_text(
+            json.dumps({"date": d, "detailed_changes": changes}, ensure_ascii=False), encoding="utf-8")
+
+    harness = work / "harness.js"
+    harness.write_text(r"""
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const [indexPath, dir] = process.argv.slice(2);
+const script = fs.readFileSync(indexPath, 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const newElement = () => ({
+    innerHTML: '', textContent: '', value: '', addEventListener() {}, focus() {}, appendChild() {},
+});
+const elements = {};
+const getElementById = id => elements[id] || (elements[id] = newElement());
+const context = vm.createContext({
+    document: { getElementById, createElement: newElement },
+    fetch: async url => {
+        const file = path.join(dir, url);
+        if (!fs.existsSync(file)) {
+            return { ok: false, json: async () => { throw new Error('404 ' + url); } };
+        }
+        return { ok: true, json: async () => JSON.parse(fs.readFileSync(file, 'utf8')) };
+    },
+    console: { log() {}, warn() {}, error: (...args) => console.error(...args) },
+    requestAnimationFrame: fn => fn(),
+});
+vm.runInContext(script, context);
+context.loadPerETFData().then(() => fs.writeFileSync(
+    path.join(dir, 'per-etf-content.html'), getElementById('per-etf-content').innerHTML, 'utf8'));
+""", encoding="utf-8")
+    index_html = Path(__file__).parent / "docs" / "index.html"
+    out = subprocess.run([node, str(harness), str(index_html), str(work)],
+                         capture_output=True, encoding="utf-8", errors="replace")
+    rendered = work / "per-etf-content.html"
+    html = rendered.read_text(encoding="utf-8") if rendered.exists() else ""
+
+    # 卡片 -> (摘要文字, {股票代號: [各日欄位（新到舊）..., 合計]})
+    cards = {}
+    for chunk in html.split('<div class="per-etf-card">')[1:]:
+        etf = re.search(r"<h3>(.*?)</h3>", chunk).group(1)
+        summary = re.findall(r'<span class="per-etf-(?:buy|sell)">(.*?)</span>', chunk)
+        table = {}
+        for tr in re.findall(r"<tr>(.*?)</tr>", chunk.split("<tbody>", 1)[-1], re.S):
+            code = re.search(r"<small[^>]*>([^<]*)</small>", tr).group(1)
+            table[code] = [td.strip() for td in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)[1:]]
+        cards[etf] = (summary, table)
+
+    check("頁內腳本在 node 執行並畫出三檔卡片（前提）",
+          out.returncode == 0 and sorted(cards) == ["00981A", "00994A", "00995A"],
+          f"rc={out.returncode}, cards={sorted(cards)}, stderr={out.stderr.strip()[:160]}")
+    summary, table = cards.get("00995A", ([], {}))
+    check("停更的 ETF：同一次調整在卡片摘要只計一次",
+          summary == ["買 1 檔 +5張", "賣 1 檔 -2張"], f"{summary}")
+    check("停更的 ETF：只畫在資料日期 8/4 的欄位，合計不重複",
+          table.get("2330") == ["—", "—", "+5.0", "+5.0"]
+          and table.get("2454") == ["—", "—", "-2.0", "-2.0"], f"{table}")
+    _, table = cards.get("00981A", ([], {}))
+    check("每天都有新資料的 ETF：三天的變動都保留、各在自己的欄位",
+          table.get("2330") == ["+3.0", "+2.0", "+1.0", "+6.0"], f"{table}")
+    _, table = cards.get("00994A", ([], {}))
+    check("資料日期在視窗外：只計一次、畫在最新報表日期，不從畫面消失",
+          table.get("2383") == ["+4.0", "—", "—", "+4.0"], f"{table}")
+
+
 def main():
     print("=== 日期錯位防護（REJECT_DUPLICATE_OF_PREVIOUS_DAY=True）===")
     db, _ = fresh_db()
@@ -921,6 +1027,9 @@ def main():
 
     print("=== 交易日曆自動更新：證交所清單篩選與寫回 ===")
     check_calendar_updater()
+
+    print("=== 首頁各 ETF 近 5 日買賣明細：停更時同一次調整不重複計入 ===")
+    check_homepage_per_etf_dedup()
 
     # 13. red-before：關閉防護後，重複資料應該會被寫進去
     #    （在子行程執行，因為 config 於 import 時讀取環境變數）
