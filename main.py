@@ -2,7 +2,7 @@
 台灣主動式 ETF 持股追蹤系統 - 主程式
 """
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import sys
 
@@ -35,6 +35,7 @@ from src.megafunds_scraper import MegaFundsScraper
 from src.kgi_scraper import KGIScraper
 from src.sinopac_scraper import SinoPacScraper
 from src.utils import setup_logging, cleanup_old_data, get_trading_days
+from src.trading_calendar import last_trading_day
 from src.report_manager import ReportManager
 from src.etf_market_data import ETFMarketDataFetcher
 from loguru import logger
@@ -55,7 +56,7 @@ def daily_update_ezmoney(generate_report=True):
     
     # EZMoney 使用網頁下載 Excel 的方式獲取最新持股資料
     # 注意：實際資料日期會從 Excel 檔案中自動提取，這裡的日期僅作為檔名和備用
-    today = datetime.now()
+    today = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     storage_date_str = today.strftime('%Y-%m-%d')
     
     logger.info(f"Downloading EZMoney ETF data (actual date will be extracted from Excel)")
@@ -136,9 +137,7 @@ def daily_update_nomura(generate_report=True):
     scraper = NomuraScraper()
     
     # 使用今天的日期（資料通常在當晚更新）
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Nomura ETF data for {date_str}")
@@ -203,9 +202,7 @@ def daily_update_capital(generate_report=True):
     scraper = CapitalScraper()
     
     # 使用今天的日期
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     
     date_str = target_date.strftime('%Y-%m-%d') # YYYY-MM-DD
     
@@ -271,9 +268,7 @@ def daily_update_fhtrust(generate_report=True):
     scraper = FHTrustScraper()
     
     # 使用今天的日期
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching FHTrust ETF data for {date_str}")
@@ -338,9 +333,7 @@ def daily_update_ctbc(generate_report=True):
     scraper = CTBCScraper()
     
     # 使用今天的日期
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching CTBC ETF data for {date_str}")
@@ -406,9 +399,7 @@ def daily_update_fsitc(generate_report=True):
     # 請求日期用今天，API 會回不晚於該日的最新一筆 PCF。
     # 實際資料日期一律以 API 回傳的 sdate(actual_date) 為準，不再用時間門檻推測或強制覆寫，
     # 避免把舊日期的 PCF 標記成當天造成日期錯位。
-    request_date = datetime.now()
-    while request_date.weekday() >= 5:  # 避免週末，讓請求日期落在交易日
-        request_date -= timedelta(days=1)
+    request_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = request_date.strftime('%Y-%m-%d')
     logger.info(f"Requesting FSITC ETF data (request date: {date_str}), trusting API actual date")
     
@@ -484,9 +475,7 @@ def daily_update_tsit(generate_report=True):
     scraper = TSITScraper()
     
     # 使用今天的日期
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching TSIT ETF data for {date_str}")
@@ -549,9 +538,7 @@ def daily_update_cathay(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = CathayScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Cathay ETF data for {date_str}")
 
@@ -603,9 +590,7 @@ def daily_update_morgan(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = MorganScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Morgan ETF data for {date_str}")
 
@@ -658,9 +643,7 @@ def daily_update_fubon(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = FubonScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Fubon ETF data for {date_str}")
 
@@ -712,9 +695,7 @@ def daily_update_abfunds(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = ABFundsScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching AllianceBernstein ETF data for {date_str}")
 
@@ -768,9 +749,7 @@ def daily_update_allianz(generate_report=True):
     scraper = AllianzScraper()
     
     # 使用今天的日期
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:  # 避免週末
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Allianz ETF data for {date_str}")
@@ -846,9 +825,7 @@ def daily_update_megafunds(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = MegaFundsScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching Mega Funds ETF data for {date_str}")
 
@@ -900,9 +877,7 @@ def daily_update_kgi(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = KGIScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching KGI ETF data for {date_str}")
 
@@ -954,9 +929,7 @@ def daily_update_sinopac(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = SinoPacScraper()
 
-    target_date = datetime.now()
-    while target_date.weekday() >= 5:
-        target_date -= timedelta(days=1)
+    target_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     date_str = target_date.strftime('%Y-%m-%d')
     logger.info(f"Fetching SinoPac ETF data for {date_str}")
 
@@ -1065,9 +1038,7 @@ def generate_consolidated_reports():
     # 防呆：DB 最新日期不應晚於今天的交易日。某些來源(如 PCF 申購買回清單)會回傳
     # 次一交易日的前瞻性估值日，若被誤存進 DB，get_latest_date() 會挑到未來日期，
     # 導致報表/網頁日期超前真實交易日。此處夾住上限，確保網頁永遠不顯示未來日期。
-    today_trading = datetime.now()
-    while today_trading.weekday() >= 5:  # 避免週末
-        today_trading -= timedelta(days=1)
+    today_trading = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日
     today_str = today_trading.strftime('%Y-%m-%d')
     if date_str > today_str:
         logger.warning(
