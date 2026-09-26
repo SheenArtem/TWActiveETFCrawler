@@ -12,7 +12,8 @@ EZMoney ETF 爬蟲模組
 
 API 的日期語意（2026-09-26 實測）：GetPCF 的 `date` 是 PCF 適用日（`PostDate`），
 回來的持股是前一交易日收盤（`TranDate`，與 Excel 表頭「資料日期」相同）。
-`specificDate=False` 則不看 `date`、直接回最新一份。資料日期一律取 `TranDate`。
+`specificDate=False` 則不看 `date`、直接回最新一份。資料日期一律取 `TranDate`；
+日期欄位有時是 `/Date(ms)/`、有時是 ISO 字串，同一個請求兩種都可能出現。
 """
 import requests
 from requests.adapters import HTTPAdapter
@@ -46,7 +47,7 @@ EZMONEY_ETF_CODES = {
     # 未來可以新增其他 ETF 的對照
 }
 
-# API 的 /Date(ms)/ 是台北午夜的 epoch 毫秒；runner 在 UTC，必須明確用台北時區換算
+# API 日期若是 /Date(ms)/，那是台北午夜的 epoch 毫秒；runner 在 UTC，必須明確用台北時區換算
 TAIPEI_TZ = timezone(timedelta(hours=8))
 
 
@@ -554,12 +555,19 @@ class EZMoneyScraper:
         return self._parse_pcf_holdings(data, etf_code, date)
 
     @staticmethod
-    def _parse_ms_date(value: Any) -> Optional[str]:
-        """'/Date(1790092800000)/'（台北午夜的 epoch 毫秒）-> '2026-09-23'"""
-        match = re.search(r'/Date\((-?\d+)\)/', str(value or ''))
-        if not match:
-            return None
-        return datetime.fromtimestamp(int(match.group(1)) / 1000, TAIPEI_TZ).strftime('%Y-%m-%d')
+    def _parse_api_date(value: Any) -> Optional[str]:
+        """
+        API 日期欄位 -> 'YYYY-MM-DD'（台北日期）。
+
+        同一個請求有時回 '/Date(1790092800000)/'（台北午夜的 epoch 毫秒），有時回
+        '2026-09-23T00:00:00'（2026-09-26 實測 40 次有 7 次），兩種都要認得。
+        """
+        text = str(value or '')
+        match = re.search(r'/Date\((-?\d+)[^)]*\)/', text)
+        if match:
+            return datetime.fromtimestamp(int(match.group(1)) / 1000, TAIPEI_TZ).strftime('%Y-%m-%d')
+        match = re.match(r'(\d{4}-\d{2}-\d{2})T', text)
+        return match.group(1) if match else None
 
     def _parse_pcf_holdings(
         self,
@@ -607,8 +615,8 @@ class EZMoneyScraper:
             logger.info(f"Found {len(details)} stock holdings")
 
             pcf = data.get('pcf') or [{}]
-            tran_date = self._parse_ms_date(pcf[0].get('TranDate')) or next(
-                (d for d in (self._parse_ms_date(item.get('TranDate')) for item in details) if d), None
+            tran_date = self._parse_api_date(pcf[0].get('TranDate')) or next(
+                (d for d in (self._parse_api_date(item.get('TranDate')) for item in details) if d), None
             )
             source_dated = tran_date is not None
             if source_dated:
