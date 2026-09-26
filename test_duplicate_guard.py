@@ -621,7 +621,7 @@ def check_report_layer():
           overview.get("00981A") == "2026-08-05", f"data_date={overview.get('00981A')}")
 
     # 變動清單也要帶資料日期：來源停更時同一筆變動會在連續多個報表日期重複出現，
-    # 沒有這個欄位，首頁個股反查就無法去重，同一次調整會被重複計入買賣張數。
+    # 沒有這個欄位，首頁的跨報表彙總就無法去重，同一次調整會被重複計入買賣張數。
     dc = {e["etf_code"]: e.get("data_date") for e in data["detailed_changes"]}
     check("變動清單每筆都帶 data_date", all(dc.values()), f"detailed_changes={dc}")
     check("變動清單：落後那檔標自己的資料日期 8/4",
