@@ -25,10 +25,12 @@ Excel 依表頭找股票表、API 備援改用 `TranDate`；機制寫在 `date-a
 
 ## 下一步
 
-1. **連假班次驗證（09-26 ~ 09-28，修正後第一批）**：log 各來源請求日期應為 2026-09-24、
-   合併報表日期 09-24；DB 與 `docs/` 不應出現 09-25／09-26／09-28。
+1. **連假班次驗證**：09-26 手動班次（`1046b5b`）已確認各來源請求日期 2026-09-24、報表日期 09-24、
+   沒有新日期，整份重生的 09-24 報表與回補版只差 `update_time`。還要看 09-28（教師節）班次：
+   DB 與 `docs/` 不應出現 09-28。
 2. **09-29 18:25 主班次驗證**：
-   - 00981A：log 出現 `Excel date confirmed` 或 `Excel actual date`、沒有 `falling back to API`，寫入 09-29。
+   - 00981A：log 出現 `Excel date confirmed` 或 `Excel actual date`、沒有 `falling back to API`，寫入 09-29
+     （09-26 手動班次 Excel 已解析成功、沒有退回 API，但那天沒有新交易日）。
    - 00988A：寫入資料日期 09-24（在適用日 09-30 那份裡）。
    - 00408A／00994A 會再拿到 09-24（UPSERT，不增列）；00996A 預期仍 403（第 3 項）。
 3. **00996A 兆豐 403**：只擋 GitHub runner（本機 GET／POST 都 200），推測是封鎖 runner IP。
@@ -59,8 +61,8 @@ Excel 依表頭找股票表、API 備援改用 `TranDate`；機制寫在 `date-a
 - **重生歷史報表要固定其他 ETF 的 `data_date`**（做法見 `date-alignment.md`「整串平移」）；
   `scripts/regenerate_reports.py` 會整份重生、不更新 `reports_index.json`、HTML 帶當下時間，只適合全面回填。
 - 07-30 以前的 `docs/data_*.json` 沒有 `market` 欄位（前端從代號判斷單位，不需回填）。
-- 驗證層級：（E）有 red-before／green-after（CI）、DB 與報表對修改前逐組比對；尚缺真實班次
-  （09-26 起）。（D）尚缺 09-29 走修好的 Excel 路徑。（A）～（E）各批都**沒有獨立審查**
+- 驗證層級：（E）有 red-before／green-after（CI）、DB 與報表對修改前逐組比對、09-26 真實班次；
+  尚缺平日假日（09-28）的真實班次。（D）尚缺 09-29 走修好的 Excel 路徑。（A）～（E）各批都**沒有獨立審查**
   （使用者 2026-08-09 決定不做；內建 code review 只在要求時跑，且屬自我審查）。
 - 收盤價稽核、連假回補與重生的腳本都沒有進 repo（做法寫在 `date-alignment.md`）；上櫃歷史行情要用
   `tpex.org.tw/www/zh-tw/afterTrading/otc?date=YYYY/MM/DD&type=EW`，舊的 `stk_quote_result.php`
