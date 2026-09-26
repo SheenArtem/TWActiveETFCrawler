@@ -1150,7 +1150,7 @@
                                     totalLots: 0
                                 };
                             }
-                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stock.diff || 0);
+                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stockAgg[code].etfMap[etfCode].perDay[bucket] || 0) + (stock.diff || 0);
                             stockAgg[code].etfMap[etfCode].totalLots += (stock.diff || 0);
                         });
 
