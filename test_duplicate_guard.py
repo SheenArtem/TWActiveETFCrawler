@@ -12,6 +12,8 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 4. 中信／富邦 `_extract_data_date()`：決定要不要標 source_dated 的解析邏輯
 5. 海外成分股（00988A 主動統一全球創新）：Bloomberg 代號要連市場後綴一起收與存、
    名稱正規化不可碰海外代號、報表單位台股「張」／海外「千股」
+6. 統一 00981A：Excel 股票表位置會隨版面移動（期貨段在前）、API 備援要以 TranDate
+   （持股基準日）而非請求日期當資料日期
 
 跑法：
     python test_duplicate_guard.py
@@ -421,6 +423,96 @@ def check_foreign_holdings():
     check("Markdown 報告：海外列「千股」、台股列「張」", "13.00千股" in md and "550張" in md)
 
 
+def check_ezmoney_layout_and_pcf_date():
+    """
+    00981A（統一 49YTW）2026-07-31 ~ 09-24 整串晚一個交易日的回歸測試。
+
+    1. Excel 版面：00981A 自 7/31 起在股票表前多了一段期貨明細（5 欄），股票表頭從第 19 列
+       移到第 22 列。寫死列數／欄數的解析器會把整張股票表當成非持股列跳過、每天退回 API。
+    2. API 日期：GetPCF 的日期參數是 PCF 適用日（PostDate），回來的持股是前一交易日收盤
+       （TranDate）。拿請求日期當資料日期，每一天都晚一個交易日，而且防護擋不到
+       （每天內容都不同，只是整串平移）。備援要取最新一份並以 TranDate 當資料日期。
+    """
+    try:
+        import pandas as pd
+        from src.ezmoney_scraper import EZMoneyScraper
+    except ImportError as e:
+        results.append((SKIP, "統一 00981A 版面／API 日期（缺套件）", str(e)[:60]))
+        print(f"  [{SKIP}] 統一 00981A 版面／API 日期 — {str(e)[:60]}")
+        return
+
+    print("--- Excel：股票表前有期貨段（5 欄）時仍要找到股票表 ---")
+    # 照抄 2026-09-26 下載的 49YTW Excel 版面（資料日期 115/09/24）：
+    # 第 18 列期貨表頭（5 欄）、第 22 列股票表頭、第 23 列起持股；儲存格全是字串
+    blank = [None] * 5
+    layout = [
+        ["資料日期：115/09/24", None, None, None, None], blank,
+        ["基金資產", None, None, None, None],
+        ["淨資產", "NTD 290,341,568,586", None, None, None],
+        ["流通在外單位數", "9,343,709,000", None, None, None],
+        ["每單位淨值", "NTD 31.07", None, None, None], blank,
+        ["項目", "金額", "權重", None, None],
+        ["期貨(名目本金)", "NTD 6,535,375,000", "2.25%", None, None],
+        ["股票", "NTD 281,741,779,235", "97.04%", None, None], blank,
+        ["項目", "金額", None, None, None],
+        ["現金", "NTD 7,907,071,412", None, None, None],
+        ["期貨保證金", "NTD 2,141,350,397", None, None, None],
+        ["附買回債券", "NTD 3,482,132,473", None, None, None],
+        ["應收付證券款", "NTD 8,934,608,591", None, None, None], blank,
+        ["期貨(名目本金)", None, None, None, None],
+        ["期貨代號", "期貨名稱", "持股權重", "口數", "契約年月"],
+        ["TX", "台指期貨", "2.25%", "679", "2026/10"], blank,
+        ["股票", None, None, None, None],
+        ["股票代號", "股票名稱", "股數", "持股權重", None],
+        ["2330", "台積電", "11,464,000", "9.77%", None],
+        ["2454", "聯發科", "5,086,000", "9.26%", None],
+        ["3037", "欣興", "20,100,000", "8.20%", None],
+    ]
+    fixture = Path(tempfile.mkdtemp()) / "49YTW_fixture.xlsx"
+    pd.DataFrame(layout).to_excel(fixture, index=False, header=False)
+    parsed = EZMoneyScraper().parse_excel_file(fixture, "00981A", "2026-09-26")
+    codes = [r["stock_code"] for r in parsed]
+    check("股票表全部收進來、期貨列不混入", codes == ["2330", "2454", "3037"], f"codes={codes}")
+    check("股數與權重取自正確欄位",
+          bool(parsed) and parsed[0]["shares"] == 11464000 and parsed[0]["weight"] == 9.77
+          and parsed[2]["shares"] == 20100000)
+    check("資料日期取自 Excel 表頭（115/09/24）且標 source_dated",
+          bool(parsed) and all(r["date"] == "2026-09-24" and r["source_dated"] is True for r in parsed))
+
+    print("--- API 備援：資料日期用 TranDate，不用請求日期 ---")
+    # 2026-09-26 實測：請求 09/24 → TranDate 09/23、PostDate 09/24；specificDate=False 取最新一份。
+    # /Date(ms)/ 是台北午夜：1790092800000 ＝ 2026-09-22T16:00Z ＝ 台北 09/23（UTC 主機上不能讀成 09/22）
+    tran, post = "/Date(1790092800000)/", "/Date(1790179200000)/"
+    payload = {
+        "pcf": [{"FundCode": "49YTW", "TranDate": tran, "PostDate": post}],
+        "asset": [
+            {"AssetCode": "GD", "AssetName": "期貨(名目本金)", "Details": [
+                {"DetailCode": "TX", "DetailName": "台指期貨", "Share": 679, "Amount": 6560769600.0,
+                 "NavRate": 2.25, "MoneyType": "NTD", "TranDate": tran}]},
+            {"AssetCode": "ST", "AssetName": "股票", "Details": [
+                {"DetailCode": "2330", "DetailName": "台積電", "Share": 11864000, "Amount": 29660000000.0,
+                 "NavRate": 10.1, "MoneyType": "NTD", "TranDate": tran}]},
+        ],
+    }
+    calls = []
+    scraper = EZMoneyScraper()
+    scraper.get_pcf_data = lambda fund_code, date, specific_date=True: (calls.append(specific_date), payload)[1]
+    api_rows = scraper._get_holdings_from_api("00981A", "49YTW", "2026-09-24")
+    check("API：只收股票（期貨不混入）", [r["stock_code"] for r in api_rows] == ["2330"])
+    check("API：資料日期＝TranDate（台北 09/23），不是請求日 09/24",
+          bool(api_rows) and all(r["date"] == "2026-09-23" for r in api_rows),
+          f"dates={sorted({r['date'] for r in api_rows})}")
+    check("API：以來源日期標 source_dated", bool(api_rows) and all(r.get("source_dated") is True for r in api_rows))
+    check("API：備援取最新一份 PCF（specificDate=False）", calls == [False], f"specific_date={calls}")
+
+    payload["pcf"] = []
+    for d in payload["asset"][1]["Details"]:
+        d.pop("TranDate")
+    no_date = scraper._get_holdings_from_api("00981A", "49YTW", "2026-09-24")
+    check("API：沒有 TranDate -> 退回請求日且不標 source_dated（防護繼續生效）",
+          bool(no_date) and all(r["date"] == "2026-09-24" and not r.get("source_dated") for r in no_date))
+
+
 def check_upsert_created_at():
     """
     UPSERT 的 created_at 語意：「該列首次寫入時間」。
@@ -648,6 +740,9 @@ def main():
 
     print("=== 海外成分股（00988A）：代號慣例／解析／名稱／單位 ===")
     check_foreign_holdings()
+
+    print("=== 統一 00981A：Excel 版面位移／API 資料日期 ===")
+    check_ezmoney_layout_and_pcf_date()
 
     print("=== UPSERT：created_at＝首次寫入時間 ===")
     check_upsert_created_at()
