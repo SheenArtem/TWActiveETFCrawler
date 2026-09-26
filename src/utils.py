@@ -7,6 +7,8 @@ from typing import List
 import os
 from loguru import logger
 
+from src.trading_calendar import is_trading_day
+
 
 def is_active_etf(code: str) -> bool:
     """
@@ -37,8 +39,7 @@ def format_date(date_obj: datetime, format_string: str = '%Y-%m-%d') -> str:
 
 def get_trading_days(start_date: datetime, end_date: datetime) -> List[datetime]:
     """
-    計算交易日（簡化版，排除週末）
-    注意：此版本不包含台灣國定假日，實際使用可能需要更完整的交易日曆
+    計算交易日（排除週末與證交所休市日，休市日清單見 src/trading_calendar.py）
     
     Args:
         start_date: 開始日期
@@ -51,8 +52,7 @@ def get_trading_days(start_date: datetime, end_date: datetime) -> List[datetime]
     current_date = start_date
     
     while current_date <= end_date:
-        # 排除週末（週六=5, 週日=6）
-        if current_date.weekday() < 5:
+        if is_trading_day(current_date):
             trading_days.append(current_date)
         current_date += timedelta(days=1)
     
