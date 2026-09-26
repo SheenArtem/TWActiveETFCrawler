@@ -1150,7 +1150,7 @@
                                     totalLots: 0
                                 };
                             }
-                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stock.diff || 0);
+                            stockAgg[code].etfMap[etfCode].perDay[bucket] = (stockAgg[code].etfMap[etfCode].perDay[bucket] || 0) + (stock.diff || 0);
                             stockAgg[code].etfMap[etfCode].totalLots += (stock.diff || 0);
                         });
 
@@ -1378,6 +1378,9 @@
 
                 // Aggregate per ETF: etfCode -> { stockCode -> { name, perDay: {date->diff}, total } }
                 const etfAgg = {};
+                // 與同步買賣超相同：來源停更時同一筆變動會在連續多個報表日期重複出現，
+                // 以 (ETF, 資料日期) 去重，避免同一次調整被重複計入每日欄位與 5 日合計。
+                const countedEntries = new Set();
 
                 allData.forEach(dayData => {
                     const date = dayData.date;
@@ -1385,14 +1388,22 @@
 
                     dayData.detailed_changes.forEach(etfEntry => {
                         const etfCode = etfEntry.etf_code;
+
+                        const entryKey = etfCode + '|' + (etfEntry.data_date || date);
+                        if (countedEntries.has(entryKey)) return;
+                        countedEntries.add(entryKey);
+
+                        // 每日欄位歸屬到這一檔實際的資料日期，不是報表日期
+                        const bucket = changeBucketDate(etfEntry, date, recentDates);
+
                         if (!etfAgg[etfCode]) etfAgg[etfCode] = {};
 
                         const processStock = (code, name, diff) => {
                             if (!etfAgg[etfCode][code]) {
                                 etfAgg[etfCode][code] = { name, perDay: {}, total: 0 };
                             }
-                            etfAgg[etfCode][code].perDay[date] =
-                                (etfAgg[etfCode][code].perDay[date] || 0) + diff;
+                            etfAgg[etfCode][code].perDay[bucket] =
+                                (etfAgg[etfCode][code].perDay[bucket] || 0) + diff;
                             etfAgg[etfCode][code].total += diff;
                         };
 

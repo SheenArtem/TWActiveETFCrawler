@@ -15,6 +15,8 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 6. 統一 00981A：Excel 股票表位置會隨版面移動（期貨段在前）、API 備援要以 TranDate
    （持股基準日）而非請求日期當資料日期
 7. 國定假日：請求日期與報表日期要比照週末退回最近一個交易日（2026-09-25 中秋的假報表）
+8. 首頁跨報表彙總（需要 node；找不到時跳過）：「各 ETF 近 5 日買賣明細」在來源停更時
+   同一次調整不可在每個報表日重複計入；「同步買賣超」同一欄收到兩次變動時要累加
 
 跑法：
     python test_duplicate_guard.py
@@ -27,6 +29,8 @@ Windows 上若終端是 CP950，用 PYTHONIOENCODING=utf-8 執行以免中文輸
 """
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -619,7 +623,7 @@ def check_report_layer():
           overview.get("00981A") == "2026-08-05", f"data_date={overview.get('00981A')}")
 
     # 變動清單也要帶資料日期：來源停更時同一筆變動會在連續多個報表日期重複出現，
-    # 沒有這個欄位，首頁個股反查就無法去重，同一次調整會被重複計入買賣張數。
+    # 沒有這個欄位，首頁的跨報表彙總就無法去重，同一次調整會被重複計入買賣張數。
     dc = {e["etf_code"]: e.get("data_date") for e in data["detailed_changes"]}
     check("變動清單每筆都帶 data_date", all(dc.values()), f"detailed_changes={dc}")
     check("變動清單：落後那檔標自己的資料日期 8/4",
@@ -789,6 +793,168 @@ def check_calendar_updater():
           f"years={sorted(days)}")
 
 
+# node 執行首頁頁內腳本用的替身：document 與 fetch 換成最小實作，fetch 從 fixture 目錄讀 JSON。
+# getElementById 每次都給新元素並記住最後一個，等同頁面重畫時 innerHTML 換掉舊的子元素：
+# 頁面自己跑一次各面板、這裡再呼叫一次，排行也不會累加成兩份。
+HOMEPAGE_HARNESS_JS = r"""
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const [indexPath, dir] = process.argv.slice(2);
+const script = fs.readFileSync(indexPath, 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const newElement = () => ({
+    innerHTML: '', textContent: '', value: '', children: [],
+    addEventListener() {}, focus() {}, appendChild(child) { this.children.push(child); },
+});
+const elements = {};
+const getElementById = id => (elements[id] = newElement());
+const context = vm.createContext({
+    document: { getElementById, createElement: newElement },
+    fetch: async url => {
+        const file = path.join(dir, url);
+        if (!fs.existsSync(file)) {
+            return { ok: false, json: async () => { throw new Error('404 ' + url); } };
+        }
+        return { ok: true, json: async () => JSON.parse(fs.readFileSync(file, 'utf8')) };
+    },
+    console: { log() {}, warn() {}, error: (...args) => console.error(...args) },
+    requestAnimationFrame: fn => fn(),
+});
+vm.runInContext(script, context);
+Promise.all([context.loadPerETFData(), context.loadCrossETFData()]).then(() => {
+    const latest = id => elements[id] || newElement();
+    fs.writeFileSync(path.join(dir, 'rendered.json'), JSON.stringify({
+        per_etf: latest('per-etf-content').innerHTML,
+        buy_rank: latest('buy-rank-list').children.map(li => li.innerHTML),
+    }), 'utf8');
+});
+"""
+
+
+def homepage_change(etf, data_date, modified=(), added=(), removed=()):
+    """報表 JSON 裡 detailed_changes 的一筆（一檔 ETF、一個資料日期的變動）"""
+    return {
+        "etf_code": etf, "etf_name": etf, "data_date": data_date,
+        "modified": [{"stock_code": c, "stock_name": f"股票{c}", "diff": d} for c, d in modified],
+        "added": [{"stock_code": c, "stock_name": f"股票{c}", "lots": n} for c, n in added],
+        "removed": [{"stock_code": c, "stock_name": f"股票{c}", "lots": n} for c, n in removed],
+    }
+
+
+def render_homepage(reports):
+    """
+    用 node 執行 docs/index.html 的頁內腳本。reports 是 {報表日期: detailed_changes}，
+    新到舊，與 reports_index.json 相同。回傳 (node 的執行結果, {"per_etf": 各 ETF 買賣明細的 HTML,
+    "buy_rank": [同步買超排行每一列的 HTML]})；找不到 node 時回傳 None。
+    """
+    node = shutil.which("node")
+    if not node:
+        return None
+    work = Path(tempfile.mkdtemp())
+    (work / "reports_index.json").write_text(
+        json.dumps([{"date": d} for d in reports]), encoding="utf-8")
+    for d, changes in reports.items():
+        (work / f"data_{d}.json").write_text(
+            json.dumps({"date": d, "detailed_changes": changes}, ensure_ascii=False), encoding="utf-8")
+    harness = work / "harness.js"
+    harness.write_text(HOMEPAGE_HARNESS_JS, encoding="utf-8")
+    index_html = Path(__file__).parent / "docs" / "index.html"
+    out = subprocess.run([node, str(harness), str(index_html), str(work)],
+                         capture_output=True, encoding="utf-8", errors="replace")
+    rendered = work / "rendered.json"
+    panels = json.loads(rendered.read_text(encoding="utf-8")) if rendered.exists() else {}
+    return out, panels
+
+
+def check_homepage_per_etf_dedup():
+    """
+    首頁「各 ETF 近 5 日買賣明細」（docs/index.html 的 loadPerETFData）要以 (ETF, 資料日期) 去重。
+
+    變動是逐檔比對各自最新可得的資料日期得出的，來源停更時同一筆變動會在連續多個報表日期
+    重複出現（歷史上 00987A 04-27 那次調整連續出現在 10 份報表）。同步買賣超與個股反查早已去重，
+    這個面板原本沒有：同一次調整在每個報表日的欄位各畫一次，合計與卡片摘要重複計入。
+    餵三份報表：00995A 停在 8/4、00981A 每天都有新資料、00994A 停在視窗外的 7/31。
+    """
+    stalled = homepage_change("00995A", "2026-08-04", modified=[("2330", 5)], removed=[("2454", 2)])
+    outside = homepage_change("00994A", "2026-07-31", added=[("2383", 4)])
+    rendered = render_homepage({  # 新到舊
+        "2026-08-06": [stalled, homepage_change("00981A", "2026-08-06", modified=[("2330", 3)]), outside],
+        "2026-08-05": [stalled, homepage_change("00981A", "2026-08-05", modified=[("2330", 2)]), outside],
+        "2026-08-04": [stalled, homepage_change("00981A", "2026-08-04", modified=[("2330", 1)]), outside],
+    })
+    if rendered is None:
+        results.append((SKIP, "首頁各 ETF 買賣明細去重（找不到 node）", "需要 node 執行頁內腳本"))
+        print(f"  [{SKIP}] 首頁各 ETF 買賣明細去重 — 找不到 node")
+        return
+    out, panels = rendered
+
+    # 卡片 -> (摘要文字, {股票代號: [各日欄位（新到舊）..., 合計]})
+    cards = {}
+    for chunk in panels.get("per_etf", "").split('<div class="per-etf-card">')[1:]:
+        etf = re.search(r"<h3>(.*?)</h3>", chunk).group(1)
+        summary = re.findall(r'<span class="per-etf-(?:buy|sell)">(.*?)</span>', chunk)
+        table = {}
+        for tr in re.findall(r"<tr>(.*?)</tr>", chunk.split("<tbody>", 1)[-1], re.S):
+            code = re.search(r"<small[^>]*>([^<]*)</small>", tr).group(1)
+            table[code] = [td.strip() for td in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)[1:]]
+        cards[etf] = (summary, table)
+
+    check("頁內腳本在 node 執行並畫出三檔卡片（前提）",
+          out.returncode == 0 and sorted(cards) == ["00981A", "00994A", "00995A"],
+          f"rc={out.returncode}, cards={sorted(cards)}, stderr={out.stderr.strip()[:160]}")
+    summary, table = cards.get("00995A", ([], {}))
+    check("停更的 ETF：同一次調整在卡片摘要只計一次",
+          summary == ["買 1 檔 +5張", "賣 1 檔 -2張"], f"{summary}")
+    check("停更的 ETF：只畫在資料日期 8/4 的欄位，合計不重複",
+          table.get("2330") == ["—", "—", "+5.0", "+5.0"]
+          and table.get("2454") == ["—", "—", "-2.0", "-2.0"], f"{table}")
+    _, table = cards.get("00981A", ([], {}))
+    check("每天都有新資料的 ETF：三天的變動都保留、各在自己的欄位",
+          table.get("2330") == ["+3.0", "+2.0", "+1.0", "+6.0"], f"{table}")
+    _, table = cards.get("00994A", ([], {}))
+    check("資料日期在視窗外：只計一次、畫在最新報表日期，不從畫面消失",
+          table.get("2383") == ["+4.0", "—", "—", "+4.0"], f"{table}")
+
+
+def check_homepage_cross_etf_per_day():
+    """
+    首頁「同步買賣超」（loadCrossETFData）展開表的每日欄位：同一欄收到兩次變動要累加。
+
+    資料日期早於視窗時退回報表日期（changeBucketDate），所以固定落後一天的來源（第一金、00988A）
+    在最舊一欄會收到兩次變動：最舊那份報表的（資料日期在視窗外）與下一份報表的。新增、刪除
+    本來就累加，modified 原本是覆寫：格子只剩後處理的那筆，合計卻兩筆都算。
+    餵三份報表：00408A 每份都落後一天，8/4 欄收到 8/3 與 8/4 兩次；00981A 只在 8/6 有變動，
+    讓 2330 有兩檔 ETF 參與、進得了排行。
+    """
+    rendered = render_homepage({  # 新到舊
+        "2026-08-06": [homepage_change("00408A", "2026-08-05", modified=[("2330", 10)]),
+                       homepage_change("00981A", "2026-08-06", modified=[("2330", 1)])],
+        "2026-08-05": [homepage_change("00408A", "2026-08-04", modified=[("2330", 20)])],
+        "2026-08-04": [homepage_change("00408A", "2026-08-03", modified=[("2330", 40)])],
+    })
+    if rendered is None:
+        results.append((SKIP, "首頁同步買賣超每日欄位（找不到 node）", "需要 node 執行頁內腳本"))
+        print(f"  [{SKIP}] 首頁同步買賣超每日欄位 — 找不到 node")
+        return
+    out, panels = rendered
+
+    # 2330 的展開表：{ETF: [各日欄位（新到舊）..., 合計]}
+    detail = {}
+    for li in panels.get("buy_rank", []):
+        if '<span class="rank-stock-code">2330</span>' not in li:
+            continue
+        for tr in re.findall(r"<tr>(.*?)</tr>", li.split("<tbody>", 1)[-1], re.S):
+            cells = [td.strip() for td in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
+            detail[cells[0]] = cells[1:]
+
+    check("頁內腳本在 node 執行並畫出 2330 的同步買超明細（前提）",
+          out.returncode == 0 and sorted(detail) == ["00408A", "00981A"],
+          f"rc={out.returncode}, etfs={sorted(detail)}, stderr={out.stderr.strip()[:160]}")
+    check("落後來源的最舊一欄收到兩次變動時累加（8/4 欄 20＋40），每日欄位加起來等於合計",
+          detail.get("00408A") == ["—", "+10.0", "+60.0", "+70.0"], f"{detail.get('00408A')}")
+
+
 def main():
     print("=== 日期錯位防護（REJECT_DUPLICATE_OF_PREVIOUS_DAY=True）===")
     db, _ = fresh_db()
@@ -921,6 +1087,12 @@ def main():
 
     print("=== 交易日曆自動更新：證交所清單篩選與寫回 ===")
     check_calendar_updater()
+
+    print("=== 首頁各 ETF 近 5 日買賣明細：停更時同一次調整不重複計入 ===")
+    check_homepage_per_etf_dedup()
+
+    print("=== 首頁同步買賣超：同一欄收到兩次變動時累加 ===")
+    check_homepage_cross_etf_per_day()
 
     # 13. red-before：關閉防護後，重複資料應該會被寫進去
     #    （在子行程執行，因為 config 於 import 時讀取環境變數）
