@@ -9,7 +9,8 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 要在該 scraper 檔案開頭註明原因與已知風險。目前唯一的例外是第一金，理由見指南。
 
 **日期一律以來源自己標示的日期為準**（檔名、檔案內欄位、網頁上的「資料日期」），
-不要用執行當天的日期填充；合併進報表時夾住不晚於今日。
+不要用執行當天的日期填充；合併進報表時夾住不晚於最近一個交易日。
+請求日期也一樣：週末與國定假日都退回最近一個交易日，判定在 `src/trading_calendar.py`。
 
 **「資料日期」不等於「查詢日期」。** 第一金與台新頁面上最顯眼的日期是查詢輸入框的值（等於今天），
 富邦與中信才是真正的「資料日期：YYYY/MM/DD」。抓錯就直接錯位。
@@ -25,7 +26,7 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 | 什麼時候 | 讀這份 |
 | --- | --- |
 | 改任何 scraper、新增投信來源、或懷疑某家的資料日期不對 | `.ai/guides/data-sources.md` |
-| 改 `Database.insert_holdings()`、scraper 日期欄位、報表日期邏輯、CI 早退守衛 | `.ai/guides/date-alignment.md` |
+| 改 `Database.insert_holdings()`、scraper 日期欄位、報表日期邏輯、請求日期或交易日曆、CI 早退守衛 | `.ai/guides/date-alignment.md` |
 | 新增一檔 ETF、盤點還缺哪些 ETF、改 ETF 中文名稱 | `.ai/guides/adding-an-etf.md` |
 | 處理含海外成分股的 ETF（目前只有 00988A）、改代號判定或報表單位 | `.ai/guides/adding-an-etf.md` 的「含海外成分股的 ETF」 |
 | 接手進行中的工作、暫停、換手 | `.ai/HANDOFF.md` |
@@ -51,3 +52,4 @@ PCF（申購買回清單）是法規每日必揭露，檔案格式與網址規�
 | `data/stock_names.json` | 成分股中文簡稱唯一來源 |
 | `src/stock_markets.py` | 成分股代號慣例（台股／海外）、市場判定與報表單位「張／千股」 |
 | `src/config.py` | 開關與門檻（含 `REJECT_DUPLICATE_OF_PREVIOUS_DAY`） |
+| `src/trading_calendar.py` | 證交所休市日清單與交易日判定（每年要補下一年） |

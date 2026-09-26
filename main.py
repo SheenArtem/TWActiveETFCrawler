@@ -396,7 +396,8 @@ def daily_update_fsitc(generate_report=True):
     db = Database(DB_FULL_PATH)
     scraper = FSITCScraper()
     
-    # 請求日期用今天，API 會回不晚於該日的最新一筆 PCF。
+    # 請求日期是 PCF 適用日：查 D 回的是前一交易日的持股（sdate），非交易日或尚未發布的日期回 0 筆，
+    # 所以要補某天的持股得查它的下一個交易日（2026-09-26 實測）。
     # 實際資料日期一律以 API 回傳的 sdate(actual_date) 為準，不再用時間門檻推測或強制覆寫，
     # 避免把舊日期的 PCF 標記成當天造成日期錯位。
     request_date = last_trading_day(datetime.now())  # 週末與國定假日退回最近一個交易日

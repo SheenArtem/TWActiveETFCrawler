@@ -26,16 +26,16 @@
 | 中信 CTBC | `src/ctbc_scraper.py` | 網頁下載 Excel | ✅ Excel 內「資料日期」欄 | 跳過 | Playwright 點「下載EXCEL」；當日資料下午才更新 |
 | 摩根 Morgan | `src/morgan_scraper.py` | 下載 PCF xlsx | ✅ 估值日（領先一日＝新檔的判準） | 條件式：新檔跳過、舊檔防護 | VD>請求日＝當日新檔，夾回請求日後標 source_dated；VD=請求日＝舊檔維持防護。必須帶 `Referer` = 產品頁，否則 Akamai 403 |
 | 聯博 ABFunds | `src/abfunds_scraper.py` | 下載 holdings xlsx | ✅ content-disposition 檔名 | 跳過 | 「代碼」欄是 ISIN，台股取 `isin[5:9]` |
-| 統一 EZMoney | `src/ezmoney_scraper.py` | 下載 Excel（API 備援） | ✅ Excel 表頭（民國年）；API 備援用 `TranDate` | 跳過（兩條路徑） | **Excel 的股票表位置會變**：00981A 自 2026-07-31 起股票表前多了期貨段（5 欄），股票表頭從第 19 列移到第 22 列，所以解析器找「股票代號」表頭列、依欄名取欄。**API 的日期參數是 PCF 適用日（`PostDate`）**，回來的是前一交易日的持股（`TranDate`，與 Excel 表頭同）；`specificDate=False` 回最新一份，備援用這個。日期欄位有 `/Date(ms)/` 與 ISO 兩種格式、同一請求隨機出現。2026-07-31 ~ 09-24 的 00981A 就是 Excel 解析失敗＋API 拿請求日當資料日期，整串晚一個交易日（見 `date-alignment.md`「整串平移」），已改標回補。00988A（全球型）走同一條路徑：海外持股代號是 Bloomberg「代號 市場」，解析器兩種代號都收（見 `adding-an-etf.md`「含海外成分股的 ETF」） |
+| 統一 EZMoney | `src/ezmoney_scraper.py` | 下載 Excel（API 備援） | ✅ Excel 表頭（民國年）；API 備援用 `TranDate` | 跳過（兩條路徑） | **Excel 的股票表位置會變**：00981A 自 2026-07-31 起股票表前多了期貨段（5 欄），股票表頭從第 19 列移到第 22 列，所以解析器找「股票代號」表頭列、依欄名取欄。**API 的日期參數是 PCF 適用日（`PostDate`）**，回來的是前一交易日的持股（`TranDate`，與 Excel 表頭同）；`specificDate=False` 回最新一份，備援用這個。日期欄位有 `/Date(ms)/` 與 ISO 兩種格式、同一請求隨機出現。2026-07-31 ~ 09-24 的 00981A 就是 Excel 解析失敗＋API 拿請求日當資料日期，整串晚一個交易日（見 `date-alignment.md`「整串平移」），已改標回補。00988A（全球型）走同一條路徑：海外持股代號是 Bloomberg「代號 市場」，解析器兩種代號都收（見 `adding-an-etf.md`「含海外成分股的 ETF」）；它的持股比適用日早兩個交易日（適用日 09-29 那份是 09-23 的持股），所以固定落後一天。API 查假日或未發布日會回 `/Date(-62135596800000)/`（.NET 最小日期）、0 檔 |
 | 富邦 Fubon | `src/fubon_scraper.py` | 解析網頁 DOM | ✅ 頁面「資料日期」 | 跳過 | SSR 直出表格；當日資料下午才更新 |
-| 第一金 FSITC | `src/fsitc_scraper.py` | **API（原則的已知例外）** | ✅ API `sdate` | 跳過 | 見下方「已知例外」 |
+| 第一金 FSITC | `src/fsitc_scraper.py` | **API（原則的已知例外）** | ✅ API `sdate` | 跳過 | **日期參數是 PCF 適用日**：查 D 回前一交易日的持股（`sdate`），非交易日或未發布回 0 筆，所以固定落後一天；要補某天得查它的下一個交易日。見下方「已知例外」 |
 | 台新 TSIT | `src/tsit_scraper.py` | 解析網頁 DOM | ✅ 黏在表頭文字裡：`2026/8/5每基數實際申購總價金(元)`，以「日期＋每基數」為錨 | 跳過 | **`#PUB_DATE` 是 PCF 適用日（下一交易日），絕不可當資料日期**（2026-08-05 實測值為未來日 08-06）。頁面出現多個不同日期時視為改版、保守退回 |
 | 群益 Capital | `src/capital_scraper.py` | **buyback API（原則的已記錄例外）** | ✅ API `data.pcf.date2`＝持股基準日 | 跳過（API 路徑） | Excel 與頁面皆無資料日期，API 是唯一日期來源（與 Excel 同資料）；`date1` 是下一交易日的 PCF 適用日，勿用。API 失敗退回 Playwright+Excel 備援，備援不帶 source_dated、防護生效 |
 | 安聯 Allianz | `src/allianz_scraper.py` | 解析網頁 DOM | ✅ 頁面標「資料日期 : YYYY/MM/DD」 | 跳過 | 同富邦模式。歷史錯位最大戶（19 組，已刪除並重生報表） |
 | 野村 Nomura | `src/nomura_scraper.py` | API | ✅ 結構安全（2026-08-05 實測）：API 嚴格遵守 `SearchDate`，未發布日回空、可查歷史、回應回帶資料日期 | 仍防護 | 用請求日期但**不會錯位**（要嘛拿到該日資料、要嘛空）。可選擇性標 source_dated 消滅同內容日誤擋 |
 | 復華 FHTrust | `src/fhtrust_scraper.py` | API 下載 Excel | ✅ 結構安全（2026-08-05 實測）：URL 帶日期且嚴格遵守，未發布日回 JSON 錯誤而非假 Excel | 仍防護 | 同野村，不會錯位 |
 | 國泰 Cathay | `src/cathay_scraper.py` | API | ❌ **無法取得** | 仍防護 | 見下方「國泰 API 無法信任日期」 |
-| 兆豐 Mega | `src/megafunds_scraper.py` | 解析網頁 DOM（WebForms postback） | ✅ 黏在金額欄位文字前：`2026/08/07 每基數實際申購總價金(元)`，以「日期＋每基數」為錨（同台新樣態） | 跳過 | 換基金要帶 `__VIEWSTATE` postback（`fund_id=23`＝00996A），**只能回送頁面實際有的 hidden**；頁面最顯眼的「查詢日期」是 PCF 適用日（下一營業日），絕不可用 |
+| 兆豐 Mega | `src/megafunds_scraper.py` | 解析網頁 DOM（WebForms postback） | ✅ 黏在金額欄位文字前：`2026/08/07 每基數實際申購總價金(元)`，以「日期＋每基數」為錨（同台新樣態） | 跳過 | 換基金要帶 `__VIEWSTATE` postback（`fund_id=23`＝00996A），**只能回送頁面實際有的 hidden**；頁面最顯眼的「查詢日期」是 PCF 適用日（下一營業日），絕不可用。`qdt` 填適用日（`YYYY/MM/DD`）可查歷史，回補用（scraper 只取最新一份）。2026-09-21 起 GitHub runner 一律 HTTP 403，本機正常 |
 | 凱基 KGI | `src/kgi_scraper.py` | 解析網頁 DOM（partial view） | ✅ `(2026/08/07)每受益權單位淨資產價值` 括號內即基準日 | 跳過 | 持股表由 `/Fund/RedemptionVC` 回 HTML 片段（`fundID=J024`＝00407A）；hidden `#DataDate` 是適用日，絕不可用 |
 | 永豐 SinoPac | `src/sinopac_scraper.py` | 解析網頁 DOM（SSR） | ✅ 頁面標「資料日期：YYYY/MM/DD」 | 跳過 | 官網**有** xlsx 下載卻不採用，見下方「已知例外：永豐的下載檔案拿不到最新」；`qdate`／`hDate` 是適用日，絕不可用；頁面同時輸出桌機版與手機版表格，只能取桌機版 |
 
@@ -77,7 +77,7 @@
 兆豐、凱基、永豐（2026-08-09 新增）的申購買回清單頁面，最顯眼的日期一律是
 **PCF 適用日（下一營業日）**，不是持股基準日——與摩根 PCF 的估值日、群益的 `date1`
 同款。三家各自的正確錨點見上表。這是本專案第 4～6 個同款案例（第 7 個是統一 API 的
-日期參數），可以直接當成預設假設：
+日期參數，第 8 個是第一金 API 的日期參數），可以直接當成預設假設：
 **投信 PCF 頁面或 API 上那個「日期」，先當它是適用日，除非明確寫「資料日期」或回應另帶持股日。**
 
 **錨點不能跨投信照抄。** 台新與兆豐的「日期＋每基數」前面是基準日，但永豐頁面的排列
