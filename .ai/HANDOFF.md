@@ -5,6 +5,19 @@
 
 ## 目前目標與狀態
 
+**（F）全 15 家投信日期標註稽核與摩根／野村／復華來源日期強化（2026-10-27）——已實作並上線，22/23 檔採用來源日期。**
+
+- 盤點全 15 家（23 檔）後，把最後三家「上游其實有明確基準日、但程式原本沒讀或用前瞻日推算」的 scraper 全部收斂：
+  1. **摩根 00401A（`src/morgan_scraper.py`）**：PCF xlsx 表頭（`Record Type='H'`）除了前瞻的 `Valuation Date`（次一交易日）外，
+     本身就帶 `NAV Date`（實際持股／淨值基準日，`YYYYMMDD`）。改為優先直接採用 `NAV Date` 並標 `source_dated=True`
+     （`Valuation Date` 夾回邏輯退為 `NAV Date` 缺漏時的備援），從根源消除臨時颱風假把舊檔夾成假日寫入 DB 的問題。
+  2. **野村 00980A／00985A／00999A（`src/nomura_scraper.py`）**：解析 `GetFundAssets` 回應的 `FundAsset.NavDate` 與股票表
+     `table['NavDate']`（`YYYY/MM/DD`）並標 `source_dated=True`（缺漏或兩處矛盾時退回請求日、維持防護）。
+  3. **復華 00991A（`src/fhtrust_scraper.py`）**：`download_portfolio_excel` 新增 `PK` 檔頭檢查（非交易日／未發布回 12 bytes
+     `'查無資料'` 時回傳 `None`，不再寫壞 `.xlsx`）；`parse_excel_file` 讀取表頭 `日期: YYYY/MM/DD` 並標 `source_dated=True`，
+     股票表依 `證券代號` 動態定位並改用 `market_of()` 篩選代號。
+- 現況：**22/23 檔（14 家投信）**直接採用來源日期並標 `source_dated=True`；僅剩**國泰 00400A（1/23）**因 API 無任何日期欄位且未發布時會靜默回傳前一日，繼續依賴 `Database._reject_duplicate_snapshots()`。
+
 **（E）國定假日與颱風假防護——國定假日（09-28、10-09、10-26）生產驗證全過；10-23 颱風假已補日曆並清理假報表。**
 
 - 國定假日（`f0c8590`）：`src/trading_calendar.py` 上線後，09-28（教師節）、10-09（國慶補假）、10-26（光復節補假）

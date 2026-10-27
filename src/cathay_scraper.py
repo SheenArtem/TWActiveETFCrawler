@@ -2,10 +2,15 @@
 國泰投信 ETF 爬蟲模組
 透過官網內部 JSON API GetETFDetailStockList 抓取持股明細。
 
-此 endpoint (官網持股權重概覽 tab / 匯出 Excel 按鈕所用) 帶 SearchDate 參數,
-回傳每檔的 stockCode / stockName / volumn(股數) / weights(權重%),
-故 shares 取自 volumn。市值仍無法取得, 一律寫 0。
-SearchDate 支援歷史日期 (YYYY-MM-DD), 非交易日 result 為 null。
+走 API 的原因與已知風險：
+- 官網為前端 SPA，無獨立 PCF 檔案下載網址；頁面「匯出 Excel」亦在前端由同一支
+  `GetETFDetailStockList` JSON 組裝而成。
+- 此 endpoint 帶 `SearchDate` 參數，回傳每檔的 `stockCode` / `stockName` /
+  `volumn`(股數) / `weights`(權重%)，市值未提供一律寫 0；非交易日或未來日回
+  `success=False`、`result=None`。
+- **已知風險（唯一仍依賴寫入層重複防護的來源）**：對「已到當日交易日但尚未產出當日持股」
+  的查詢會靜默回傳前一交易日的持股，且回應中無任何日期欄位可辨識。因此不可標記
+  `source_dated`，必須由 `Database._reject_duplicate_snapshots` 攔截未更新的重複快照。
 """
 import random
 import time

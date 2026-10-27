@@ -17,6 +17,7 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 7. 國定假日：請求日期與報表日期要比照週末退回最近一個交易日（2026-09-25 中秋的假報表）
 8. 首頁跨報表彙總（需要 node；找不到時跳過）：「各 ETF 近 5 日買賣明細」在來源停更時
    同一次調整不可在每個報表日重複計入；「同步買賣超」同一欄收到兩次變動時要累加
+9. 摩根 PCF `NAV Date`、野村 API `NavDate`、復華 Excel 表頭 `日期:` 的來源日期解析與非 xlsx 防呆
 
 跑法：
     python test_duplicate_guard.py
@@ -201,16 +202,47 @@ def check_batch2_parsers():
     rows_out, d, sd = CapitalScraper._parse_api_response({}, "00982A", "2026-08-06")
     check("群益：整包壞掉 -> 空列表＋退回請求日", rows_out == [] and sd is False)
 
-    print("--- 摩根：估值日領先＝新檔，未領先＝舊檔 ---")
-    # 摩根的規則不獨立成函式（在 get_etf_holdings 內），此處驗證其依據的
-    # _parse_valuation_date 與「領先才可信」的比較語意
+    print("--- 摩根：優先讀 PCF 表頭 NAV Date；缺漏時才退回 Valuation Date 領先判準 ---")
+    import io
+    import openpyxl
     from src.morgan_scraper import MorganScraper
     vd = MorganScraper._parse_valuation_date("20260806")
-    check("摩根：VD 解析為 ISO 格式", vd == "2026-08-06")
-    check("摩根：VD 領先請求日 -> 新檔（source_dated 應為 True）", vd > "2026-08-05")
-    check("摩根：VD 未領先 -> 舊檔（source_dated 應為 False）", not (vd > "2026-08-06"))
-    check("摩根：VD 解析不到 -> 空字串（走 fallback）",
-          MorganScraper._parse_valuation_date(None) == "")
+    check("摩根：日期解析支援 YYYYMMDD／float／非法字串",
+          vd == "2026-08-06"
+          and MorganScraper._parse_valuation_date(20261022.0) == "2026-10-22"
+          and MorganScraper._parse_valuation_date("bad-date") == ""
+          and MorganScraper._parse_valuation_date(None) == "")
+    check("摩根：有 NAV Date -> 直接採用實際持股日並標記（不受 Valuation Date 或颱風假請求日影響）",
+          MorganScraper._extract_data_date(
+              {"Valuation Date": "20261027", "NAV Date": "20261022"}, "2026-10-23", "00401A"
+          ) == ("2026-10-22", True))
+    check("摩根：NAV Date 缺漏且 VD 領先請求日 -> 夾回請求日並標記（備援）",
+          MorganScraper._extract_data_date(
+              {"Valuation Date": "20260806"}, "2026-08-05", "00401A"
+          ) == ("2026-08-05", True))
+    check("摩根：NAV Date 缺漏且 VD 未領先 -> 舊檔不標記（備援）",
+          MorganScraper._extract_data_date(
+              {"Valuation Date": "20260806"}, "2026-08-06", "00401A"
+          ) == ("2026-08-06", False))
+    check("摩根：兩者皆缺漏 -> 退回請求日且不標記",
+          MorganScraper._extract_data_date({}, "2026-08-06", "00401A") == ("2026-08-06", False))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Record Type", "Valuation Date", "NAV Date", "Estimated Total Market Value"])
+    ws.append(["H", "20261027", "20261022", 1000000])
+    ws.append(["Record Type", "Constituent Ticker", "Constituent Description",
+               "Shares or PAR Amount", "Market Value Base"])
+    ws.append(["D", "2330", "TAIWAN SEMICONDUCTOR", 1000, 250000])
+    buf = io.BytesIO()
+    wb.save(buf)
+    m_scraper = MorganScraper()
+    m_scraper._download_pcf = lambda etf_code, isin: buf.getvalue()
+    m_rows = m_scraper.get_etf_holdings("00401A", "2026-10-23")
+    check("摩根：get_etf_holdings 在臨時休市日請求 10-23 時，依 NAV Date 寫 10-22 而非假日期",
+          len(m_rows) == 1 and m_rows[0]["date"] == "2026-10-22"
+          and m_rows[0]["source_dated"] is True and m_rows[0]["weight"] == 25.0,
+          f"rows={m_rows}")
 
 
 def check_batch3_parsers():
@@ -323,6 +355,143 @@ def check_batch3_parsers():
           len(spf_rows) == 1 and spf_rows[0]["stock_code"] == "2330"
           and spf_rows[0]["shares"] == 50000,
           f"取得 {len(spf_rows)} 列")
+
+
+def check_batch4_parsers():
+    """
+    第四批轉換（2026-10-27）：野村 API `NavDate` 與復華投資組合 Excel 表頭 `日期:`。
+
+    兩者結構上雖嚴格遵守請求日期，但補齊來源日期解析與 `source_dated=True` 後，
+    22/23 檔皆由來源本身決定資料日期（僅餘國泰 00400A 無日期欄位），且復華對非交易日
+    或未發布日的 `'查無資料'` 純文字回應不再寫入損毀 `.xlsx`。全部離線可測。
+    """
+    import pandas as pd
+    import src.fhtrust_scraper as fh_mod
+    from src.fhtrust_scraper import FHTrustScraper
+    from src.nomura_scraper import NomuraScraper
+
+    print("--- 野村：GetFundAssets 的 FundAsset.NavDate 與股票表 NavDate ---")
+    check("野村：兩處 NavDate 一致 -> 取用並標記",
+          NomuraScraper._extract_data_date(
+              {"FundAsset": {"NavDate": "2026/10/22"}},
+              {"TableTitle": "股票", "NavDate": "2026/10/22"},
+              "2026-10-23",
+          ) == ("2026-10-22", True))
+    check("野村：單數月日（2026/8/5）正規化為 YYYY-MM-DD",
+          NomuraScraper._extract_data_date(
+              {"FundAsset": {"NavDate": "2026/8/5"}}, None, "2026-08-06"
+          ) == ("2026-08-05", True))
+    check("野村：FundAsset 與股票表 NavDate 不一致 -> 保守退回且不標記",
+          NomuraScraper._extract_data_date(
+              {"FundAsset": {"NavDate": "2026/10/22"}},
+              {"TableTitle": "股票", "NavDate": "2026/10/21"},
+              "2026-10-23",
+          ) == ("2026-10-23", False))
+    check("野村：無 NavDate -> 退回請求日且不標記",
+          NomuraScraper._extract_data_date(
+              {"FundAsset": None}, {"TableTitle": "股票"}, "2026-10-23"
+          ) == ("2026-10-23", False))
+
+    ns = NomuraScraper()
+    ns.get_fund_assets = lambda fund_id, d: {
+        "Entries": {
+            "Data": {
+                "FundAsset": {"NavDate": "2026/10/22"},
+                "Table": [
+                    {"TableTitle": "期貨", "NavDate": "2026/10/22",
+                     "Rows": [["TX", "台指期", "10", "1.5%"]]},
+                    {"TableTitle": "股票", "NavDate": "2026/10/22",
+                     "Rows": [["2330", "台積電", "1,234,000", "9.85%"]]},
+                ],
+            }
+        }
+    }
+    n_rows = ns.get_etf_holdings("00980A", "2026-10-27")
+    check("野村：get_etf_holdings 只收股票表、採用 NavDate 並標記 source_dated",
+          len(n_rows) == 1 and n_rows[0]["stock_code"] == "2330"
+          and n_rows[0]["shares"] == 1234000 and n_rows[0]["weight"] == 9.85
+          and n_rows[0]["date"] == "2026-10-22" and n_rows[0]["source_dated"] is True,
+          f"rows={n_rows}")
+
+    ns.get_fund_assets = lambda fund_id, d: {"Entries": {"Data": {"FundAsset": None, "Table": []}}}
+    check("野村：非交易日／未發布（Table 為空）-> 空列表",
+          ns.get_etf_holdings("00980A", "2026-10-23") == [])
+
+    print("--- 復華：Excel 表頭「日期: YYYY/MM/DD」、動態表頭定位與非 xlsx 防呆 ---")
+    tmp = Path(tempfile.mkdtemp())
+
+    def write_fh_xlsx(name, rows_data):
+        p = tmp / name
+        pd.DataFrame(rows_data).to_excel(p, index=False, header=False)
+        return p
+
+    fh_layout = [
+        ["復華台灣未來50主動式ETF基金（證劵代碼：00991A）", None, None, None, None],
+        [None] * 5,
+        ["日期: 2026/10/22", None, None, None, None],
+        ["基金資產淨值", None, None, None, None],
+        ["68,178,935,634", None, None, None, None],
+        ["基金在外流通單位數", None, None, None, None],
+        ["4,108,416,000", None, None, None, None],
+        ["基金每單位淨值", None, None, None, None],
+        [16.59, None, None, None, None],
+        [None] * 5,
+        ["證券代號", "證券名稱", "股數", "金額", "權重(%)"],
+        ["2330", "台灣積體", "4,200,000", "10,017,000,000", "14.692%"],
+        ["合計", None, None, None, "98.500%"],
+    ]
+    fh_ok = write_fh_xlsx("fh_ok.xlsx", fh_layout)
+    fh = FHTrustScraper()
+    fh.download_dir = tmp
+    fh_rows = fh.parse_excel_file(fh_ok, "00991A", "2026-10-23")
+    check("復華：取表頭「日期: 2026/10/22」並標記 source_dated，排除合計列",
+          len(fh_rows) == 1 and fh_rows[0]["stock_code"] == "2330"
+          and fh_rows[0]["shares"] == 4200000 and fh_rows[0]["weight"] == 14.692
+          and fh_rows[0]["date"] == "2026-10-22" and fh_rows[0]["source_dated"] is True,
+          f"rows={fh_rows}")
+
+    # 若上方插入期貨段使「證券代號」移到第 14 列，仍應定位到股票表且不混入期貨代號
+    fh_shifted = write_fh_xlsx(
+        "fh_shifted.xlsx",
+        fh_layout[:10]
+        + [["期貨代號", "期貨名稱", "口數", "金額", "權重(%)"],
+           ["TX", "台指期", "20", "0", "1.2%"],
+           [None] * 5]
+        + fh_layout[10:],
+    )
+    shifted_rows = fh.parse_excel_file(fh_shifted, "00991A", "2026-10-23")
+    check("復華：表頭下移且含期貨列時仍正確取回股票列",
+          [r["stock_code"] for r in shifted_rows] == ["2330"]
+          and shifted_rows[0]["date"] == "2026-10-22")
+
+    fh_no_date = write_fh_xlsx("fh_nodate.xlsx", [fh_layout[0]] + fh_layout[10:])
+    nd_rows = fh.parse_excel_file(fh_no_date, "00991A", "2026-10-23")
+    check("復華：表頭無日期 -> 退回請求日且不標記 source_dated",
+          len(nd_rows) == 1 and nd_rows[0]["date"] == "2026-10-23"
+          and nd_rows[0]["source_dated"] is False)
+
+    fh_conflict = write_fh_xlsx(
+        "fh_conflict.xlsx",
+        [["日期: 2026/10/22"], ["日期: 2026/10/21"], ["證券代號", "證券名稱", "股數", "金額", "權重(%)"]],
+    )
+    check("復華：表頭出現兩個不同日期 -> 保守退回且不標記",
+          FHTrustScraper._extract_data_date(fh_conflict, "2026-10-23") == ("2026-10-23", False))
+
+    class FakeTextResponse:
+        status_code = 200
+        content = "查無資料".encode("utf-8")
+
+        def raise_for_status(self):
+            pass
+
+    orig_get = fh_mod.requests.get
+    try:
+        fh_mod.requests.get = lambda url, timeout=30: FakeTextResponse()
+        dl = fh.download_portfolio_excel("ETF23", "2026-10-23")
+    finally:
+        fh_mod.requests.get = orig_get
+    check("復華：未發布日回純文字「查無資料」時回傳 None 且不存壞檔",
+          dl is None and not (tmp / "ETF23_20261023.xlsx").exists())
 
 
 def check_foreign_holdings():
@@ -1073,6 +1242,9 @@ def main():
 
     print("=== 第三批來源日期解析（兆豐/凱基/永豐）===")
     check_batch3_parsers()
+
+    print("=== 第四批來源日期解析（野村/復華）===")
+    check_batch4_parsers()
 
     print("=== 海外成分股（00988A）：代號慣例／解析／名稱／單位 ===")
     check_foreign_holdings()

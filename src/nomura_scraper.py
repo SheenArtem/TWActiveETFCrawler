@@ -1,13 +1,23 @@
 """
 野村投信 ETF 爬蟲模組
-專門處理野村投信網站的 ETF 資料抓取
+透過官網內部 JSON API `GetFundAssets` 抓取 ETF 持股明細。
+
+走 API 的原因與已知特性：
+- 野村 ETF 產品頁為前端 SPA，無獨立的 PCF／持股 Excel 靜態下載連結，頁面表格由
+  `GetFundAssets` 動態渲染。
+- 此 API 嚴格遵守 `SearchDate`：非交易日或當日尚未發布時 `Table` 回空陣列（不會靜默
+  回退舊資料），且回應於 `Entries.Data.FundAsset.NavDate` 與股票表 `table["NavDate"]`
+  明確標示實際資料日期（`YYYY/MM/DD`）。
+- 已知風險：若未來 API 改名欄位導致 `NavDate` 解析不到或前後矛盾，`_extract_data_date`
+  會保守退回請求日期且設 `source_dated=False`，交由寫入層重複防護攔截。
 """
+import re
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import time
 import random
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from loguru import logger
 
@@ -164,6 +174,62 @@ class NomuraScraper:
                 logger.error(f"Response text: {response.text[:500]}")
             return None
     
+    @staticmethod
+    def _extract_data_date(
+        data_block: Optional[Dict[str, Any]],
+        stock_tables: Any,
+        fallback: str,
+    ) -> Tuple[str, bool]:
+        """
+        從 GetFundAssets 回應的 Entries.Data 取實際持股基準日 (NavDate)。
+
+        野村同時在 Entries.Data.FundAsset.NavDate 與股票表 table['NavDate']
+        提供 "YYYY/MM/DD"（如 "2026/10/22"）。若找不到或兩處日期不一致，
+        保守退回 fallback 且不標記 source_dated。
+        """
+        candidates = []
+        fund_asset = (data_block or {}).get('FundAsset')
+        if isinstance(fund_asset, dict):
+            candidates.append(fund_asset.get('NavDate'))
+
+        if isinstance(stock_tables, dict):
+            candidates.append(stock_tables.get('NavDate'))
+        elif isinstance(stock_tables, list):
+            for tbl in stock_tables:
+                if isinstance(tbl, dict):
+                    candidates.append(tbl.get('NavDate'))
+
+        found = set()
+        for raw in candidates:
+            if not raw:
+                continue
+            m = re.search(r'(20\d{2})[/\-](\d{1,2})[/\-](\d{1,2})', str(raw).strip())
+            if not m:
+                continue
+            iso = f'{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
+            try:
+                datetime.strptime(iso, '%Y-%m-%d')
+                found.add(iso)
+            except ValueError:
+                continue
+
+        if len(found) == 1:
+            actual = next(iter(found))
+            if actual != fallback:
+                logger.info(f"Nomura data date from NavDate: {actual} (requested {fallback})")
+            return actual, True
+        if len(found) > 1:
+            logger.warning(
+                f"Nomura: conflicting NavDate values {sorted(found)}; "
+                f"falling back to {fallback} without source_dated"
+            )
+        else:
+            logger.warning(
+                f"Nomura: NavDate not found in API response; "
+                f"falling back to {fallback} without source_dated"
+            )
+        return fallback, False
+
     def get_etf_holdings(
         self, 
         etf_code: str, 
@@ -196,8 +262,9 @@ class NomuraScraper:
         try:
             # 解析 API 數據結構
             # 資料在 Entries.Data.Table 陣列中
-            entries = data.get('Entries', {})
-            table_data = entries.get('Data', {}).get('Table', [])
+            entries = (data or {}).get('Entries') or {}
+            data_block = entries.get('Data') or {}
+            table_data = data_block.get('Table') or []
             
             if not table_data:
                 logger.warning(f"No holdings data found for {etf_code} on {date}")
@@ -206,29 +273,39 @@ class NomuraScraper:
             logger.debug(f"Found {len(table_data)} table items")
             
             # 找出股票資產表（TableTitle 為「股票」）
-            for table in table_data:
-                table_title = table.get('TableTitle', '')
-                
-                # 只處理股票類資產
-                if table_title == '股票':
-                    rows = table.get('Rows', [])
-                    logger.info(f"Found {len(rows)} stock holdings")
-                    
-                    # Rows 是二維陣列，每行格式: [股票代號, 股票名稱, 股數, 權重(%)]
-                    for row in rows:
-                        if len(row) >= 4:  # 確保有足夠的欄位
-                            holding = {
-                                'etf_code': etf_code,
-                                'stock_code': row[0],
-                                'stock_name': row[1],
-                                'shares': self._parse_number(row[2]),
-                                'market_value': 0,  # API 未提供市值
-                                'weight': self._parse_percentage(row[3]),
-                                'date': date
-                            }
-                            holdings.append(holding)
+            stock_tables = [
+                t for t in table_data
+                if isinstance(t, dict) and t.get('TableTitle', '') == '股票'
+            ]
+            if not stock_tables:
+                logger.warning(f"No stock table found for {etf_code} on {date}")
+                return []
+
+            actual_date, source_dated = self._extract_data_date(data_block, stock_tables, date)
+
+            for table in stock_tables:
+                rows = table.get('Rows') or []
+                logger.info(f"Found {len(rows)} stock holdings")
+
+                # Rows 是二維陣列，每行格式: [股票代號, 股票名稱, 股數, 權重(%)]
+                for row in rows:
+                    if len(row) >= 4:  # 確保有足夠的欄位
+                        holding = {
+                            'etf_code': etf_code,
+                            'stock_code': str(row[0]).strip(),
+                            'stock_name': str(row[1]).strip(),
+                            'shares': self._parse_number(row[2]),
+                            'market_value': 0,  # API 未提供市值
+                            'weight': self._parse_percentage(row[3]),
+                            'date': actual_date,
+                            'source_dated': source_dated,
+                        }
+                        holdings.append(holding)
             
-            logger.info(f"Parsed {len(holdings)} holdings for {etf_code} on {date}")
+            logger.info(
+                f"Parsed {len(holdings)} holdings for {etf_code} on {actual_date} "
+                f"(source_dated={source_dated})"
+            )
         
         except Exception as e:
             logger.error(f"Error parsing fund assets data: {e}")

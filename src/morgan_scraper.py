@@ -1,14 +1,15 @@
 """
 摩根投信 ETF 爬蟲模組
 直接下載 J.P. Morgan AM 在 AEM DAM 上發佈的 PCF (申購買回清單) Excel，
-從中解析出持股股數、市值、估值日期，依市值反推權重。
+從中解析出持股股數、市值、基準日期 (NAV Date)，依市值反推權重。
 """
 import io
 import random
+import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 import openpyxl
 import requests
@@ -99,21 +100,86 @@ class MorganScraper:
 
     @staticmethod
     def _parse_valuation_date(raw: Any) -> str:
-        """將 PCF 的 Valuation Date (YYYYMMDD) 轉成 YYYY-MM-DD。"""
+        """將 PCF 欄位日期 (YYYYMMDD / YYYY-MM-DD / YYYY/MM/DD / datetime) 轉成 YYYY-MM-DD。"""
         if raw is None:
             return ''
+        if hasattr(raw, 'strftime'):
+            return raw.strftime('%Y-%m-%d')
+        if isinstance(raw, float) and raw.is_integer():
+            raw = int(raw)
         s = str(raw).strip()
+        if not s:
+            return ''
         if len(s) == 8 and s.isdigit():
-            return f'{s[0:4]}-{s[4:6]}-{s[6:8]}'
-        return s
+            candidate = f'{s[0:4]}-{s[4:6]}-{s[6:8]}'
+        else:
+            m = re.fullmatch(r'(20\d{2})[/\-](\d{1,2})[/\-](\d{1,2})', s)
+            if not m:
+                return ''
+            candidate = f'{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
+        try:
+            datetime.strptime(candidate, '%Y-%m-%d')
+        except ValueError:
+            return ''
+        return candidate
+
+    @classmethod
+    def _extract_data_date(
+        cls,
+        fund_row: Optional[Dict[str, Any]],
+        fallback: str,
+        etf_code: str = '',
+    ) -> Tuple[str, bool]:
+        """
+        從 PCF 表頭列 (Record Type='H') 取得持股實際基準日。
+
+        摩根 PCF 同時提供兩個日期欄位：
+        - `NAV Date`：持股／淨值基準日（即真正的資料日期，例如 20261022）。
+          直接採用並標記 `source_dated=True`。即使遇上未列入日曆的臨時颱風假，
+          或當日 PCF 尚未更新，寫入日期仍停留在真實持股日（UPSERT 不刷新既有
+          `created_at`），不會把舊檔夾成請求日而產生假報表。
+        - `Valuation Date`：次一交易日的申購買回適用日（前瞻日，例如 20261027）。
+          僅在 `NAV Date` 缺漏時作退路：VD > 請求日視為當日新檔夾回請求日並標
+          `source_dated=True`；VD <= 請求日視為舊檔，不標 `source_dated`。
+        """
+        row = fund_row or {}
+        label = f"Morgan {etf_code}".strip()
+
+        nav_date = cls._parse_valuation_date(row.get('NAV Date'))
+        if nav_date:
+            if nav_date != fallback:
+                logger.info(
+                    f"{label}: PCF NAV Date is {nav_date} (request date {fallback}); "
+                    f"storing as {nav_date}"
+                )
+            return nav_date, True
+
+        valuation_date = cls._parse_valuation_date(row.get('Valuation Date'))
+        if not valuation_date:
+            logger.warning(
+                f"{label}: neither NAV Date nor Valuation Date found in PCF header; "
+                f"falling back to {fallback} without source_dated"
+            )
+            return fallback, False
+        if valuation_date > fallback:
+            logger.warning(
+                f"{label}: NAV Date missing, falling back to Valuation Date {valuation_date} > "
+                f"request date {fallback}; clamping to {fallback}"
+            )
+            return fallback, True
+
+        logger.warning(
+            f"{label}: NAV Date missing and Valuation Date {valuation_date} <= "
+            f"request date {fallback}; source likely not updated yet, duplicate guard stays active"
+        )
+        return valuation_date, False
 
     def get_etf_holdings(self, etf_code: str, date: str) -> List[Dict[str, Any]]:
         """
         從 PCF xlsx 解析持股清單。
 
-        實際 date 以 xlsx 的 Valuation Date 為準並覆寫 holding['date']；
-        但 PCF 的 Valuation Date 是「次一交易日」(申購買回基準日)的前瞻日，
-        若晚於傳入的 date(今天交易日) 則夾回 date，避免把未來日期寫進 DB。
+        實際 date 優先取 xlsx 表頭的 `NAV Date`（持股基準日），缺漏時才退回
+        `Valuation Date` 前瞻日夾回邏輯。
         """
         isin = MORGAN_ETF_CODES.get(etf_code)
         if not isin:
@@ -143,34 +209,8 @@ class MorganScraper:
         fund_header = rows[0]
         fund_data = rows[1]
         fund_row = dict(zip(fund_header, fund_data))
-        valuation_date = self._parse_valuation_date(fund_row.get('Valuation Date'))
+        actual_date, source_dated = self._extract_data_date(fund_row, date, etf_code)
         estimated_total_mv = fund_row.get('Estimated Total Market Value') or 0
-
-        # JPMorgan PCF (申購買回清單) 的 Valuation Date 是「次一交易日」(申購買回基準日)，
-        # 並非持股 as-of 日。這個前瞻性反而是新鮮度的判準：
-        #
-        #   VD > 請求日  -> 今天的新檔（當日檔的 VD 必為下一交易日）。夾回請求日後，
-        #                   該日期可信，標 source_dated=True 讓寫入層防護放行——
-        #                   否則摩根「真的一股沒動」的日子會被誤擋成永久缺漏
-        #                   （歷史模擬中每半年約 3 次）。
-        #   VD == 請求日 -> 舊檔（昨天那份的 VD 剛好等於今天）。日期不可信，
-        #                   source_dated=False 維持防護；內容與昨日相同時會被正確擋下。
-        #   解析不到     -> 退回請求日，source_dated=False，維持防護。
-        source_dated = False
-        if not valuation_date:
-            valuation_date = date  # fallback
-        elif valuation_date > date:
-            logger.info(
-                f"Morgan {etf_code}: PCF valuation date {valuation_date} is later than "
-                f"request date {date} (fresh forward-looking basket); storing as {date}"
-            )
-            valuation_date = date
-            source_dated = True
-        else:
-            logger.warning(
-                f"Morgan {etf_code}: PCF valuation date {valuation_date} has not advanced past "
-                f"request date {date}; source likely not updated yet, duplicate guard stays active"
-            )
 
         # 找 constituent 欄位 index
         cons_header = rows[2]
@@ -214,9 +254,12 @@ class MorganScraper:
                 'shares': shares,
                 'market_value': market_value,
                 'weight': weight,
-                'date': valuation_date,
+                'date': actual_date,
                 'source_dated': source_dated,
             })
 
-        logger.info(f"Morgan: parsed {len(holdings)} holdings for {etf_code} on {valuation_date}")
+        logger.info(
+            f"Morgan: parsed {len(holdings)} holdings for {etf_code} on {actual_date} "
+            f"(source_dated={source_dated})"
+        )
         return holdings
