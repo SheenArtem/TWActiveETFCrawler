@@ -658,7 +658,7 @@ def check_holiday_dates():
         check("交易日曆模組存在（src/trading_calendar.py）", False, str(e)[:80])
     else:
         closed = ["2026-01-01", "2026-02-12", "2026-02-13", "2026-02-16", "2026-02-20",
-                  "2026-09-25", "2026-09-28", "2026-10-09", "2026-10-26", "2026-12-25"]
+                  "2026-09-25", "2026-09-28", "2026-10-09", "2026-10-23", "2026-10-26", "2026-12-25"]
         opened = ["2026-01-02", "2026-02-11", "2026-02-23", "2026-09-24", "2026-09-29"]
         wrong_closed = [d for d in closed if is_trading_day(date.fromisoformat(d))]
         wrong_open = [d for d in opened if not is_trading_day(date.fromisoformat(d))]
@@ -672,6 +672,10 @@ def check_holiday_dates():
         check("連假各天退回 09-24，09-29 維持當天",
               backs == {24: "2026-09-24", 25: "2026-09-24", 26: "2026-09-24", 27: "2026-09-24",
                         28: "2026-09-24", 29: "2026-09-29"}, f"{backs}")
+        typhoon_backs = {d: last_trading_day(date(2026, 10, d)).isoformat() for d in (22, 23, 24, 25, 26, 27)}
+        check("10-23 颱風假接 10-26 補假：四天皆退回 10-22，10-27 維持當天",
+              typhoon_backs == {22: "2026-10-22", 23: "2026-10-22", 24: "2026-10-22", 25: "2026-10-22",
+                                26: "2026-10-22", 27: "2026-10-27"}, f"{typhoon_backs}")
         # 清單每年自動補（trading-calendar.yml），所以挑一個遠未來、不會被收錄的年份
         june = date(max(TWSE_CLOSED_WEEKDAYS) + 50, 6, 1)
         monday = june + timedelta(days=-june.weekday() % 7)
