@@ -3,7 +3,7 @@
   "update_time": "2026-10-14 18:28:04",
   "summary": {
     "total_etfs": 18,
-    "total_changes": 144
+    "total_changes": 145
   },
   "change_distribution": [
     {
@@ -89,7 +89,7 @@
     {
       "etf_code": "00996A",
       "etf_name": "主動兆豐台灣豐收",
-      "count": 4
+      "count": 5
     },
     {
       "etf_code": "00999A",
@@ -98,6 +98,55 @@
     }
   ],
   "hot_stocks": [
+    {
+      "stock_code": "2303",
+      "stock_name": "聯電",
+      "market": "TW",
+      "total_adjustments": 5,
+      "net_change": -1825.0,
+      "etf_details": [
+        {
+          "etf_code": "00400A",
+          "etf_name": "主動國泰動能高息",
+          "adjustment": 2096.0,
+          "new_lots": 4192.0,
+          "weight": 1.93,
+          "lots": 4192.0
+        },
+        {
+          "etf_code": "00401A",
+          "etf_name": "主動摩根台灣鑫收",
+          "adjustment": 14.0,
+          "new_lots": 625.0,
+          "weight": 2.3533,
+          "lots": 625.0
+        },
+        {
+          "etf_code": "00403A",
+          "etf_name": "主動統一升級50",
+          "adjustment": -5000.0,
+          "new_lots": 15000.0,
+          "weight": 1.53,
+          "lots": 15000.0
+        },
+        {
+          "etf_code": "00406A",
+          "etf_name": "主動中信台灣收益",
+          "adjustment": 1000.0,
+          "new_lots": 10768.0,
+          "weight": 1.95,
+          "lots": 10768.0
+        },
+        {
+          "etf_code": "00996A",
+          "etf_name": "主動兆豐台灣豐收",
+          "adjustment": 65.0,
+          "new_lots": 921.0,
+          "weight": 2.53,
+          "lots": 921.0
+        }
+      ]
+    },
     {
       "stock_code": "2327",
       "stock_name": "國巨*",
@@ -291,47 +340,6 @@
           "new_lots": 5.0,
           "weight": 0.84,
           "lots": 5.0
-        }
-      ]
-    },
-    {
-      "stock_code": "2303",
-      "stock_name": "聯電",
-      "market": "TW",
-      "total_adjustments": 4,
-      "net_change": -1890.0,
-      "etf_details": [
-        {
-          "etf_code": "00400A",
-          "etf_name": "主動國泰動能高息",
-          "adjustment": 2096.0,
-          "new_lots": 4192.0,
-          "weight": 1.93,
-          "lots": 4192.0
-        },
-        {
-          "etf_code": "00401A",
-          "etf_name": "主動摩根台灣鑫收",
-          "adjustment": 14.0,
-          "new_lots": 625.0,
-          "weight": 2.3533,
-          "lots": 625.0
-        },
-        {
-          "etf_code": "00403A",
-          "etf_name": "主動統一升級50",
-          "adjustment": -5000.0,
-          "new_lots": 15000.0,
-          "weight": 1.53,
-          "lots": 15000.0
-        },
-        {
-          "etf_code": "00406A",
-          "etf_name": "主動中信台灣收益",
-          "adjustment": 1000.0,
-          "new_lots": 10768.0,
-          "weight": 1.95,
-          "lots": 10768.0
         }
       ]
     },
@@ -1878,46 +1886,55 @@
     {
       "etf_code": "00996A",
       "etf_name": "主動兆豐台灣豐收",
-      "data_date": "2026-09-24",
-      "total_changes": 4,
+      "data_date": "2026-10-14",
+      "total_changes": 5,
       "added": [],
       "removed": [],
       "modified": [
         {
-          "stock_code": "4958",
-          "stock_name": "臻鼎-KY",
+          "stock_code": "7751",
+          "stock_name": "竑騰",
           "market": "TW",
-          "old_lots": 481.0,
-          "new_lots": 462.0,
-          "diff": -19.0,
-          "direction": "down"
+          "old_lots": 82.0,
+          "new_lots": 88.0,
+          "diff": 6.0,
+          "direction": "up"
         },
         {
-          "stock_code": "2383",
-          "stock_name": "台光電",
+          "stock_code": "2303",
+          "stock_name": "聯電",
           "market": "TW",
-          "old_lots": 37.0,
-          "new_lots": 34.0,
-          "diff": -3.0,
-          "direction": "down"
+          "old_lots": 856.0,
+          "new_lots": 921.0,
+          "diff": 65.0,
+          "direction": "up"
         },
         {
-          "stock_code": "2344",
-          "stock_name": "華邦電",
+          "stock_code": "3017",
+          "stock_name": "奇鋐",
           "market": "TW",
-          "old_lots": 280.0,
-          "new_lots": 228.0,
-          "diff": -52.0,
-          "direction": "down"
+          "old_lots": 34.0,
+          "new_lots": 41.0,
+          "diff": 7.0,
+          "direction": "up"
         },
         {
-          "stock_code": "2408",
-          "stock_name": "南亞科",
+          "stock_code": "6274",
+          "stock_name": "台燿",
           "market": "TW",
-          "old_lots": 80.0,
-          "new_lots": 63.0,
-          "diff": -17.0,
-          "direction": "down"
+          "old_lots": 43.0,
+          "new_lots": 49.0,
+          "diff": 6.0,
+          "direction": "up"
+        },
+        {
+          "stock_code": "6830",
+          "stock_name": "汎銓",
+          "market": "TW",
+          "old_lots": 106.5,
+          "new_lots": 124.5,
+          "diff": 18.0,
+          "direction": "up"
         }
       ]
     },
@@ -9390,371 +9407,378 @@
     {
       "etf_code": "00996A",
       "etf_name": "主動兆豐台灣豐收",
-      "data_date": "2026-09-24",
+      "data_date": "2026-10-14",
       "holdings": [
         {
           "stock_code": "2330",
           "stock_name": "台積電",
           "market": "TW",
-          "weight": 9.32,
-          "lots": 152.0
-        },
-        {
-          "stock_code": "2454",
-          "stock_name": "聯發科",
-          "market": "TW",
-          "weight": 7.33,
-          "lots": 56.0
-        },
-        {
-          "stock_code": "2308",
-          "stock_name": "台達電",
-          "market": "TW",
-          "weight": 5.44,
-          "lots": 115.0
+          "weight": 8.19,
+          "lots": 170.0
         },
         {
           "stock_code": "4958",
           "stock_name": "臻鼎-KY",
           "market": "TW",
-          "weight": 5.44,
-          "lots": 462.0
+          "weight": 6.11,
+          "lots": 557.0
+        },
+        {
+          "stock_code": "2454",
+          "stock_name": "聯發科",
+          "market": "TW",
+          "weight": 5.8,
+          "lots": 67.0
         },
         {
           "stock_code": "2327",
           "stock_name": "國巨*",
           "market": "TW",
-          "weight": 5.06,
-          "lots": 352.0
-        },
-        {
-          "stock_code": "3443",
-          "stock_name": "創意",
-          "market": "TW",
-          "weight": 4.65,
-          "lots": 22.0
+          "weight": 5.38,
+          "lots": 443.0
         },
         {
           "stock_code": "6510",
           "stock_name": "精測",
           "market": "TW",
-          "weight": 4.59,
-          "lots": 56.0
+          "weight": 4.62,
+          "lots": 74.0
         },
         {
-          "stock_code": "2383",
-          "stock_name": "台光電",
+          "stock_code": "2308",
+          "stock_name": "台達電",
           "market": "TW",
-          "weight": 4.25,
-          "lots": 34.0
+          "weight": 4.53,
+          "lots": 131.0
+        },
+        {
+          "stock_code": "3443",
+          "stock_name": "創意",
+          "market": "TW",
+          "weight": 4.31,
+          "lots": 27.0
         },
         {
           "stock_code": "6278",
           "stock_name": "台表科",
           "market": "TW",
-          "weight": 3.49,
-          "lots": 665.0
+          "weight": 4.22,
+          "lots": 751.0
         },
         {
-          "stock_code": "3653",
-          "stock_name": "健策",
+          "stock_code": "2383",
+          "stock_name": "台光電",
           "market": "TW",
-          "weight": 3.43,
-          "lots": 20.0
-        },
-        {
-          "stock_code": "6683",
-          "stock_name": "雍智科技",
-          "market": "TW",
-          "weight": 3.32,
-          "lots": 88.0
-        },
-        {
-          "stock_code": "8996",
-          "stock_name": "高力",
-          "market": "TW",
-          "weight": 2.73,
-          "lots": 72.0
-        },
-        {
-          "stock_code": "6223",
-          "stock_name": "旺矽",
-          "market": "TW",
-          "weight": 2.55,
-          "lots": 19.0
-        },
-        {
-          "stock_code": "3017",
-          "stock_name": "奇鋐",
-          "market": "TW",
-          "weight": 2.55,
-          "lots": 29.0
-        },
-        {
-          "stock_code": "3189",
-          "stock_name": "景碩",
-          "market": "TW",
-          "weight": 2.53,
-          "lots": 106.0
-        },
-        {
-          "stock_code": "2303",
-          "stock_name": "聯電",
-          "market": "TW",
-          "weight": 2.34,
-          "lots": 613.0
-        },
-        {
-          "stock_code": "2472",
-          "stock_name": "立隆電",
-          "market": "TW",
-          "weight": 2.3,
-          "lots": 425.0
-        },
-        {
-          "stock_code": "3037",
-          "stock_name": "欣興",
-          "market": "TW",
-          "weight": 2.23,
-          "lots": 76.0
-        },
-        {
-          "stock_code": "6831",
-          "stock_name": "邁科",
-          "market": "TW",
-          "weight": 2.11,
-          "lots": 171.0
-        },
-        {
-          "stock_code": "7751",
-          "stock_name": "竑騰",
-          "market": "TW",
-          "weight": 1.99,
-          "lots": 53.0
+          "weight": 3.74,
+          "lots": 35.0
         },
         {
           "stock_code": "8021",
           "stock_name": "尖點",
           "market": "TW",
-          "weight": 1.71,
-          "lots": 144.0
+          "weight": 3.45,
+          "lots": 332.0
         },
         {
-          "stock_code": "3693",
-          "stock_name": "營邦",
+          "stock_code": "3189",
+          "stock_name": "景碩",
           "market": "TW",
-          "weight": 1.7,
-          "lots": 94.0
+          "weight": 3.27,
+          "lots": 161.0
         },
         {
-          "stock_code": "3363",
-          "stock_name": "上詮",
+          "stock_code": "6683",
+          "stock_name": "雍智科技",
           "market": "TW",
-          "weight": 1.66,
-          "lots": 103.0
+          "weight": 3.19,
+          "lots": 117.0
+        },
+        {
+          "stock_code": "3653",
+          "stock_name": "健策",
+          "market": "TW",
+          "weight": 3.15,
+          "lots": 23.0
+        },
+        {
+          "stock_code": "2472",
+          "stock_name": "立隆電",
+          "market": "TW",
+          "weight": 2.91,
+          "lots": 617.0
+        },
+        {
+          "stock_code": "7751",
+          "stock_name": "竑騰",
+          "market": "TW",
+          "weight": 2.88,
+          "lots": 88.0
+        },
+        {
+          "stock_code": "3017",
+          "stock_name": "奇鋐",
+          "market": "TW",
+          "weight": 2.63,
+          "lots": 41.0
+        },
+        {
+          "stock_code": "3037",
+          "stock_name": "欣興",
+          "market": "TW",
+          "weight": 2.57,
+          "lots": 112.0
+        },
+        {
+          "stock_code": "2303",
+          "stock_name": "聯電",
+          "market": "TW",
+          "weight": 2.53,
+          "lots": 921.0
+        },
+        {
+          "stock_code": "6223",
+          "stock_name": "旺矽",
+          "market": "TW",
+          "weight": 2.28,
+          "lots": 20.0
         },
         {
           "stock_code": "8046",
           "stock_name": "南電",
           "market": "TW",
-          "weight": 1.66,
-          "lots": 54.0
+          "weight": 1.97,
+          "lots": 71.0
         },
         {
-          "stock_code": "6415",
-          "stock_name": "矽力*-KY",
+          "stock_code": "6831",
+          "stock_name": "邁科",
           "market": "TW",
-          "weight": 1.64,
-          "lots": 156.0
-        },
-        {
-          "stock_code": "8210",
-          "stock_name": "勤誠",
-          "market": "TW",
-          "weight": 1.45,
-          "lots": 65.0
+          "weight": 1.8,
+          "lots": 195.0
         },
         {
           "stock_code": "6274",
           "stock_name": "台燿",
           "market": "TW",
-          "weight": 1.37,
-          "lots": 37.0
+          "weight": 1.65,
+          "lots": 49.0
+        },
+        {
+          "stock_code": "8996",
+          "stock_name": "高力",
+          "market": "TW",
+          "weight": 1.5,
+          "lots": 46.0
+        },
+        {
+          "stock_code": "3363",
+          "stock_name": "上詮",
+          "market": "TW",
+          "weight": 1.28,
+          "lots": 118.0
         },
         {
           "stock_code": "6830",
           "stock_name": "汎銓",
           "market": "TW",
-          "weight": 1.06,
-          "lots": 79.0
+          "weight": 1.25,
+          "lots": 124.495
         },
         {
-          "stock_code": "2344",
-          "stock_name": "華邦電",
+          "stock_code": "8210",
+          "stock_name": "勤誠",
           "market": "TW",
-          "weight": 0.97,
-          "lots": 228.0
+          "weight": 1.07,
+          "lots": 65.0
         },
         {
-          "stock_code": "5269",
-          "stock_name": "祥碩",
+          "stock_code": "8358",
+          "stock_name": "金居",
           "market": "TW",
-          "weight": 0.81,
-          "lots": 22.0
-        },
-        {
-          "stock_code": "2408",
-          "stock_name": "南亞科",
-          "market": "TW",
-          "weight": 0.79,
-          "lots": 63.0
-        },
-        {
-          "stock_code": "1303",
-          "stock_name": "南亞",
-          "market": "TW",
-          "weight": 0.51,
-          "lots": 87.0
+          "weight": 1.0,
+          "lots": 103.0
         },
         {
           "stock_code": "3042",
           "stock_name": "晶技",
           "market": "TW",
-          "weight": 0.4,
-          "lots": 79.0
+          "weight": 0.88,
+          "lots": 221.0
         },
         {
-          "stock_code": "6239",
-          "stock_name": "力成",
+          "stock_code": "2344",
+          "stock_name": "華邦電",
           "market": "TW",
-          "weight": 0.39,
-          "lots": 55.0
-        },
-        {
-          "stock_code": "2368",
-          "stock_name": "金像電",
-          "market": "TW",
-          "weight": 0.38,
-          "lots": 14.0
-        },
-        {
-          "stock_code": "2360",
-          "stock_name": "致茂",
-          "market": "TW",
-          "weight": 0.34,
-          "lots": 6.0
-        },
-        {
-          "stock_code": "2467",
-          "stock_name": "志聖",
-          "market": "TW",
-          "weight": 0.33,
-          "lots": 25.0
-        },
-        {
-          "stock_code": "3131",
-          "stock_name": "弘塑",
-          "market": "TW",
-          "weight": 0.3,
-          "lots": 5.0
-        },
-        {
-          "stock_code": "6526",
-          "stock_name": "達發",
-          "market": "TW",
-          "weight": 0.25,
-          "lots": 12.0
-        },
-        {
-          "stock_code": "6770",
-          "stock_name": "力積電",
-          "market": "TW",
-          "weight": 0.23,
-          "lots": 127.0
+          "weight": 0.73,
+          "lots": 228.0
         },
         {
           "stock_code": "3533",
           "stock_name": "嘉澤",
           "market": "TW",
-          "weight": 0.17,
-          "lots": 4.0
+          "weight": 0.6,
+          "lots": 16.0
+        },
+        {
+          "stock_code": "2408",
+          "stock_name": "南亞科",
+          "market": "TW",
+          "weight": 0.59,
+          "lots": 63.0
+        },
+        {
+          "stock_code": "6770",
+          "stock_name": "力積電",
+          "market": "TW",
+          "weight": 0.51,
+          "lots": 373.0
+        },
+        {
+          "stock_code": "3693",
+          "stock_name": "營邦",
+          "market": "TW",
+          "weight": 0.41,
+          "lots": 28.0
+        },
+        {
+          "stock_code": "2368",
+          "stock_name": "金像電",
+          "market": "TW",
+          "weight": 0.34,
+          "lots": 14.0
+        },
+        {
+          "stock_code": "2467",
+          "stock_name": "志聖",
+          "market": "TW",
+          "weight": 0.26,
+          "lots": 25.0
+        },
+        {
+          "stock_code": "1303",
+          "stock_name": "南亞",
+          "market": "TW",
+          "weight": 0.23,
+          "lots": 34.0
+        },
+        {
+          "stock_code": "3131",
+          "stock_name": "弘塑",
+          "market": "TW",
+          "weight": 0.23,
+          "lots": 5.0
+        },
+        {
+          "stock_code": "2881",
+          "stock_name": "富邦金",
+          "market": "TW",
+          "weight": 0.22,
+          "lots": 70.0
+        },
+        {
+          "stock_code": "2882",
+          "stock_name": "國泰金",
+          "market": "TW",
+          "weight": 0.21,
+          "lots": 95.0
+        },
+        {
+          "stock_code": "5269",
+          "stock_name": "祥碩",
+          "market": "TW",
+          "weight": 0.21,
+          "lots": 7.0
+        },
+        {
+          "stock_code": "6526",
+          "stock_name": "達發",
+          "market": "TW",
+          "weight": 0.19,
+          "lots": 12.0
+        },
+        {
+          "stock_code": "2449",
+          "stock_name": "京元電子",
+          "market": "TW",
+          "weight": 0.18,
+          "lots": 32.3
+        },
+        {
+          "stock_code": "6415",
+          "stock_name": "矽力*-KY",
+          "market": "TW",
+          "weight": 0.15,
+          "lots": 16.0
+        },
+        {
+          "stock_code": "6239",
+          "stock_name": "力成",
+          "market": "TW",
+          "weight": 0.14,
+          "lots": 24.0
         },
         {
           "stock_code": "3665",
           "stock_name": "貿聯-KY",
           "market": "TW",
-          "weight": 0.17,
+          "weight": 0.13,
           "lots": 3.0
         },
         {
           "stock_code": "1802",
           "stock_name": "台玻",
           "market": "TW",
-          "weight": 0.13,
+          "weight": 0.12,
           "lots": 90.0
+        },
+        {
+          "stock_code": "6213",
+          "stock_name": "聯茂",
+          "market": "TW",
+          "weight": 0.1,
+          "lots": 6.0
+        },
+        {
+          "stock_code": "2360",
+          "stock_name": "致茂",
+          "market": "TW",
+          "weight": 0.09,
+          "lots": 2.0
         },
         {
           "stock_code": "6531",
           "stock_name": "愛普*",
           "market": "TW",
-          "weight": 0.12,
+          "weight": 0.09,
           "lots": 5.0
         },
         {
           "stock_code": "3711",
           "stock_name": "日月光投控",
           "market": "TW",
-          "weight": 0.09,
+          "weight": 0.07,
           "lots": 5.0
         },
         {
           "stock_code": "4749",
           "stock_name": "新應材",
           "market": "TW",
-          "weight": 0.09,
+          "weight": 0.07,
           "lots": 5.086
-        },
-        {
-          "stock_code": "6213",
-          "stock_name": "聯茂",
-          "market": "TW",
-          "weight": 0.09,
-          "lots": 6.0
-        },
-        {
-          "stock_code": "2881",
-          "stock_name": "富邦金",
-          "market": "TW",
-          "weight": 0.07,
-          "lots": 20.0
-        },
-        {
-          "stock_code": "2882",
-          "stock_name": "國泰金",
-          "market": "TW",
-          "weight": 0.07,
-          "lots": 25.0
         },
         {
           "stock_code": "2317",
           "stock_name": "鴻海",
           "market": "TW",
-          "weight": 0.06,
+          "weight": 0.04,
           "lots": 9.0
         },
         {
           "stock_code": "2382",
           "stock_name": "廣達",
           "market": "TW",
-          "weight": 0.05,
+          "weight": 0.04,
           "lots": 6.0
-        },
-        {
-          "stock_code": "2449",
-          "stock_name": "京元電子",
-          "market": "TW",
-          "weight": 0.05,
-          "lots": 6.3
         }
       ]
     },
