@@ -52,6 +52,22 @@ function sortedOptions(options, current) {
 
 function filterHref(filter,ctx) { return ctx.href({view: 'overview', filter, page: null}); }
 
+function stockFilters(filter, ctx) {
+  const groups = [
+    ['參與檔數', ['all', 'single', 'multi']],
+    ['持股方向', ['same', 'mixed', 'increase', 'decrease', 'flat', 'uncertain']],
+    ['成分進出', ['added', 'removed']],
+  ];
+  return `<nav class="stock-filters" aria-label="股票異動篩選">${groups.map(([label, keys]) =>
+    `<div class="stock-filter-group" role="group" aria-label="${label}">
+      <span class="stock-filter-label" aria-hidden="true">${label}</span>
+      <div class="chips">${keys.map(key =>
+        `<a class="chip" href="${ctx.escape(filterHref(key,ctx))}"${key === filter ? ' aria-current="true"' : ''}>${filters[key][0]}</a>`
+      ).join('')}</div>
+    </div>`
+  ).join('')}</nav>`;
+}
+
 function summary(ctx) {
   const stocks = ctx.period.stocks;
   const single = stocks.filter(filters.single[1]).length;
@@ -96,17 +112,14 @@ function renderOverview(ctx) {
   const sort = Object.hasOwn(sorts,ctx.params.get('sort')) ? ctx.params.get('sort') : 'count';
   const selected = ctx.period.stocks.filter(filters[filter][1]).sort((a,b) => sorts[sort][1](a,b) || collator.compare(a.code,b.code));
   const {rows,paging} = pager(selected,ctx);
-  const group = ['all','single','same','mixed'];
-  if (!group.includes(filter)) group.push(filter);
-  const chips = group.map(key => `<a class="chip" href="${filterHref(key,ctx)}" ${filter === key ? 'aria-current="true"' : ''}>${filters[key][0]}</a>`).join('');
   const table = `<div class="table-wrap"><table class="data-table stock-table"><thead><tr><th scope="col">股票</th><th scope="col" class="participants num">參與 ETF</th><th scope="col">增持／減持 ETF</th><th scope="col" class="num">持股淨增減</th></tr></thead><tbody>${rows.map(s=>`<tr>
     <td>${symbol(s,'stock',ctx)}</td><td class="num participants">${s.count} 檔</td>
     <td class="directions"><span class="up">增 ${s.up}</span><span class="muted"> ／ </span><span class="down">減 ${s.down}</span><span class="mobile-only"> 檔 ETF</span></td>
     <td class="num quantity ${direction(s.net)}"><strong>${ctx.format(s.net,true)}</strong> <small>${ctx.unit(s.market)}</small>${belowPrecision(s) ? '<small class="precision-note">含低於報表精度的異動</small>' : ''}</td></tr>`).join('')}</tbody></table></div>`;
   return `<div class="title-row"><h1>每日持股異動</h1>${periodSwitch(ctx)}</div>${summary(ctx)}${periodNotice(ctx)}
     <div class="board"><section class="panel"><div class="section-head"><h2>股票異動 <small>${selected.length} 檔</small></h2>${views(ctx)}</div>
-    <div class="filter-bar"><div class="chips">${chips}</div><label class="sort-field">排序<select data-set="sort">${sortedOptions(sorts,sort)}</select></label></div>
-    <details class="more-filters"><summary>其他篩選</summary><div class="chips">${['multi','increase','decrease','added','removed'].map(k=>`<a class="chip" href="${filterHref(k,ctx)}">${filters[k][0]}</a>`).join('')}</div></details>
+    <div class="filter-bar"><span class="stock-filter-title">篩選條件（擇一）</span><label class="sort-field">排序<select data-set="sort">${sortedOptions(sorts,sort)}</select></label></div>
+    ${stockFilters(filter,ctx)}
     ${rows.length ? table : '<p class="empty-state">此期間與條件下沒有可比較的股票異動。</p>'}${paging}</section>${sidebar(ctx)}</div>`;
 }
 

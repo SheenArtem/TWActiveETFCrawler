@@ -610,6 +610,23 @@ def check_stalled_source_fixes():
               CTBCScraper.BASE_URL == "https://www.ctbcinvestments.com.tw", CTBCScraper.BASE_URL)
 
 
+def report_stock_cells(fund, caption_prefix):
+    """依靜態日報中的公開個股連結定位資料列，保留海外市場後綴。"""
+    from urllib.parse import parse_qs, urlsplit
+
+    for table in fund.find_all("table") if fund else ():
+        if not table.caption or not table.caption.get_text(strip=True).startswith(caption_prefix):
+            continue
+        by_code = {}
+        for row in table.select("tbody tr"):
+            link = row.select_one('th a[href]')
+            if link:
+                code = parse_qs(urlsplit(link["href"]).query).get("code", [""])[0]
+                by_code[code] = [td.get_text("", strip=True).replace(" ", "") for td in row.find_all("td")]
+        return by_code
+    return {}
+
+
 def check_foreign_holdings():
     """
     00988A（主動統一全球創新，2026-09-03 加入）含海外成分股。三件事不能壞：
@@ -676,11 +693,13 @@ def check_foreign_holdings():
           bool(parsed) and all(r["date"] == "2026-09-01" and r["source_dated"] is True for r in parsed))
 
     print("--- 報表層：海外部位標「千股」、台股標「張」、JSON 帶 market ---")
+    from bs4 import BeautifulSoup
     from src.holdings_analyzer import HoldingChange
     from src.report_generator import HTMLReportGenerator
     from src.report_manager import ReportManager
 
     db_f, _ = fresh_db()
+    db_f.insert_holdings(rows_sd("00988A", "2026-08-31", [("2330", 500000, 2.10)]))
     db_f.insert_holdings(rows_sd("00988A", "2026-09-01", [("2330", 550000, 2.58), ("SNDK US", 13000, 1.22)]))
     mgr = ReportManager(db_f, Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp()))
     built = mgr.build_etf_holdings({"00988A": "主動統一全球創新"}, "2026-09-01")
@@ -688,11 +707,6 @@ def check_foreign_holdings():
     check("持股總覽每列帶 market（TW／US）", markets == {"2330": "TW", "SNDK US": "US"}, f"{markets}")
 
     gen = HTMLReportGenerator(Path(tempfile.mkdtemp()))
-    holdings_html = gen._generate_etf_holdings_html(built)
-    check("持股總覽 HTML：台股列「張」、海外列「千股」、卡片標示含海外成分股",
-          "550張" in holdings_html and "13千股" in holdings_html and "13張" not in holdings_html
-          and "含 1 檔海外成分股" in holdings_html)
-
     changes = {"00988A": [
         HoldingChange(change_type="ADDED", stock_code="SNDK US", stock_name="SANDISK CORP",
                       new_shares=13000, new_lots=13.0),
@@ -700,13 +714,22 @@ def check_foreign_holdings():
                       old_shares=500000, new_shares=550000, shares_diff=50000,
                       old_lots=500.0, new_lots=550.0, lots_diff=50.0),
     ]}
-    dash = gen.generate_dashboard_data(changes, "2026-09-01", {"00988A": "主動統一全球創新"}, built)
+    report_path = gen.generate_daily_report(changes, "2026-09-01", {"00988A": "主動統一全球創新"}, built)
+    dash = json.loads((report_path.parent / "data_2026-09-01.json").read_text(encoding="utf-8"))
     entry = dash["detailed_changes"][0]
     check("變動明細 JSON 帶 market（新增 US／變動 TW）",
           entry["added"][0]["market"] == "US" and entry["modified"][0]["market"] == "TW")
-    details_html = gen._generate_details_html(dash["detailed_changes"])
+    doc = BeautifulSoup(report_path.read_text(encoding="utf-8"), "html.parser")
+    fund = doc.select_one("details.fund#etf-00988A")
+
+    holdings = report_stock_cells(fund, "完整持股")
+    check("持股總覽 HTML：台股列「張」、海外列「千股」、卡片標示含海外成分股",
+          holdings.get("2330", [])[-1:] == ["550張"] and holdings.get("SNDK US", [])[-1:] == ["13千股"]
+          and fund and "含 1 檔海外成分股" in fund.summary.get_text(" ", strip=True))
+    adjustment = report_stock_cells(fund, "兩次揭露間的持股異動")
     check("變動明細 HTML：海外新增列「千股」、台股變動列「張」",
-          "13千股" in details_html and "+50張" in details_html)
+          adjustment.get("SNDK US") == ["新增", "0千股", "13千股", "+13千股"]
+          and adjustment.get("2330") == ["增持", "500張", "550張", "+50張"])
     txt = mgr.analyzer.generate_report(changes, "2026-09-01")
     check("TXT 報告：海外列「千股」、台股列「張」", "13.00千股" in txt and "550.00張" in txt)
     md = mgr.analyzer.generate_markdown_report(changes, "2026-09-01")
@@ -1003,6 +1026,7 @@ def check_stale_etfs_not_repeated():
 
 def check_report_comparison_periods():
     """日報分別保留來源比較日與上一份報表可見的日期，包含首次、無異動與跨期後恢復。"""
+    from bs4 import BeautifulSoup
     from src.report_manager import ReportManager
 
     work = Path(tempfile.mkdtemp())
@@ -1039,9 +1063,24 @@ def check_report_comparison_periods():
     check("單股增減保留三位小數與正確增減方向", event["diff"] == 0.001 and event["direction"] == "up"
           and event["old_lots"] == 1 and event["new_lots"] == 1.001)
     html = (docs / "report_2026-11-18.html").read_text(encoding="utf-8")
+    page = BeautifulSoup(html, "html.parser")
+    styles = {link.get("href", "").removeprefix("./") for link in page.select('link[rel="stylesheet"]')}
+    check("新產製日報沿用全站品牌及導覽，靜態內容可從異動、基金披露查閱",
+          {'assets/site.css', 'assets/report.css'} <= styles
+          and page.select_one('.masthead .topbar.frame .brand') and page.select_one('.masthead .primary-nav')
+          and page.select_one('main.frame h1') and '持股日報' in page.select_one('main.frame h1').get_text()
+          and page.select_one('main #activity') and page.select_one('main #funds details.fund#etf-00404A table'))
     check("靜態日報可開同日 ETF、完整海外股票代號與兩期變動",
           'href="index.html?date=2026-11-18"' in html and 'view=etf&amp;code=00404A' in html
           and 'view=stock&amp;code=3308+HK' in html and '2026-11-10 → 2026-11-18 · 跨期比較' in html)
+
+    archive = Path(__file__).resolve().parent / "docs" / "report_2026-02-06.html"
+    published = BeautifulSoup(archive.read_text(encoding="utf-8"), "html.parser")
+    february_changes = report_stock_cells(published.select_one("details.fund#etf-00994A"), "兩次揭露間的持股異動")
+    check("2/6 已發布日報：00994A 的 4904 實增 1 股，方向與互動頁一致",
+          february_changes.get("4904") == ["增持", "1.002張", "1.003張", "+0.001張"],
+          f"4904={february_changes.get('4904')}")
+
     mgr.generate_all_reports(mgr.analyzer.detect_changes_batch(codes, "2026-11-19"), "2026-11-19")
     check("所有資料沿用前期時不新增空日報", not (docs / "data_2026-11-19.json").exists())
 

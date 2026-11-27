@@ -34,7 +34,9 @@ jobs:
         run: python test_duplicate_guard.py
 
       - name: Verify market data and archive fixtures
-        run: node --test tests/market-data.test.mjs
+        run: |
+          node --test tests/market-data.test.mjs
+          python scripts/render_report_pages.py --check
 
       - name: Check the mobile and desktop holdings explorer
         run: |

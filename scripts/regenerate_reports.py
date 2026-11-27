@@ -1,5 +1,6 @@
 """
-重畫全部已發布的報表：名稱對照表（data/stock_names.json）、報表版面或產生器改了之後用。
+重畫全部已發布的報表：名稱對照表（data/stock_names.json）或報表資料改了之後用。
+只改日報版面時，執行 python scripts/render_report_pages.py 可直接沿用已發布的 JSON。
 
 每檔 ETF 的資料日期固定在發布當時的值，只有內容照 DB 與現行程式重畫
 （scripts/pinned_reports.py 的 refresh 模式）；內容沒變的報表不會被改寫。
