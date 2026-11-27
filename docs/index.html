@@ -865,6 +865,31 @@
                 padding: 5px 6px;
             }
         }
+
+        /* 來源沒有更新的 ETF：平常不佔版面，有資料時 loadStaleBanner 加上 visible */
+        .stale-banner {
+            display: none;
+            background: #fff8e1;
+            border-left: 5px solid #f9a825;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            color: #5d4037;
+        }
+
+        .stale-banner.visible {
+            display: block;
+        }
+
+        .stale-banner-note {
+            margin-top: 6px;
+            font-size: 0.95em;
+        }
+
+        .stale-banner ul {
+            margin: 8px 0 0 20px;
+            font-size: 0.95em;
+        }
     </style>
 </head>
 
@@ -889,6 +914,9 @@
 
         <!-- Main Content -->
         <div class="main-content">
+            <!-- 來源沒有更新的 ETF：取自最新一份報表的 stale_etfs，沒有就不顯示（見 loadStaleBanner） -->
+            <div class="stale-banner" id="stale-banner"></div>
+
             <!-- Stock Reverse Lookup -->
             <div class="lookup-section" id="lookup-section">
                 <h2>🔍 個股反查 ETF 持倉</h2>
@@ -1819,9 +1847,38 @@
             }
         });
 
+        // ====== 來源沒有更新的 ETF ======
+        // 最新一份報表的 stale_etfs：自上一份報表以來沒有新資料的 ETF（報表產生器不再重列它們的變動，
+        // 見 src/report_manager.py 的 find_stale_etfs）。首頁的持股與買賣統計用的是最後一次抓到的內容，
+        // 所以要在最上面講明哪幾檔不是最新的、停在哪一天。舊報表沒有這個欄位，視為沒有。
+        async function loadStaleBanner() {
+            const el = document.getElementById('stale-banner');
+            try {
+                const reportsIndex = await (await fetch('reports_index.json')).json();
+                if (!reportsIndex.length) return;
+                const latest = await (await fetch(`data_${reportsIndex[0].date}.json`)).json();
+                const stale = latest.stale_etfs || [];
+                if (!stale.length) {
+                    el.className = 'stale-banner';
+                    el.innerHTML = '';
+                    return;
+                }
+                const items = stale.map(e =>
+                    `<li><strong>${e.etf_code}</strong> ${e.etf_name}：資料日期 ${e.data_date}（落後 ${e.trading_days_behind} 個交易日）</li>`
+                ).join('');
+                el.innerHTML = `<strong>⚠️ ${stale.length} 檔 ETF 沒有新資料</strong>
+                    <div class="stale-banner-note">以 ${latest.date} 的報表為準：來源自上一份報表以來沒有更新。這幾檔顯示的是最後一次抓到的持股，來源更新之後，這段期間的買賣才會出現在下方統計。</div>
+                    <ul>${items}</ul>`;
+                el.className = 'stale-banner visible';
+            } catch (error) {
+                console.error('載入停更提示失敗', error);
+            }
+        }
+
         // Launch all data loaders
         loadETFMarketData();
         loadReports();
+        loadStaleBanner();
         loadCrossETFData();
         loadPerETFData();
     </script>

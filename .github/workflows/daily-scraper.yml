@@ -72,8 +72,10 @@ jobs:
       # 2026-11-27: 預設門檻從 70 改成 100(全部寫入才跳過)。追蹤到 23 檔之後,即使有 3-5 檔
       # 的來源當天失敗,寫入仍有 18-20 檔(78-87%),70% 的門檻照樣跳過後備班次: 2026-10-27 ~ 11-26
       # 的 22 個交易日有 21 班被跳過,當天失敗的來源(安聯 11-09 頁面沒渲染、摩根 11-16 的 PCF
-      # 晚發布)沒有第二次機會,那一天就永久缺資料。只要有一檔長期抓不到(兆豐被 Akamai 擋),
-      # 後備班次就每天都會跑。要調回去可設 repo 變數 SKIP_COVERAGE_PCT。
+      # 晚發布)沒有第二次機會,那一天就永久缺資料。要調回去可設 repo 變數 SKIP_COVERAGE_PCT。
+      # 兆豐在 runner 上抓不到,由開發機的排程在主班次之後補進來(scripts/local_megafunds_job.ps1);
+      # 它補的列一樣有當天(UTC)的 created_at,所以開發機有補到、其他 25 檔主班次也都寫入時,
+      # 後備班次會被跳過;開發機沒補到的日子,後備班次照跑(兆豐那一檔仍然抓不到,無害)。
       #
       # 時區: 用 UTC。main.py 各 daily_update_* 用 datetime.now() 決定請求日期,
       # 在 runner 上就是 UTC;sqlite 的 CURRENT_TIMESTAMP 也是 UTC。三者同基準,
@@ -142,13 +144,16 @@ jobs:
       # 來源停更的警報(2026-11-27 加): 有 ETF 連續 3 個交易日沒有新資料就讓班次失敗,GitHub 會寄信。
       # 沒有這一步時,來源改版或被擋只會在 log 留一行 ERROR,班次照樣是綠的——2026-11 中信、聯博、
       # 兆豐各停更 2-5 週都沒被發現。放在 commit/push 之後,班次變紅不影響當天抓到的資料入庫。
-      # STALE_IGNORE: 已知抓不到、不要每天變紅的 ETF(逗號分隔),照樣會印成 warning。
-      # 預設列兆豐 00996A(runner 被 Akamai 依來源 IP 擋,見 .ai/guides/data-sources.md);
-      # 它修好之後把 repo 變數 STALE_IGNORE 設成 "-" 即可取消。
+      # STALE_IGNORE(repo 變數): 已知抓不到、不要每天變紅的 ETF(逗號分隔),照樣會印成 warning。預設不忽略任何一檔。
+      #
+      # 兆豐 00996A 在 runner 上抓不到(被 Akamai 依來源 IP 擋),改由開發機的 Windows 排程每天補
+      # (scripts/local_megafunds_job.ps1,見 .ai/guides/data-sources.md)。這一步因此也是那個排程的警報:
+      # 平常這裡看到的 00996A 落後 1 個交易日(排程在主班次之後才跑),開發機連續 3 個交易日沒補到,
+      # 班次就會變紅。開發機要長時間關機時,把 repo 變數 STALE_IGNORE 設成 00996A,回來再清掉。
       - name: Fail if a source has gone stale
         if: steps.guard.outputs.skip != 'true'
         env:
           STALE_TRADING_DAYS: ${{ vars.STALE_TRADING_DAYS || '3' }}
-          STALE_IGNORE: ${{ vars.STALE_IGNORE || '00996A' }}
+          STALE_IGNORE: ${{ vars.STALE_IGNORE }}
         run: |
           python scripts/check_stale_sources.py

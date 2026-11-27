@@ -8,7 +8,9 @@
 
 - ✅ **多家投信支援**：EZMoney、野村、群益、復華、中信、第一金、台新、安聯、國泰、摩根、富邦、聯博、兆豐、凱基、永豐
 - ✅ **每日自動抓取**：主觸發是 Cloudflare Workers Cron（台北 18:25），GitHub Actions 另有較晚的後備班次（cron 設 UTC 13:00；GitHub 的排程會延遲，2026-11 實測落在隔日台北 03:54–06:57）
+- ✅ **兆豐由開發機補**：兆豐官網擋 GitHub runner 的 IP，00996A 改由開發機的 Windows 排程每天補進來（[做法](.ai/guides/data-sources.md)）
 - ✅ **變動追蹤**：自動偵測並報告成分股變動（新增/移除/持股變化）
+- ✅ **沒有新資料會講明**：來源當天沒更新的 ETF，報表與首頁會標出它停在哪一天，舊的變動不會被當成當天的再列一次
 - ✅ **持股單位顯示**：以台灣習慣的「張」為單位（1張 = 1000股）；海外成分股標「千股」
 - ✅ **SQLite 資料庫**：查詢快速，資料完整保存
 - ✅ **防封鎖機制**：隨機延遲、User-Agent 輪換
@@ -168,6 +170,14 @@ TWActiveETFCrawler/
 │   ├── kgi_scraper.py          # 凱基投信爬蟲（申購買回清單 partial view）
 │   ├── sinopac_scraper.py      # 永豐投信爬蟲（現金申購買回清單 SSR）
 │   └── utils.py                # 工具函數
+├── scripts/
+│   ├── check_stale_sources.py        # 每日班次最後一步：來源停更就讓班次失敗
+│   ├── pinned_reports.py             # 重生已發布的報表（只有指定的 ETF 用新資料）
+│   ├── regenerate_reports.py         # 名稱或版面改了之後重畫全部報表
+│   ├── backfill_megafunds.py         # 從開發機補兆豐 00996A 並重生受影響的報表
+│   ├── local_megafunds_job.ps1       # 開發機排程跑的那一支（同步、回補、commit、push）
+│   ├── setup_local_megafunds_job.ps1 # 建立專用 clone 與 Windows 排程
+│   └── update_trading_calendar.py    # 證交所休市日清單更新
 ├── data/
 │   └── etf_holdings.db         # SQLite 資料庫
 ├── logs/                       # 日誌檔案

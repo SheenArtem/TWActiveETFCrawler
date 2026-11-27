@@ -21,6 +21,9 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 10. 2026-11 靜默停更的來源：聯博 xlsx 改版（表頭「權重(%)」、代碼欄改台股代號）、
     第一金 API 尾端的彙總列不是持股、中信持股頁的網域
 11. 來源停更警報（scripts/check_stale_sources.py）：落後交易日數的算法與班次是否失敗
+12. 沒有新資料的 ETF：報表不重列它的舊變動、改列在 stale_etfs，首頁最上方講明（需要 node）
+13. 只重生指定 ETF 的歷史報表（scripts/pinned_reports.py）：其他 ETF 固定在發布當時的資料日期
+14. 本機回補兆豐（scripts/backfill_megafunds.py）：歷史查詢的日期換算、只補缺的交易日、補完重生報表
 
 跑法：
     python test_duplicate_guard.py
@@ -913,12 +916,410 @@ def check_report_layer():
     check("變動清單：落後那檔標自己的資料日期 8/4",
           dc.get("00995A") == "2026-08-04", f"data_date={dc.get('00995A')}")
 
-    # 回填腳本必須共用同一個持股總覽出口。它曾經自己組一份（單一日期、無 data_date），
-    # 導致回填出來的報表掉了 data_date，且兩半各用一套日期規則。
+    # 回填腳本必須共用同一個報表出口。它曾經自己組一份持股總覽（單一日期、無 data_date），
+    # 導致回填出來的報表掉了 data_date，且兩半各用一套日期規則；後來又是「每檔取不晚於報表日期的
+    # 最新資料」的整份重生，會把固定落後一天的來源整串往前平移。現在只准轉交給 pinned_reports。
     regen = (Path(__file__).parent / "scripts" / "regenerate_reports.py").read_text(
         encoding="utf-8")
-    check("回填腳本共用 build_etf_holdings", "build_etf_holdings" in regen)
-    check("回填腳本沒有自己組一份持股總覽", '"stock_code": h.get' not in regen)
+    check("回填腳本轉交給 pinned_reports.regenerate（資料日期固定在發布當時的值）",
+          "pinned_reports.regenerate(" in regen and "refresh_etfs=" in regen)
+    check("回填腳本沒有自己組持股總覽、也沒有自己呼叫產生器",
+          '"stock_code": h.get' not in regen and "build_etf_holdings" not in regen
+          and "generate_daily_report" not in regen)
+
+
+def check_stale_etfs_not_repeated():
+    """
+    來源沒有新資料的 ETF：變動只在資料日期第一次出現的那份報表列一次，之後改列在「今日沒有新資料」。
+
+    變動是逐檔比對「各自最新可得的資料日期」得出的，來源停更時 detect_changes_batch 每天都回同一批變動。
+    2026-11 中信、聯博、兆豐停更期間，每日報表有 25～57% 的變動是這種 2～5 週前的舊資料，看起來卻像當天的。
+    這裡照時間順序重演兩個傍晚：00996A（兆豐的形狀）第二天沒有新資料，00994A（固定落後一天的來源）
+    兩天的資料日期都比報表早一天、但每天都有前進，00981A 每天都有當日資料。
+    """
+    from src.report_manager import ReportManager
+
+    work = Path(tempfile.mkdtemp())
+    db = Database(str(work / "t.db"))
+    codes = ["00981A", "00994A", "00996A"]
+    db.insert_etf_list([{"etf_code": c, "etf_name": f"名稱{c}", "issuer": ""} for c in codes])
+    mgr = ReportManager(db, work / "reports", work / "docs")
+
+    def publish(date, **kwargs):
+        mgr.generate_all_reports(mgr.analyzer.detect_changes_batch(codes, date), date, append_txt=False, **kwargs)
+        return json.loads((work / "docs" / f"data_{date}.json").read_text(encoding="utf-8"))
+
+    # 11-24 傍晚：三檔都有新資料（00994A 的最新是 11-23，落後一天屬正常）
+    db.insert_holdings(rows_sd("00981A", "2026-11-23", DAY1))
+    db.insert_holdings(rows_sd("00981A", "2026-11-24", DAY2_CHANGED))
+    db.insert_holdings(rows_sd("00996A", "2026-11-23", DAY1))
+    db.insert_holdings(rows_sd("00996A", "2026-11-24", DAY2_CHANGED))
+    db.insert_holdings(rows_sd("00994A", "2026-11-20", DAY1))
+    db.insert_holdings(rows_sd("00994A", "2026-11-23", DAY2_CHANGED))
+    first = publish("2026-11-24")
+    check("第一份報表：三檔的變動都列出，沒有 stale_etfs 欄位（輸出與加這個功能之前相同）",
+          [e["etf_code"] for e in first["detailed_changes"]] == codes and "stale_etfs" not in first,
+          f"changes={[e['etf_code'] for e in first['detailed_changes']]} keys={sorted(first)}")
+
+    # 11-25 傍晚：00981A 有當日資料、00994A 前進到 11-24、00996A 沒有新資料
+    db.insert_holdings(rows_sd("00981A", "2026-11-25", DAY1))
+    db.insert_holdings(rows_sd("00994A", "2026-11-24", DAY1))
+    second = publish("2026-11-25")
+    check("沒有新資料的 ETF：變動不重列",
+          [e["etf_code"] for e in second["detailed_changes"]] == ["00981A", "00994A"],
+          f"changes={[e['etf_code'] for e in second['detailed_changes']]}")
+    check("沒有新資料的 ETF：列在 stale_etfs，帶資料日期與落後的交易日數",
+          second.get("stale_etfs") == [{"etf_code": "00996A", "etf_name": "名稱00996A",
+                                        "data_date": "2026-11-24", "trading_days_behind": 1}],
+          f"{second.get('stale_etfs')}")
+    check("固定落後一天但有前進的來源不算停更，變動照列且標自己的資料日期",
+          {e["etf_code"]: e["data_date"] for e in second["detailed_changes"]}.get("00994A") == "2026-11-24")
+    check("沒有新資料的 ETF 仍留在持股總覽（最後一次抓到的內容）",
+          {e["etf_code"]: e["data_date"] for e in second["etf_holdings"]}.get("00996A") == "2026-11-24")
+    check("摘要與索引只算有新資料的 ETF",
+          second["summary"]["total_etfs"] == 2
+          and json.loads((work / "docs" / "reports_index.json").read_text(encoding="utf-8"))[0]["etfs"]
+          == ["00981A", "00994A"], f"summary={second['summary']}")
+    md = (work / "reports" / "changes_2026-11-25.md").read_text(encoding="utf-8")
+    txt = (work / "reports" / "changes_2026-11-25.txt").read_text(encoding="utf-8")
+    html = (work / "docs" / "report_2026-11-25.html").read_text(encoding="utf-8")
+    check("三種格式都標出沒有新資料的 ETF",
+          "今日沒有新資料的 ETF" in md and "| 00996A |" in md and "**本日共 2 檔 ETF" in md
+          and "今日沒有新資料的 ETF (1)" in txt and "00996A" in txt
+          and "1 檔 ETF 今日沒有新資料" in html and "⚠️ 今日未更新" in html)
+
+    # 同一天稍晚補到 00996A 的 11-25（本機回補），重生同一份報表：變動要出現、不再標停更
+    db.insert_holdings(rows_sd("00996A", "2026-11-25", DAY1))
+    refreshed = publish("2026-11-25")
+    check("補到資料後重生同一份報表：變動列出、stale_etfs 消失",
+          [e["etf_code"] for e in refreshed["detailed_changes"]] == codes and "stale_etfs" not in refreshed,
+          f"changes={[e['etf_code'] for e in refreshed['detailed_changes']]} keys={sorted(refreshed)}")
+
+    # 工具重生歷史報表時自己給上一份報表的資料日期（不讀 docs 目錄）
+    forced = publish("2026-11-25", previous_data_dates={"00981A": "2026-11-25"})
+    check("previous_data_dates 由呼叫端指定時照指定的判斷",
+          [e["etf_code"] for e in forced["detailed_changes"]] == ["00994A", "00996A"]
+          and [e["etf_code"] for e in forced.get("stale_etfs", [])] == ["00981A"],
+          f"changes={[e['etf_code'] for e in forced['detailed_changes']]}")
+
+
+DAY3 = [("2330", 47000, 6.35), ("2454", 19000, 4.30), ("2317", 8000, 2.10)]
+
+
+def load_script(name):
+    """載入 scripts/ 底下的模組（scripts 目錄不是套件；回補腳本自己也會 import pinned_reports）"""
+    import importlib
+
+    scripts_dir = str(Path(__file__).parent / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    return importlib.import_module(name)
+
+
+def published_stale_scenario():
+    """
+    三個傍晚照時間順序發布、之後才補到資料的現場（兆豐被擋在 runner 外的形狀）：
+
+    - 00981A 每天都有當日資料。
+    - 00994A 固定落後一天：每份報表的資料日期都是前一個交易日。12-01 的持股在 12-01 的報表發布之後才進 DB。
+    - 00996A 在 11-27 之後就沒有新資料，11-30、12-01 兩份報表都把它列在「沒有新資料」。
+
+    回傳 (work, db, db_path, docs, reports, mgr)。發布之後 DB 多了 00994A 的 12-01；00996A 還沒補。
+    """
+    from src.report_manager import ReportManager
+
+    work = Path(tempfile.mkdtemp())
+    db_path = work / "t.db"
+    db = Database(str(db_path))
+    codes = ["00981A", "00994A", "00996A"]
+    db.insert_etf_list([{"etf_code": c, "etf_name": f"名稱{c}", "issuer": ""} for c in codes])
+    docs, reports = work / "docs", work / "reports"
+    mgr = ReportManager(db, reports, docs)
+
+    def publish(date):
+        mgr.generate_all_reports(mgr.analyzer.detect_changes_batch(codes, date), date, append_txt=False)
+
+    db.insert_holdings(rows_sd("00981A", "2026-11-26", DAY1))
+    db.insert_holdings(rows_sd("00981A", "2026-11-27", DAY2_CHANGED))
+    db.insert_holdings(rows_sd("00994A", "2026-11-25", DAY1))
+    db.insert_holdings(rows_sd("00994A", "2026-11-26", DAY2_CHANGED))
+    db.insert_holdings(rows_sd("00996A", "2026-11-26", DAY1))
+    db.insert_holdings(rows_sd("00996A", "2026-11-27", DAY2_CHANGED))
+    publish("2026-11-27")
+    db.insert_holdings(rows_sd("00981A", "2026-11-30", DAY1))
+    db.insert_holdings(rows_sd("00994A", "2026-11-27", DAY1))
+    publish("2026-11-30")
+    db.insert_holdings(rows_sd("00981A", "2026-12-01", DAY2_CHANGED))
+    db.insert_holdings(rows_sd("00994A", "2026-11-30", DAY2_CHANGED))
+    publish("2026-12-01")
+    db.insert_holdings(rows_sd("00994A", "2026-12-01", DAY1))   # 隔天早上才到，12-01 的報表已經發布
+    return work, db, db_path, docs, reports, mgr
+
+
+def read_report(docs, date):
+    return json.loads((docs / f"data_{date}.json").read_text(encoding="utf-8"))
+
+
+def check_pinned_regeneration():
+    """
+    scripts/pinned_reports.py：事後補進某一檔的持股時，只有那一檔用新資料重生報表。
+
+    不能整份重生：固定落後一天的來源（第一金、00988A）事後 DB 已經補齊，整份重生會把它們在舊報表裡的
+    資料日期一起往前推，原本那一天的變動就不在任何報表裡了。這裡照時間順序發布三份報表，之後才補到
+    00996A 的 11-30、12-01，確認：只有 00996A 換成新資料、00994A 留在發布當時的資料日期、沒指定的 ETF
+    在 DB 裡被動過時整份不寫回、用舊規則發布（把同一批變動再列一次）的報表重生後改成標示。
+    """
+    pinned = load_script("pinned_reports")
+    work, db, db_path, docs, reports, mgr = published_stale_scenario()
+    all_dates = ["2026-11-27", "2026-11-30", "2026-12-01"]
+    paths = dict(db_path=db_path, docs_dir=docs, reports_dir=reports)
+
+    def data_dates(payload):
+        return {e["etf_code"]: e["data_date"] for e in payload["etf_holdings"]}
+
+    def changed(payload):
+        return [e["etf_code"] for e in payload["detailed_changes"]]
+
+    before = read_report(docs, "2026-12-01")
+    check("發布當時（前提）：00996A 兩份報表都列在沒有新資料、00994A 的資料日期落後一天",
+          [e["etf_code"] for e in before.get("stale_etfs", [])] == ["00996A"]
+          and data_dates(before) == {"00981A": "2026-12-01", "00994A": "2026-11-30", "00996A": "2026-11-27"},
+          f"stale={before.get('stale_etfs')} dates={data_dates(before)}")
+
+    control = pinned.regenerate(all_dates, **paths, write=False)
+    check("對照：不指定 ETF 時三份報表重生後與發布版逐位元組相同（00994A 晚到的 12-01 沒有漏進去）",
+          [(r["status"], r["identical_bytes"]) for r in control] == [("unchanged", True)] * 3,
+          f"{[(r['date'], r['status'], r['identical_bytes'], r['problems']) for r in control]}")
+
+    # 本機回補：00996A 的 11-30、12-01
+    db.insert_holdings(rows_sd("00996A", "2026-11-30", DAY1))
+    db.insert_holdings(rows_sd("00996A", "2026-12-01", DAY3))
+    saved = {name: (docs / name).read_bytes() for name in ("data_2026-11-30.json", "data_2026-12-01.json")}
+    dry = pinned.regenerate(all_dates[1:], ["00996A"], **paths, write=False)
+    check("試跑（write=False）：通過核對但不寫回",
+          [r["status"] for r in dry] == ["verified", "verified"]
+          and all((docs / name).read_bytes() == content for name, content in saved.items()),
+          f"{[(r['date'], r['status'], r['problems']) for r in dry]}")
+
+    outcome = pinned.regenerate(all_dates[1:], ["00996A"], **paths)
+    first, second = read_report(docs, "2026-11-30"), read_report(docs, "2026-12-01")
+    check("補資料後重生：兩份都寫回",
+          [r["status"] for r in outcome] == ["written", "written"],
+          f"{[(r['date'], r['status'], r['problems']) for r in outcome]}")
+    check("指定的 00996A 換成各自報表日期的資料，變動列出、不再標沒有新資料",
+          data_dates(first)["00996A"] == "2026-11-30" and data_dates(second)["00996A"] == "2026-12-01"
+          and "00996A" in changed(first) and "00996A" in changed(second)
+          and "stale_etfs" not in first and "stale_etfs" not in second,
+          f"dates={data_dates(first)} / {data_dates(second)} changes={changed(first)} / {changed(second)}")
+    check("沒指定的 00994A 留在發布當時的資料日期（不被晚到的 12-01 往前推）",
+          data_dates(first)["00994A"] == "2026-11-27" and data_dates(second)["00994A"] == "2026-11-30",
+          f"{data_dates(first)['00994A']} / {data_dates(second)['00994A']}")
+    index = {row["date"]: row for row in json.loads((docs / "reports_index.json").read_text(encoding="utf-8"))}
+    written = [docs / "data_2026-12-01.json", docs / "report_2026-12-01.html", docs / "reports_index.json",
+               reports / "changes_2026-12-01.md", reports / "changes_2026-12-01.txt"]
+    check("索引跟著更新、四種檔案都重寫且行尾是 LF",
+          index["2026-12-01"]["etfs"] == ["00981A", "00994A", "00996A"]
+          and index["2026-12-01"]["total_changes"] == second["summary"]["total_changes"]
+          and all(b"\r\n" not in p.read_bytes() for p in written)
+          and "00996A" in (reports / "changes_2026-12-01.md").read_text(encoding="utf-8")
+          and "今日未更新" not in (docs / "report_2026-12-01.html").read_text(encoding="utf-8"),
+          f"index={index['2026-12-01']}")
+    again = pinned.regenerate(all_dates, ["00996A"], **paths)
+    check("再跑一次：內容相同就不寫回，重生結果逐位元組相同",
+          [(r["status"], r["identical_bytes"]) for r in again] == [("unchanged", True)] * 3,
+          f"{[(r['date'], r['status'], r['identical_bytes']) for r in again]}")
+
+    # 只補到一半：12-01 那天來源查不到
+    half = Path(tempfile.mkdtemp())
+    shutil.copytree(docs, half / "docs")
+    shutil.copytree(reports, half / "reports")
+    shutil.copy(db_path, half / "t.db")
+    half_con = Database(str(half / "t.db")).get_connection()   # get_connection() 每次都開新連線，刪除與 commit 要用同一條
+    half_con.execute("delete from holdings where etf_code='00996A' and date='2026-12-01'")
+    half_con.commit()
+    half_con.close()
+    half_paths = dict(db_path=half / "t.db", docs_dir=half / "docs", reports_dir=half / "reports")
+    half_outcome = pinned.regenerate(all_dates[1:], ["00996A"], **half_paths)
+    partial = read_report(half / "docs", "2026-12-01")
+    check("只補到 11-30：12-01 的報表改標「沒有新資料」，資料日期是 11-30、落後 1 個交易日",
+          [r["status"] for r in half_outcome] == ["unchanged", "written"]
+          and partial.get("stale_etfs") == [{"etf_code": "00996A", "etf_name": "名稱00996A",
+                                             "data_date": "2026-11-30", "trading_days_behind": 1}]
+          and "00996A" not in changed(partial),
+          f"{[(r['status'], r['problems']) for r in half_outcome]} {partial.get('stale_etfs')} changes={changed(partial)}")
+
+    # 沒指定的 ETF 在 DB 裡被動過：整份不寫回，後面的日期也不處理
+    con = db.get_connection()
+    con.execute("update holdings set shares=shares+1000 where etf_code='00981A' and date='2026-11-30' "
+                "and stock_code='2330'")
+    con.commit()
+    saved = {p: p.read_bytes() for p in sorted(docs.glob("*")) + sorted(reports.glob("*"))}
+    failed = pinned.regenerate(all_dates[1:], ["00996A"], **paths)
+    check("沒指定的 ETF 與發布版不同 -> failed、點名是哪一檔、檔案一個都沒動、後面的日期不處理",
+          [r["status"] for r in failed] == ["failed", "skipped"]
+          and any("00981A" in p for p in failed[0]["problems"])
+          and all(p.read_bytes() == content for p, content in saved.items()),
+          f"{[(r['date'], r['status'], r['problems']) for r in failed]}")
+    refreshed = pinned.regenerate(all_dates[1:], refresh_etfs=["00981A"], **paths)
+    after = read_report(docs, "2026-11-30")
+    lots = {h["stock_code"]: h["lots"] for e in after["etf_holdings"] if e["etf_code"] == "00981A"
+            for h in e["holdings"]}
+    check("refresh_etfs：資料日期不動，內容照 DB 現在的值重畫",
+          refreshed[0]["status"] == "written" and data_dates(after)["00981A"] == "2026-11-30"
+          and lots.get("2330") == (DAY1[0][1] + 1000) / 1000,
+          f"status={refreshed[0]['status']} problems={refreshed[0]['problems']} lots={lots.get('2330')}")
+
+    # 舊規則發布的報表：00996A 沒有新資料，卻把 11-30 -> 12-01 的變動再列一次
+    db.insert_holdings(rows_sd("00981A", "2026-12-02", DAY1))
+    mgr.generate_all_reports(mgr.analyzer.detect_changes_batch(["00981A", "00994A", "00996A"], "2026-12-02"),
+                             "2026-12-02", append_txt=False, previous_data_dates={})
+    old_rule = read_report(docs, "2026-12-02")
+    check("舊規則發布（前提）：沒有新資料的 00996A 仍列出變動、沒有 stale_etfs",
+          "00996A" in changed(old_rule) and "stale_etfs" not in old_rule
+          and data_dates(old_rule)["00996A"] == "2026-12-01", f"changes={changed(old_rule)}")
+    tampered = json.loads(json.dumps(old_rule))
+    next(e for e in tampered["detailed_changes"] if e["etf_code"] == "00996A")["modified"][0]["diff"] += 5
+    (docs / "data_2026-12-02.json").write_text(json.dumps(tampered, ensure_ascii=False, indent=2), encoding="utf-8")
+    not_a_repeat = pinned.regenerate(["2026-12-02"], **paths)
+    check("發布版列的不是同一批變動（內容對不起來）-> 不當成重列，failed",
+          not_a_repeat[0]["status"] == "failed", f"{not_a_repeat[0]['status']} {not_a_repeat[0]['notes']}")
+    (docs / "data_2026-12-02.json").write_text(json.dumps(old_rule, ensure_ascii=False, indent=2), encoding="utf-8")
+    cleaned = pinned.regenerate(["2026-12-02"], **paths)
+    new_rule = read_report(docs, "2026-12-02")
+    check("舊規則發布的報表重生後：同一批變動拿掉、改列在 stale_etfs，其他 ETF 不變",
+          cleaned[0]["status"] == "written" and changed(new_rule) == ["00981A", "00994A"]
+          and [e["etf_code"] for e in new_rule.get("stale_etfs", [])] == ["00996A"],
+          f"{cleaned[0]['status']} {cleaned[0]['problems']} changes={changed(new_rule)}")
+
+    # 補產生當天沒有發布的報表
+    db.insert_holdings(rows_sd("00981A", "2026-12-03", DAY3))
+    skipped = pinned.regenerate(["2026-12-03"], **paths)
+    created = pinned.regenerate(["2026-12-03"], **paths, create_missing=True)
+    made = read_report(docs, "2026-12-03") if (docs / "data_2026-12-03.json").exists() else {}
+    check("沒發布過的日期預設略過；create_missing 才補產生，每檔取不晚於那一天的最新資料",
+          skipped[0]["status"] == "skipped" and created[0]["status"] == "created"
+          and changed(made) == ["00981A"]
+          and [e["etf_code"] for e in made.get("stale_etfs", [])] == ["00994A", "00996A"]
+          and json.loads((docs / "reports_index.json").read_text(encoding="utf-8"))[0]["date"] == "2026-12-03",
+          f"{skipped[0]['status']} / {created[0]['status']} {created[0]['problems']} changes={changed(made) if made else None}")
+
+
+def check_megafunds_local_backfill():
+    """
+    本機回補兆豐（scripts/backfill_megafunds.py）與它用到的歷史查詢、交易日換算。
+
+    兆豐的 `qdt` 是 PCF 適用日＝持股基準日的下一個交易日，查錯一天就把別天的持股寫成這一天。
+    這裡不連網：頁面與 scraper 都用替身，確認查詢日期跨假日也算對、頁面標的基準日不符就不收、
+    回補只補缺的交易日、補完重生的是已發布的那幾份報表。
+    """
+    from datetime import date
+
+    from bs4 import BeautifulSoup
+    from src.megafunds_scraper import MegaFundsScraper
+    from src.trading_calendar import next_trading_day, trading_days_between
+
+    check("下一個交易日：跳過週末與連假（09-24 -> 09-29，11-27 週五 -> 11-30）",
+          next_trading_day(date(2026, 9, 24)) == date(2026, 9, 29)
+          and next_trading_day(date(2026, 11, 27)) == date(2026, 11, 30)
+          and next_trading_day(date(2026, 11, 28)) == date(2026, 11, 30))
+    check("兩個日期之間的交易日數：不含起日、含迄日，休市日不算；迄日不晚於起日是 0",
+          trading_days_between(date(2026, 9, 24), date(2026, 9, 29)) == 1
+          and trading_days_between(date(2026, 11, 23), date(2026, 11, 27)) == 4
+          and trading_days_between(date(2026, 11, 27), date(2026, 11, 27)) == 0
+          and trading_days_between(date(2026, 11, 27), date(2026, 11, 20)) == 0)
+
+    def page(data_date):
+        return BeautifulSoup(
+            f'<p>查詢日期 2026/09/29 {data_date} 每基數實際申購總價金(元) TWD$ 6,654,001</p>'
+            '<table class="table-stock">'
+            '<tr><td>股票代號</td><td>股票名稱</td><td>股數</td><td>持股權重</td></tr>'
+            '<tr><td>2330</td><td>台積電</td><td>179,000</td><td>9.95%</td></tr></table>', 'html.parser')
+
+    scraper = MegaFundsScraper()
+    asked = []
+
+    def fake_fetch(pages):
+        def fetch(etf_code, fund_id, qdt=''):
+            asked.append(qdt)
+            return pages.get(qdt)
+        return fetch
+
+    scraper._fetch_fund_page = fake_fetch({"2026/09/29": page("2026/09/24")})
+    got = scraper.get_holdings_for_data_date("00996A", "2026-09-24")
+    check("歷史查詢：基準日 09-24 要查 qdt=2026/09/29（中秋連假後的第一個交易日）",
+          asked == ["2026/09/29"] and len(got) == 1 and got[0]["date"] == "2026-09-24"
+          and got[0]["source_dated"] is True and got[0]["shares"] == 179000, f"qdt={asked} rows={got}")
+    scraper._fetch_fund_page = fake_fetch({"2026/09/24": page("2026/09/22")})
+    check("歷史查詢：頁面標的基準日不是要的那一天 -> 回空，不把別天的內容寫成這一天",
+          scraper.get_holdings_for_data_date("00996A", "2026-09-23") == [])
+    scraper._fetch_fund_page = fake_fetch({})
+    check("歷史查詢：頁面拿不到 -> 回空", scraper.get_holdings_for_data_date("00996A", "2026-09-23") == [])
+
+    backfill = load_script("backfill_megafunds")
+
+    class FakeMega:
+        """替身：latest 是最新一份清單的 (基準日, 持股)，history 是 {基準日: 持股}"""
+
+        def __init__(self, latest, history):
+            self.latest, self.history, self.asked = latest, history, []
+
+        def get_etf_holdings(self, etf_code, request_date):
+            return rows_sd(etf_code, self.latest[0], self.latest[1]) if self.latest else []
+
+        def get_holdings_for_data_date(self, etf_code, data_date):
+            self.asked.append(data_date)
+            items = self.history.get(data_date)
+            return rows_sd(etf_code, data_date, items) if items else []
+
+    def run(scraper_, scenario, today=date(2026, 12, 1), **kwargs):
+        _, _, db_path, docs, reports, _ = scenario
+        said = []
+        result = backfill.run(scraper_, db_path, docs, reports, today, pause_seconds=0, say=said.append, **kwargs)
+        return result, said
+
+    def mega_dates(scenario):
+        return [r[0] for r in scenario[1].get_connection().execute(
+            "select distinct date from holdings where etf_code='00996A' order by 1")]
+
+    scenario = published_stale_scenario()
+    mega = FakeMega(("2026-12-01", DAY3), {"2026-11-30": DAY1})
+    dry, _ = run(mega, scenario, dry_run=True)
+    check("試跑：列出要補的日子、什麼都不寫",
+          dry["ok"] and dry["inserted"] == [] and mega_dates(scenario) == ["2026-11-26", "2026-11-27"], f"{dry}")
+    mega.asked.clear()
+    result, said = run(mega, scenario)
+    docs = scenario[3]
+    check("回補：補上 DB 最後一天之後到來源最新日的每個交易日，最新那天不重複查",
+          result["ok"] and result["inserted"] == ["2026-11-30", "2026-12-01"] and result["missing"] == []
+          and mega.asked == ["2026-11-30"]
+          and mega_dates(scenario) == ["2026-11-26", "2026-11-27", "2026-11-30", "2026-12-01"],
+          f"{result} asked={mega.asked}")
+    latest_report = read_report(docs, "2026-12-01")
+    check("回補後只重生受影響的已發布報表（11-30、12-01），00996A 的變動列出、不再標沒有新資料",
+          result["reports"] == [{"date": "2026-11-30", "status": "written"},
+                                {"date": "2026-12-01", "status": "written"}]
+          and "stale_etfs" not in latest_report
+          and "00996A" in [e["etf_code"] for e in latest_report["detailed_changes"]]
+          and {e["etf_code"]: e["data_date"] for e in latest_report["etf_holdings"]}["00994A"] == "2026-11-30",
+          f"{result['reports']}")
+    again, said = run(mega, scenario)
+    check("再跑一次：沒有要補的資料，成功結束",
+          again["ok"] and again["inserted"] == [] and again["reports"] == [] and "沒有要補的資料" in said[-1], f"{again}")
+
+    scenario = published_stale_scenario()
+    result, _ = run(FakeMega(None, {}), scenario)
+    check("抓不到最新一份清單 -> 失敗，什麼都不寫",
+          not result["ok"] and mega_dates(scenario) == ["2026-11-26", "2026-11-27"], f"{result}")
+    result, _ = run(FakeMega(("2026-12-02", DAY3), {}), scenario)
+    check("頁面標的基準日晚於最近一個交易日 -> 失敗，什麼都不寫",
+          not result["ok"] and mega_dates(scenario) == ["2026-11-26", "2026-11-27"], f"{result}")
+    result, _ = run(FakeMega(("2026-12-01", DAY3), {"2026-11-30": DAY1}), scenario, max_days=1)
+    check("要補的天數超過上限 -> 失敗，什麼都不寫",
+          not result["ok"] and mega_dates(scenario) == ["2026-11-26", "2026-11-27"], f"{result}")
+    result, _ = run(FakeMega(("2026-12-01", DAY3), {}), scenario)
+    check("中間有一天來源查不到：補得到的照補，結果標失敗並列出缺的日子",
+          not result["ok"] and result["inserted"] == ["2026-12-01"] and result["missing"] == ["2026-11-30"]
+          and mega_dates(scenario) == ["2026-11-26", "2026-11-27", "2026-12-01"], f"{result}")
 
 
 def check_holiday_dates():
@@ -1175,11 +1576,12 @@ const context = vm.createContext({
     requestAnimationFrame: fn => fn(),
 });
 vm.runInContext(script, context);
-Promise.all([context.loadPerETFData(), context.loadCrossETFData()]).then(() => {
+Promise.all([context.loadPerETFData(), context.loadCrossETFData(), context.loadStaleBanner()]).then(() => {
     const latest = id => elements[id] || newElement();
     fs.writeFileSync(path.join(dir, 'rendered.json'), JSON.stringify({
         per_etf: latest('per-etf-content').innerHTML,
         buy_rank: latest('buy-rank-list').children.map(li => li.innerHTML),
+        stale_banner: { html: latest('stale-banner').innerHTML, cls: latest('stale-banner').className || '' },
     }), 'utf8');
 });
 """
@@ -1195,11 +1597,12 @@ def homepage_change(etf, data_date, modified=(), added=(), removed=()):
     }
 
 
-def render_homepage(reports):
+def render_homepage(reports, stale_etfs=None):
     """
     用 node 執行 docs/index.html 的頁內腳本。reports 是 {報表日期: detailed_changes}，
-    新到舊，與 reports_index.json 相同。回傳 (node 的執行結果, {"per_etf": 各 ETF 買賣明細的 HTML,
-    "buy_rank": [同步買超排行每一列的 HTML]})；找不到 node 時回傳 None。
+    新到舊，與 reports_index.json 相同；stale_etfs 有給時寫進最新那份報表。
+    回傳 (node 的執行結果, {"per_etf": 各 ETF 買賣明細的 HTML, "buy_rank": [同步買超排行每一列的 HTML],
+    "stale_banner": {"html", "cls"}})；找不到 node 時回傳 None。
     """
     node = shutil.which("node")
     if not node:
@@ -1207,9 +1610,11 @@ def render_homepage(reports):
     work = Path(tempfile.mkdtemp())
     (work / "reports_index.json").write_text(
         json.dumps([{"date": d} for d in reports]), encoding="utf-8")
-    for d, changes in reports.items():
-        (work / f"data_{d}.json").write_text(
-            json.dumps({"date": d, "detailed_changes": changes}, ensure_ascii=False), encoding="utf-8")
+    for i, (d, changes) in enumerate(reports.items()):
+        payload = {"date": d, "detailed_changes": changes}
+        if i == 0 and stale_etfs:
+            payload["stale_etfs"] = stale_etfs
+        (work / f"data_{d}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     harness = work / "harness.js"
     harness.write_text(HOMEPAGE_HARNESS_JS, encoding="utf-8")
     index_html = Path(__file__).parent / "docs" / "index.html"
@@ -1306,6 +1711,39 @@ def check_homepage_cross_etf_per_day():
           f"rc={out.returncode}, etfs={sorted(detail)}, stderr={out.stderr.strip()[:160]}")
     check("落後來源的最舊一欄收到兩次變動時累加（8/4 欄 20＋40），每日欄位加起來等於合計",
           detail.get("00408A") == ["—", "+10.0", "+60.0", "+70.0"], f"{detail.get('00408A')}")
+
+
+def check_homepage_stale_banner():
+    """
+    首頁最上方的「來源沒有更新」提示（docs/index.html 的 loadStaleBanner）。
+
+    首頁的持股與買賣統計用的是每檔最後一次抓到的內容。來源停更時若不講明，讀者會把幾週前的持股
+    當成現況（2026-11 四檔停更期間，佔追蹤總規模兩成的部位就是這樣顯示的）。提示取自最新一份報表的
+    stale_etfs；沒有這個欄位（舊報表、或全部都有新資料）時不可佔版面。
+    """
+    reports = {  # 新到舊
+        "2026-11-25": [homepage_change("00981A", "2026-11-25", modified=[("2330", 3)])],
+        "2026-11-24": [homepage_change("00981A", "2026-11-24", modified=[("2330", 2)])],
+    }
+    stale = [{"etf_code": "00996A", "etf_name": "主動兆豐台灣豐收", "data_date": "2026-11-24", "trading_days_behind": 1}]
+    with_stale = render_homepage(reports, stale_etfs=stale)
+    if with_stale is None:
+        results.append((SKIP, "首頁停更提示（找不到 node）", "需要 node 執行頁內腳本"))
+        print(f"  [{SKIP}] 首頁停更提示 — 找不到 node")
+        return
+    out, panels = with_stale
+    banner = panels.get("stale_banner", {})
+    check("最新報表有 stale_etfs -> 顯示提示，寫出哪一檔、停在哪一天、落後幾個交易日",
+          out.returncode == 0 and banner.get("cls") == "stale-banner visible"
+          and "1 檔 ETF 沒有新資料" in banner.get("html", "") and "以 2026-11-25 的報表為準" in banner.get("html", "")
+          and "<strong>00996A</strong> 主動兆豐台灣豐收：資料日期 2026-11-24（落後 1 個交易日）" in banner.get("html", ""),
+          f"rc={out.returncode} cls={banner.get('cls')!r} html={banner.get('html', '')[:120]!r} "
+          f"stderr={out.stderr.strip()[:120]}")
+    out, panels = render_homepage(reports)
+    banner = panels.get("stale_banner", {})
+    check("最新報表沒有 stale_etfs -> 不顯示、不佔版面",
+          out.returncode == 0 and banner.get("cls") == "stale-banner" and banner.get("html") == "",
+          f"rc={out.returncode} cls={banner.get('cls')!r} html={banner.get('html', '')[:80]!r}")
 
 
 def main():
@@ -1441,6 +1879,15 @@ def main():
     print("=== 報表層：落後的 ETF 不可從任一半消失 ===")
     check_report_layer()
 
+    print("=== 報表層：沒有新資料的 ETF 不重列變動，改標「今日沒有新資料」 ===")
+    check_stale_etfs_not_repeated()
+
+    print("=== 重生已發布的報表：只有指定的 ETF 用新資料，其他固定在發布當時的資料日期 ===")
+    check_pinned_regeneration()
+
+    print("=== 本機回補兆豐：歷史查詢日期、只補缺的交易日、補完重生報表 ===")
+    check_megafunds_local_backfill()
+
     print("=== 國定假日：請求日期與報表日期退回最近一個交易日 ===")
     check_holiday_dates()
 
@@ -1455,6 +1902,9 @@ def main():
 
     print("=== 首頁同步買賣超：同一欄收到兩次變動時累加 ===")
     check_homepage_cross_etf_per_day()
+
+    print("=== 首頁最上方：來源沒有更新的 ETF 要講明 ===")
+    check_homepage_stale_banner()
 
     # 13. red-before：關閉防護後，重複資料應該會被寫進去
     #    （在子行程執行，因為 config 於 import 時讀取環境變數）

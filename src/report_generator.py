@@ -27,16 +27,19 @@ class HTMLReportGenerator:
         changes_dict: Dict[str, List[HoldingChange]], 
         date: str,
         etf_info_dict: Dict[str, str],
-        etf_holdings: List[dict] = None
+        etf_holdings: List[dict] = None,
+        stale_etfs: List[dict] = None
     ) -> dict:
         """
         生成儀表板所需的 JSON 資料
-        
+
         Args:
-            changes_dict: ETF代碼 -> 變動列表的字典
+            changes_dict: ETF代碼 -> 變動列表的字典（已不含沒有新資料的 ETF）
             date: 報告日期
             etf_info_dict: ETF代碼 -> ETF名稱的字典
-            
+            stale_etfs: 自上一份報表以來沒有新資料的 ETF（ReportManager.find_stale_etfs 的回傳值）。
+                有才會寫進 `stale_etfs` 欄位；沒有時輸出與加這個欄位之前完全相同。
+
         Returns:
             dict: 包含所有圖表資料的字典
         """
@@ -177,7 +180,7 @@ class HTMLReportGenerator:
             }
             detailed_changes.append(etf_changes)
         
-        return {
+        data = {
             'date': date,
             # 以 timezone-aware 的 UTC 轉台北時區，主機是否為 UTC 都正確。
             # 舊寫法 datetime.now()+8h 假設主機為 UTC，在本機(已是 UTC+8)會多加 8 小時變成隔日。
@@ -191,13 +194,17 @@ class HTMLReportGenerator:
             'detailed_changes': detailed_changes,
             'etf_holdings': etf_holdings or []
         }
-    
+        if stale_etfs:
+            data['stale_etfs'] = stale_etfs
+        return data
+
     def generate_daily_report(
-        self, 
-        changes_dict: Dict[str, List[HoldingChange]], 
+        self,
+        changes_dict: Dict[str, List[HoldingChange]],
         date: str,
         etf_info_dict: Dict[str, str],
-        etf_holdings: List[dict] = None
+        etf_holdings: List[dict] = None,
+        stale_etfs: List[dict] = None
     ) -> Path:
         """
         生成每日報告 HTML 檔案
@@ -207,12 +214,13 @@ class HTMLReportGenerator:
             date: 報告日期
             etf_info_dict: ETF代碼 -> ETF名稱的字典
             etf_holdings: ETF 持股明細列表（可選）
-            
+            stale_etfs: 自上一份報表以來沒有新資料的 ETF（可選）
+
         Returns:
             Path: 生成的 HTML 檔案路徑
         """
         # 生成 JSON 資料
-        data = self.generate_dashboard_data(changes_dict, date, etf_info_dict, etf_holdings)
+        data = self.generate_dashboard_data(changes_dict, date, etf_info_dict, etf_holdings, stale_etfs)
         
         # 儲存 JSON 資料檔
         json_file = self.output_dir / f"data_{date}.json"
@@ -233,9 +241,14 @@ class HTMLReportGenerator:
         date = data['date']
         summary = data['summary']
         
-        # 生成 ETF 持股總覽 HTML
-        etf_holdings_html = self._generate_etf_holdings_html(data.get('etf_holdings', []))
-        
+        # 生成 ETF 持股總覽 HTML。「今日沒有新資料」的提示接在它前面、樣式寫在行內：
+        # 沒有這種 ETF 時整份 HTML 與加這個功能之前逐位元組相同，重生舊報表的對照比對才比得出來。
+        stale_etfs = data.get('stale_etfs') or []
+        etf_holdings_html = (
+            self._generate_stale_notice_html(stale_etfs)
+            + self._generate_etf_holdings_html(data.get('etf_holdings', []), stale_etfs)
+        )
+
         html = f"""<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -985,11 +998,30 @@ class HTMLReportGenerator:
         
         return '\n'.join(html_parts)
     
-    def _generate_etf_holdings_html(self, etf_holdings: List[dict]) -> str:
+    @staticmethod
+    def _generate_stale_notice_html(stale_etfs: List[dict]) -> str:
+        """「今日沒有新資料的 ETF」提示框；沒有就回空字串（不影響版面）。"""
+        if not stale_etfs:
+            return ''
+        items = ''.join(
+            f"<li><strong>{etf['etf_code']}</strong> {etf['etf_name']}："
+            f"資料日期 {etf['data_date']}（落後 {etf['trading_days_behind']} 個交易日）</li>"
+            for etf in stale_etfs
+        )
+        return f"""
+        <div class="stale-notice" style="background:#fff8e1;border-left:5px solid #f9a825;border-radius:8px;padding:14px 18px;margin-bottom:20px;color:#5d4037;">
+            <strong>⚠️ {len(stale_etfs)} 檔 ETF 今日沒有新資料</strong>
+            <div style="margin-top:6px;font-size:0.95em;">來源自上一份報表以來沒有更新。下方持股總覽是最後一次抓到的內容，它們的變動不重複列出。</div>
+            <ul style="margin:8px 0 0 20px;font-size:0.95em;">{items}</ul>
+        </div>
+        """
+
+    def _generate_etf_holdings_html(self, etf_holdings: List[dict], stale_etfs: List[dict] = None) -> str:
         """生成 ETF 持股總覽的 HTML"""
         if not etf_holdings:
             return ''
-        
+
+        stale_codes = {etf['etf_code'] for etf in (stale_etfs or [])}
         cards_html = []
         for etf in etf_holdings:
             # 生成持股表格
@@ -1016,6 +1048,8 @@ class HTMLReportGenerator:
             # 回退到各自最新可得的日期，所以要標出這一檔實際的資料日期。
             data_date = etf.get('data_date')
             date_note = f" · 資料日期 {data_date}" if data_date else ''
+            if etf.get('etf_code') in stale_codes:
+                date_note += " · ⚠️ 今日未更新"
             if foreign_count:
                 date_note += f" · 含 {foreign_count} 檔海外成分股（單位千股）"
 

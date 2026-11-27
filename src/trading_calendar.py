@@ -85,3 +85,22 @@ def last_trading_day(day: date) -> date:
     while not is_trading_day(day):
         day -= timedelta(days=1)
     return day
+
+
+def next_trading_day(day: date) -> date:
+    """day 之後（不含 day）的第一個交易日。多數投信的日期參數是 PCF 適用日＝持股基準日的下一個交易日。"""
+    day += timedelta(days=1)
+    while not is_trading_day(day):
+        day += timedelta(days=1)
+    return day
+
+
+def trading_days_between(start: date, end: date) -> int:
+    """start 之後（不含）到 end（含）之間有幾個交易日；end 不晚於 start 時是 0。"""
+    count = 0
+    day = start + timedelta(days=1)
+    while day <= end:
+        if is_trading_day(day):
+            count += 1
+        day += timedelta(days=1)
+    return count
