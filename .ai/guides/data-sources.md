@@ -23,12 +23,12 @@
 
 | 投信 | 模組 | 方式 | 資料日期來源 | 防護 | 備註 |
 | --- | --- | --- | --- | --- | --- |
-| 中信 CTBC | `src/ctbc_scraper.py` | 網頁下載 Excel | ✅ Excel 內「資料日期」欄 | 跳過 | Playwright 點「下載EXCEL」；當日資料下午才更新 |
+| 中信 CTBC | `src/ctbc_scraper.py` | 網頁下載 Excel | ✅ Excel 內「資料日期」欄 | 跳過 | Playwright 點「下載EXCEL」；當日資料下午才更新。**持股頁必須開 `www.ctbcinvestments.com.tw`**：舊網域 `.com` 的頁面自 2026-11-04 起拿不到資料、沒有下載按鈕，見下方「中信：舊網域的頁面沒有資料」 |
 | 摩根 Morgan | `src/morgan_scraper.py` | 下載 PCF xlsx | ✅ 表頭 `NAV Date`（持股基準日） | 跳過 | 2026-10-27 起直接讀 PCF 表頭 `NAV Date`（`YYYYMMDD`）並標 `source_dated`；`Valuation Date`（次一交易日適用日）僅在 `NAV Date` 缺漏時作前瞻夾回備援。即使遇臨時颱風假或尚未更新，寫入日期仍停在真實持股日，不再產生假報表。必須帶 `Referer` = 產品頁，否則 Akamai 403 |
-| 聯博 ABFunds | `src/abfunds_scraper.py` | 下載 holdings xlsx | ✅ content-disposition 檔名 | 跳過 | 「代碼」欄是 ISIN，台股取 `isin[5:9]` |
+| 聯博 ABFunds | `src/abfunds_scraper.py` | 下載 holdings xlsx | ✅ content-disposition 檔名 | 跳過 | **版面會變**：2026-11-11 起股票表頭的權重欄從「權重」變成「權重(%)」、「代碼」欄從 ISIN（台股取 `isin[5:9]`）變成台股代號，舊解析器要求表頭完全相等，連續 12 個交易日找不到股票表；現在表頭只比對欄名開頭、兩種代碼都收。伺服器產檔約 22 秒才回應（逾時設 60 秒）。網址加 `&date=YYYY-MM-DD` 可取歷史檔（回補用） |
 | 統一 EZMoney | `src/ezmoney_scraper.py` | 下載 Excel（API 備援） | ✅ Excel 表頭（民國年）；API 備援用 `TranDate` | 跳過（兩條路徑） | **Excel 的股票表位置會變**：00981A 自 2026-07-31 起股票表前多了期貨段（5 欄），股票表頭從第 19 列移到第 22 列，所以解析器找「股票代號」表頭列、依欄名取欄。**API 的日期參數是 PCF 適用日（`PostDate`）**，回來的是前一交易日的持股（`TranDate`，與 Excel 表頭同）；`specificDate=False` 回最新一份，備援用這個。日期欄位有 `/Date(ms)/` 與 ISO 兩種格式、同一請求隨機出現。2026-07-31 ~ 09-24 的 00981A 就是 Excel 解析失敗＋API 拿請求日當資料日期，整串晚一個交易日（見 `date-alignment.md`「整串平移」），已改標回補。00988A（全球型）走同一條路徑：海外持股代號是 Bloomberg「代號 市場」，解析器兩種代號都收（見 `adding-an-etf.md`「含海外成分股的 ETF」）；它的持股比適用日早兩個交易日（適用日 09-29 那份是 09-23 的持股），所以固定落後一天。API 查假日或未發布日會回 `/Date(-62135596800000)/`（.NET 最小日期）、0 檔 |
 | 富邦 Fubon | `src/fubon_scraper.py` | 解析網頁 DOM | ✅ 頁面「資料日期」 | 跳過 | SSR 直出表格；當日資料下午才更新 |
-| 第一金 FSITC | `src/fsitc_scraper.py` | **API（原則的已知例外）** | ✅ API `sdate` | 跳過 | **日期參數是 PCF 適用日**：查 D 回前一交易日的持股（`sdate`），非交易日或未發布回 0 筆，所以固定落後一天；要補某天得查它的下一個交易日。見下方「已知例外」 |
+| 第一金 FSITC | `src/fsitc_scraper.py` | **API（原則的已知例外）** | ✅ API `sdate` | 跳過 | **日期參數是 PCF 適用日**：查 D 回前一交易日的持股（`sdate`），非交易日或未發布回 0 筆，所以固定落後一天；要補某天得查它的下一個交易日。見下方「已知例外」。回應尾端有三列彙總（A 欄是「現金/存款」「股票」「其他+負債」，`group` 為 4／5，股票列是 1）**不是持股**，用 `market_of()` 跳過；「股票」那列的 B 欄就是股票權重合計，可拿來對帳 |
 | 台新 TSIT | `src/tsit_scraper.py` | 解析網頁 DOM | ✅ 黏在表頭文字裡：`2026/8/5每基數實際申購總價金(元)`，以「日期＋每基數」為錨 | 跳過 | **`#PUB_DATE` 是 PCF 適用日（下一交易日），絕不可當資料日期**（2026-08-05 實測值為未來日 08-06）。頁面出現多個不同日期時視為改版、保守退回 |
 | 群益 Capital | `src/capital_scraper.py` | **buyback API（原則的已記錄例外）** | ✅ API `data.pcf.date2`＝持股基準日 | 跳過（API 路徑） | Excel 與頁面皆無資料日期，API 是唯一日期來源（與 Excel 同資料）；`date1` 是下一交易日的 PCF 適用日，勿用。API 失敗退回 Playwright+Excel 備援，備援不帶 source_dated、防護生效 |
 | 安聯 Allianz | `src/allianz_scraper.py` | 解析網頁 DOM | ✅ 頁面標「資料日期 : YYYY/MM/DD」 | 跳過 | 同富邦模式。歷史錯位最大戶（19 組，已刪除並重生報表） |
@@ -119,6 +119,23 @@ Azure AS8075、美國）：
 - 正式班次的 log 只有狀態碼；要知道是誰擋的，得在 runner 上印出回應標頭與內文。
   找海外對照點前先確認它的出口 IP（例如打 `ipinfo.io/json`）：這次 agent 的網頁抓取工具實際走開發機的網路，
   一度被誤當成海外對照。
+
+## 中信：舊網域的頁面沒有資料
+
+中信有兩個網域：`www.ctbcinvestments.com`（IIS 直出）與 `www.ctbcinvestments.com.tw`（前面掛 Incapsula）。
+前端不論從哪個網域載入，都呼叫 `.com.tw` 的 API；所以從 `.com` 開頁面是跨網域請求，瀏覽器先送預檢（OPTIONS），
+Incapsula 對預檢回 302，瀏覽器依規範擋下（console：`Redirect is not allowed for a preflight request`），
+頁面永遠停在「資料讀取中...」、沒有「下載EXCEL」按鈕。scraper 原本開 `.com`，2026-11-04 ~ 11-26 每個班次都是
+`Download button not found`；開發機一樣重現，與 runner 的 IP 無關。
+
+- 2026-11-27 在 runner 上診斷（run `45921910996`，出口 Azure AS8075）：原 scraper 只把網域換成 `.com.tw`，
+  00995A／00406A 各抓到 56／55 檔（資料日期 11-26）；同一次執行裡 `.com` 的頁面仍然沒有按鈕。
+- 頁面自己用的 API 不需要瀏覽器，兩個網域從 runner 與開發機都通：先 `POST /API/home/AuthToken?token=www.ctbcinvestments.com`
+  取 token，再 `POST /API/etf/ETFHoldingWeight?token=<token>`，body 為 `{token, FID, StartDate}`。
+  `FID` 是 `E0036`（00995A）／`E0038`（00406A），可用 `ETFDetail`（body 帶 `CNO`，即持股頁網址裡的數字）查到；
+  `StartDate` 必填（ISO 時間，不填會回 SQL 錯誤），`FundAssets[0].資料日期` 是持股日，
+  股票在 `FundAssetsDetail` 裡 `Code == "STOCK"` 那一組。內容與下載的 Excel 逐筆相同（11-26 兩檔實測）。
+  **回補歷史用這支 API**：scraper 的 Excel 路徑只拿得到最新一份。
 
 ## 寫新 scraper 的踩雷筆記
 
