@@ -167,7 +167,7 @@ function renderSources(ctx) {
         <td><span class="badge ${f.status==='daily'?'good':'warn'}">${statusNames[f.status]}</span>${f.tradingDaysBehind>0 ? `<br><small>落後 ${f.tradingDaysBehind} 個交易日</small>` : ''}</td></tr>`;}).join('')}</tbody></table></div></section><aside class="rail">
     <section class="panel"><h2>如何讀這份報表</h2><p>日期取自投信標示的持股日。相鄰交易日的兩份持股才歸入單日異動。中間缺期會列出完整起訖。</p><p>「沿用舊持股」代表該基金的來源日沒有前進。頁首涵蓋數是本期收錄基金中，有當日持股的檔數。</p>${ctx.day.updateTime ? `<p class="muted">報表產生時間<br>${ctx.escape(ctx.day.updateTime)}（台北）</p>` : ''}</section>
     <section class="panel"><h2>數量與單位</h2><p>持股淨增減為兩次快照間的數量差。台股以張、海外股票以千股計。各基金的增持、減持檔數分開計算。</p>
-    <a href="data_${ctx.day.date}.json">本期原始 JSON</a> · <a href="report_${ctx.day.date}.html">本期靜態日報</a></section></aside></div>`;
+    <a href="data_${ctx.day.date}.json">本期原始 JSON</a> · <a href="${ctx.escape(ctx.href({view:'report'}))}">本期持股日報</a></section></aside></div>`;
 }
 
 export {renderOverview, renderFunds, renderSources};

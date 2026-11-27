@@ -429,7 +429,7 @@ function historyView(ctx) {
     const rows = visible.map(date => [
         dateText(ctx, date),
         `<a href="${route(ctx, 'overview', { date, range: 1 })}">同日總覽</a>`,
-        `<a href="report_${ctx.escape(date)}.html">開啟日報</a>`,
+        `<a href="${route(ctx, 'report', { date })}">開啟日報</a>`,
     ]);
     return header('歷史報表', `索引收錄 ${ctx.index.length} 期，可開啟當期總覽或保存的完整日報。`) +
         panel('已發布報表', filter + (rows.length

@@ -4,27 +4,47 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0c5148">
+  <meta name="description" content="查閱 2026-07-27 主動式 ETF 的持股日報、基金異動及完整持股。">
   <title>2026-07-27 持股日報 · 台灣主動 ETF 觀測站</title>
   <link rel="icon" href="data:,">
+  <script src="./assets/theme.js"></script>
   <link rel="stylesheet" href="./assets/site.css">
+  <link rel="stylesheet" href="./assets/research.css">
   <link rel="stylesheet" href="./assets/report.css">
+  <script type="module" src="./assets/site.js"></script>
+  <noscript><style>.requires-js { display: none !important; }</style></noscript>
 </head>
-<body class="report-page">
+<body>
   <a class="skip" href="#workspace">跳到主要內容</a>
   <header class="masthead">
     <div class="topbar frame">
-      <a class="brand" href="index.html?date=2026-07-27"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>主動 ETF 觀測站</span></a>
-      <nav class="primary-nav" aria-label="主要導覽"><a href="index.html?date=2026-07-27">市場總覽</a><a href="index.html?date=2026-07-27&amp;view=funds">ETF 清單</a><a href="index.html?date=2026-07-27&amp;view=compare">比較</a><a href="index.html?date=2026-07-27&amp;view=history" aria-current="location">歷史報表</a><a href="index.html?date=2026-07-27&amp;view=watch">我的追蹤</a></nav>
-      <a class="search-trigger" href="index.html?date=2026-07-27#search"><span class="search-icon" aria-hidden="true"></span><span>搜尋<span class="desktop-only">股票或 ETF</span></span></a>
+      <a class="brand" href="index.html?date=2026-07-27" data-home><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>主動 ETF 觀測站</span></a>
+      <nav class="primary-nav" aria-label="主要導覽">
+        <a href="index.html?date=2026-07-27" data-view="overview">市場總覽</a>
+        <a href="report_2026-07-27.html" data-view="report" aria-current="page">持股日報</a>
+        <a href="index.html?date=2026-07-27&amp;view=funds" data-view="funds">ETF 清單</a>
+        <a href="index.html?date=2026-07-27&amp;view=compare" data-view="compare">比較</a>
+        <a href="index.html?date=2026-07-27&amp;view=history" data-view="history">歷史報表</a>
+        <a href="index.html?date=2026-07-27&amp;view=watch" data-view="watch">我的追蹤</a>
+      </nav>
+      <div class="header-tools">
+        <button id="open-search" type="button" class="search-trigger requires-js" aria-haspopup="dialog" aria-label="搜尋股票或 ETF"><span class="search-icon" aria-hidden="true"></span><span>搜尋<span class="desktop-only">股票或 ETF</span></span><kbd>/</kbd></button>
+        <div class="theme-picker" role="group" aria-label="顯示主題" hidden>
+          <button type="button" data-theme-choice="light" aria-label="白天模式" title="白天模式" aria-pressed="false"><span class="theme-icon sun-icon" aria-hidden="true">☀︎</span></button>
+          <button type="button" data-theme-choice="dark" aria-label="夜間模式" title="夜間模式" aria-pressed="false"><span class="theme-icon moon-icon" aria-hidden="true">☾</span></button>
+        </div>
+      </div>
     </div>
   </header>
   <main class="frame" id="workspace" tabindex="-1">
     <div class="date-line">
-      <span class="date-field">報表日期 <time datetime="2026-07-27">2026-07-27</time></span>
-      <a href="index.html?date=2026-07-27&amp;view=history">選擇其他日期</a>
+      <label class="date-field requires-js" for="report-date"><span>報表日期</span><select id="report-date" disabled><option value="2026-07-27">2026-07-27</option></select></label>
+      <noscript><span class="date-field">報表日期 <time datetime="2026-07-27">2026-07-27</time></span></noscript>
+      <span id="edition"></span>
     </div>
-    <div class="title-row"><h1>持股日報</h1><a class="button" href="index.html?date=2026-07-27">開啟同日互動總覽</a></div>
-    <div class="summary-grid"><a class="coverage" href="index.html?date=2026-07-27&amp;view=sources"><span class="coverage-label">有當日持股的 ETF</span><span class="coverage-number">17 <small>/ 17 檔</small></span><span class="coverage-more">查看來源</span><span class="coverage-meter" aria-hidden="true"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span></a><div class="metrics"><a class="metric" href="#distribution"><span>有異動的 ETF</span><div class="metric-value"><strong>10</strong><small>檔基金</small></div></a><a class="metric" href="#activity"><span>本期持股異動</span><div class="metric-value"><strong>58</strong><small>筆紀錄</small></div></a><a class="metric" href="#funds"><span>涉及股票</span><div class="metric-value"><strong>49</strong><small>檔股票</small></div></a></div></div><section id="activity"><div class="section-head"><h2>本期持股異動</h2><a href="#funds">查看各 ETF 持股</a></div><p class="muted">統計依本報表收錄的異動，基金的比較起訖可能不同。</p><ul class="report-group"><li><span>新增</span><strong>3 筆</strong></li><li><span>移除</span><strong>9 筆</strong></li><li><span>增持</span><strong>38 筆</strong></li><li><span>減持</span><strong>8 筆</strong></li></ul><div class="report-analysis"><section class="panel" id="distribution"><div class="section-head"><h3>各 ETF 異動筆數</h3></div><ul class="report-distribution"><li><a href="#etf-00982A"><span class="ticker">00982A</span> 主動群益台灣強棒</a><meter aria-hidden="true" min="0" max="26" value="26"></meter><strong>26 筆</strong></li><li><a href="#etf-00401A"><span class="ticker">00401A</span> 主動摩根台灣鑫收</a><meter aria-hidden="true" min="0" max="26" value="7"></meter><strong>7 筆</strong></li><li><a href="#etf-00985A"><span class="ticker">00985A</span> 主動野村台灣50</a><meter aria-hidden="true" min="0" max="26" value="7"></meter><strong>7 筆</strong></li><li><a href="#etf-00400A"><span class="ticker">00400A</span> 主動國泰動能高息</a><meter aria-hidden="true" min="0" max="26" value="6"></meter><strong>6 筆</strong></li><li><a href="#etf-00403A"><span class="ticker">00403A</span> 主動統一升級50</a><meter aria-hidden="true" min="0" max="26" value="5"></meter><strong>5 筆</strong></li></ul><details class="report-more"><summary>其餘 5 檔 ETF</summary><ul class="report-distribution"><li><a href="#etf-00992A"><span class="ticker">00992A</span> 主動群益科技創新</a><meter aria-hidden="true" min="0" max="26" value="2"></meter><strong>2 筆</strong></li><li><a href="#etf-00995A"><span class="ticker">00995A</span> 主動中信台灣卓越</a><meter aria-hidden="true" min="0" max="26" value="2"></meter><strong>2 筆</strong></li><li><a href="#etf-00981A"><span class="ticker">00981A</span> 主動統一台股增長</a><meter aria-hidden="true" min="0" max="26" value="1"></meter><strong>1 筆</strong></li><li><a href="#etf-00987A"><span class="ticker">00987A</span> 主動台新優勢成長</a><meter aria-hidden="true" min="0" max="26" value="1"></meter><strong>1 筆</strong></li><li><a href="#etf-00991A"><span class="ticker">00991A</span> 主動復華未來50</a><meter aria-hidden="true" min="0" max="26" value="1"></meter><strong>1 筆</strong></li></ul></details></section><section class="panel"><div class="section-head"><h3>熱門調整股票</h3></div><p class="muted">按既有持股的調整次數排列，最多顯示十檔。</p><details class="report-hot"><summary><strong>大立光 <span class="ticker">3008</span></strong><span>3 次調整</span><span class="report-quantity up">淨增減 +64 張</span></summary><p class="muted">增持 3 檔 · 減持 0 檔</p><p><a href="index.html?date=2026-07-27&amp;view=stock&amp;code=3008">開啟 3008 個股明細</a></p><div class="report-table-wrap" role="region" aria-label="3008 的基金調整" tabindex="0"><table class="data-table"><caption>3008 的基金調整</caption>
+    <div id="content" aria-busy="false"><article id="daily-report" class="report-page" data-report-date="2026-07-27">
+<div class="title-row"><h1>持股日報</h1></div>
+<div class="summary-grid"><a class="coverage" href="index.html?date=2026-07-27&amp;view=sources"><span class="coverage-label">有當日持股的 ETF</span><span class="coverage-number">17 <small>/ 17 檔</small></span><span class="coverage-more">查看來源</span><span class="coverage-meter" aria-hidden="true"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span></a><div class="metrics"><a class="metric" href="#distribution"><span>有異動的 ETF</span><div class="metric-value"><strong>10</strong><small>檔基金</small></div></a><a class="metric" href="#activity"><span>本期持股異動</span><div class="metric-value"><strong>58</strong><small>筆紀錄</small></div></a><a class="metric" href="#funds"><span>涉及股票</span><div class="metric-value"><strong>49</strong><small>檔股票</small></div></a></div></div><section id="activity"><div class="section-head"><h2>本期持股異動</h2><a href="#funds">查看各 ETF 持股</a></div><p class="muted">統計依本報表收錄的異動，基金的比較起訖可能不同。</p><ul class="report-group"><li><span>新增</span><strong>3 筆</strong></li><li><span>移除</span><strong>9 筆</strong></li><li><span>增持</span><strong>38 筆</strong></li><li><span>減持</span><strong>8 筆</strong></li></ul><div class="report-analysis"><section class="panel" id="distribution"><div class="section-head"><h3>各 ETF 異動筆數</h3></div><ul class="report-distribution"><li><a href="#etf-00982A"><span class="ticker">00982A</span> 主動群益台灣強棒</a><meter aria-hidden="true" min="0" max="26" value="26"></meter><strong>26 筆</strong></li><li><a href="#etf-00401A"><span class="ticker">00401A</span> 主動摩根台灣鑫收</a><meter aria-hidden="true" min="0" max="26" value="7"></meter><strong>7 筆</strong></li><li><a href="#etf-00985A"><span class="ticker">00985A</span> 主動野村台灣50</a><meter aria-hidden="true" min="0" max="26" value="7"></meter><strong>7 筆</strong></li><li><a href="#etf-00400A"><span class="ticker">00400A</span> 主動國泰動能高息</a><meter aria-hidden="true" min="0" max="26" value="6"></meter><strong>6 筆</strong></li><li><a href="#etf-00403A"><span class="ticker">00403A</span> 主動統一升級50</a><meter aria-hidden="true" min="0" max="26" value="5"></meter><strong>5 筆</strong></li></ul><details class="report-more"><summary>其餘 5 檔 ETF</summary><ul class="report-distribution"><li><a href="#etf-00992A"><span class="ticker">00992A</span> 主動群益科技創新</a><meter aria-hidden="true" min="0" max="26" value="2"></meter><strong>2 筆</strong></li><li><a href="#etf-00995A"><span class="ticker">00995A</span> 主動中信台灣卓越</a><meter aria-hidden="true" min="0" max="26" value="2"></meter><strong>2 筆</strong></li><li><a href="#etf-00981A"><span class="ticker">00981A</span> 主動統一台股增長</a><meter aria-hidden="true" min="0" max="26" value="1"></meter><strong>1 筆</strong></li><li><a href="#etf-00987A"><span class="ticker">00987A</span> 主動台新優勢成長</a><meter aria-hidden="true" min="0" max="26" value="1"></meter><strong>1 筆</strong></li><li><a href="#etf-00991A"><span class="ticker">00991A</span> 主動復華未來50</a><meter aria-hidden="true" min="0" max="26" value="1"></meter><strong>1 筆</strong></li></ul></details></section><section class="panel"><div class="section-head"><h3>熱門調整股票</h3></div><p class="muted">按既有持股的調整次數排列，最多顯示十檔。</p><details class="report-hot"><summary><strong>大立光 <span class="ticker">3008</span></strong><span>3 次調整</span><span class="report-quantity up">淨增減 +64 張</span></summary><p class="muted">增持 3 檔 · 減持 0 檔</p><p><a href="index.html?date=2026-07-27&amp;view=stock&amp;code=3008">開啟 3008 個股明細</a></p><div class="report-table-wrap" role="region" aria-label="3008 的基金調整" tabindex="0"><table class="data-table"><caption>3008 的基金調整</caption>
 <thead><tr><th scope="col">基金</th><th scope="col" class="num">持股增減</th><th scope="col" class="num">本期持股</th><th scope="col" class="num">權重</th></tr></thead><tbody>
 <tr><th scope="row"><a class="symbol" href="index.html?date=2026-07-27&amp;view=etf&amp;code=00400A"><span>主動國泰動能高息</span><span class="ticker">00400A</span></a></th><td class="num up">+62 張</td><td class="num">123 張</td><td class="num">1.89%</td></tr>
 <tr><th scope="row"><a class="symbol" href="index.html?date=2026-07-27&amp;view=etf&amp;code=00401A"><span>主動摩根台灣鑫收</span><span class="ticker">00401A</span></a></th><td class="num up">+1 張</td><td class="num">15 張</td><td class="num">2.103%</td></tr>
@@ -1097,7 +1117,15 @@
 <tr><th scope="row"><a class="symbol" href="index.html?date=2026-07-27&amp;view=stock&amp;code=2618"><span>長榮航</span><span class="ticker">2618</span></a></th><td class="num">0.32%</td><td class="num">956 張</td></tr>
 <tr><th scope="row"><a class="symbol" href="index.html?date=2026-07-27&amp;view=stock&amp;code=9907"><span>統一實</span><span class="ticker">9907</span></a></th><td class="num">0.27%</td><td class="num">2,221 張</td></tr>
 </tbody></table></div></div></details></section>
+<p class="muted report-issued">報表產生於 2026-11-27 11:08:57（台北時間）</p>
+</article></div>
+
   </main>
-  <footer class="frame footer"><span>台灣主動式 ETF 持股資料</span><span>報表產生於 2026-11-27 11:08:57（台北時間）</span><a href="index.html?date=2026-07-27&amp;view=sources">資料來源與計算方式</a></footer>
+  <footer class="frame footer"><span>台灣主動式 ETF 持股資料</span><a href="index.html?date=2026-07-27&amp;view=sources" data-view="sources">資料來源與計算方式</a></footer>
+  <dialog id="search-dialog" aria-labelledby="search-title">
+    <div class="search-head"><h2 id="search-title">搜尋股票或 ETF</h2><button id="close-search" type="button" class="plain-button">關閉</button></div>
+    <label class="search-box"><span class="search-icon" aria-hidden="true"></span><input id="search-input" type="search" aria-label="輸入代號或名稱" placeholder="輸入代號或名稱，例如 3231、緯創" autocomplete="off"></label>
+    <div id="search-results" class="search-results" aria-live="polite"></div>
+  </dialog>
 </body>
 </html>

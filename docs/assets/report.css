@@ -1,12 +1,12 @@
-.report-page .search-trigger { text-decoration: none; }
-.report-page .date-field time {
+.date-line .date-field time {
   padding: 6px 11px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: var(--white);
+  background: var(--surface);
   color: var(--ink);
 }
-.report-page .date-line > a, .report-page .section-head > a { font-size: .875rem; font-weight: 650; }
+.date-line > a, .report-page .section-head > a { font-size: .875rem; font-weight: 650; }
+.report-issued { margin-top: 18px; }
 .report-page section[id], .report-fund { scroll-margin-top: 1rem; }
 .report-page #activity > .section-head { margin-bottom: 4px; }
 .report-group {
@@ -78,6 +78,7 @@
 .report-hot summary > span:nth-child(2), .report-status { color: var(--muted); }
 .report-quantity { font-weight: 650; }
 .report-more > summary { padding-block: 8px; width: fit-content; cursor: pointer; color: var(--teal); font-size: .9rem; font-weight: 650; }
+.report-more > summary:hover { text-decoration: underline; text-underline-offset: .2em; }
 .report-hot > p, .report-fund-body > p { margin-block: 5px 12px; }
 .report-hot > p a, .report-fund-body > p a { font-size: .9rem; font-weight: 650; }
 .report-page #funds { margin-top: 20px; }
@@ -94,7 +95,7 @@
 .report-table-wrap tbody th {
   background: transparent;
   padding: 10px 9px;
-  border-bottom: 1px solid #e3eaeb;
+  border-bottom: 1px solid var(--line);
   color: var(--ink);
   font-size: .94rem;
   white-space: normal;
@@ -123,11 +124,8 @@
   .report-table-wrap .data-table .symbol { display: grid; gap: 0; }
 }
 @media print {
-  :root { color: #000; background: white; }
-  .report-page .masthead, .report-page .skip, .report-page .date-line a, .report-page .title-row a,
-  .report-page .section-head a, .report-fund-body > p a, .report-hot > p a, .coverage-more { display: none; }
-  .report-page .frame { width: 100%; }
-  .report-page .coverage, .report-page .coverage small { color: var(--ink); background: white; }
+  .date-line a, .report-page .title-row a, .report-page .section-head a,
+  .report-fund-body > p a, .report-hot > p a { display: none; }
   .report-analysis { display: block; }
   .report-page .panel { border: 0; padding: 0; }
   .report-table-wrap { overflow: visible; }
