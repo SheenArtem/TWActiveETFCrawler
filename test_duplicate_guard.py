@@ -20,6 +20,7 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 9. 摩根 PCF `NAV Date`、野村 API `NavDate`、復華 Excel 表頭 `日期:` 的來源日期解析與非 xlsx 防呆
 10. 2026-11 靜默停更的來源：聯博 xlsx 改版（表頭「權重(%)」、代碼欄改台股代號）、
     第一金 API 尾端的彙總列不是持股、中信持股頁的網域
+11. 來源停更警報（scripts/check_stale_sources.py）：落後交易日數的算法與班次是否失敗
 
 跑法：
     python test_duplicate_guard.py
@@ -1080,6 +1081,71 @@ def check_calendar_updater():
           f"years={sorted(days)}")
 
 
+def check_stale_source_alert():
+    """
+    scripts/check_stale_sources.py：每日班次最後一步，有 ETF 連續多個交易日沒有新資料就讓班次失敗。
+
+    2026-11 中信、聯博、兆豐各停更 2～5 週，期間每個班次都是 success。這裡用同樣的形狀重現：
+    一檔停在 11-03、一檔停在 10-22，其他照常，確認會被點名；固定落後一天的來源、當天漏一次的來源、
+    週末與休市日都不可誤報。
+    """
+    import contextlib
+    import importlib.util
+    import io
+    from datetime import date
+
+    path = Path(__file__).parent / "scripts" / "check_stale_sources.py"
+    spec = importlib.util.spec_from_file_location("check_stale_sources", path)
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+
+    today = date(2026, 11, 26)
+    # 代號要以 A 結尾（主動式 ETF），checker 與守衛一樣只看 etf_list 裡 LIKE '%A' 的列
+    latest = {"00901A": "2026-11-26",   # 當日已有
+              "00902A": "2026-11-25",   # 固定落後一天的來源
+              "00903A": "2026-11-24",   # 當天漏一次
+              "00904A": "2026-11-03",   # 中信的形狀：11-04 起停更
+              "00905A": "2026-10-22"}   # 兆豐的形狀：10-27 起停更（10-23 颱風假、10-26 補假不算）
+    db, db_path = fresh_db()
+    db.insert_etf_list([{"etf_code": code, "etf_name": code, "issuer": ""} for code in list(latest) + ["00906A"]])
+    for code, day in latest.items():
+        db.insert_holdings(rows_sd(code, day, DAY1))
+
+    behind = {code: checker.trading_days_behind(day, today) for code, day in latest.items()}
+    check("落後交易日數：當日 0、落後一天 1、漏一次 2、11-03 之後 17、10-22 之後 23（休市日不算）",
+          behind == {"00901A": 0, "00902A": 1, "00903A": 2, "00904A": 17, "00905A": 23}, f"{behind}")
+    check("週末執行以週五為準，不多算",
+          checker.trading_days_behind("2026-11-27", date(2026, 11, 29)) == 0
+          and checker.trading_days_behind("2026-11-26", date(2026, 11, 29)) == 1)
+
+    stale = checker.find_stale(db_path, today, 3)
+    check("停更清單：沒有任何持股的排最前，其餘依落後天數；正常落後與漏一次的不列",
+          stale == [("00906A", None, None), ("00905A", "2026-10-22", 23), ("00904A", "2026-11-03", 17)],
+          f"{stale}")
+
+    def run_quiet(path_, ignore):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            code = checker.run(path_, today, 3, ignore)
+        return code, buffer.getvalue().splitlines()
+
+    code, lines = run_quiet(db_path, set())
+    check("有停更的 ETF -> 回傳 1（班次失敗），每檔一行 ::error::",
+          code == 1 and sum(1 for line in lines if line.startswith("::error::")) == 3, f"code={code}")
+    code, lines = run_quiet(db_path, {"00904A", "00905A", "00906A"})
+    check("停更的 ETF 全列在 STALE_IGNORE -> 回傳 0，但仍印成 ::warning::",
+          code == 0 and sum(1 for line in lines if line.startswith("::warning::")) == 3, f"code={code}")
+    code, lines = run_quiet(db_path, {"00905A"})
+    check("只忽略其中一檔 -> 其餘照樣讓班次失敗", code == 1, f"code={code}")
+
+    db2, db2_path = fresh_db()
+    db2.insert_etf_list([{"etf_code": code_, "etf_name": code_, "issuer": ""} for code_ in ("00901A", "00902A")])
+    db2.insert_holdings(rows_sd("00901A", "2026-11-26", DAY1))
+    db2.insert_holdings(rows_sd("00902A", "2026-11-25", DAY1))
+    code, lines = run_quiet(db2_path, set())
+    check("全部正常（含固定落後一天的來源）-> 回傳 0", code == 0, f"code={code}")
+
+
 # node 執行首頁頁內腳本用的替身：document 與 fetch 換成最小實作，fetch 從 fixture 目錄讀 JSON。
 # getElementById 每次都給新元素並記住最後一個，等同頁面重畫時 innerHTML 換掉舊的子元素：
 # 頁面自己跑一次各面板、這裡再呼叫一次，排行也不會累加成兩份。
@@ -1380,6 +1446,9 @@ def main():
 
     print("=== 交易日曆自動更新：證交所清單篩選與寫回 ===")
     check_calendar_updater()
+
+    print("=== 來源停更警報：連續多個交易日沒有新資料要讓班次失敗 ===")
+    check_stale_source_alert()
 
     print("=== 首頁各 ETF 近 5 日買賣明細：停更時同一次調整不重複計入 ===")
     check_homepage_per_etf_dedup()
