@@ -44,8 +44,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .brand-mark i:nth-child(3) { height: 19px; background: #a4d9a0; }
 .primary-nav { display: flex; align-self: stretch; gap: clamp(12px, 2.1vw, 32px); }
 .primary-nav a { display: inline-flex; align-items: center; color: var(--muted); white-space: nowrap; border-bottom: 3px solid transparent; margin-top: 3px; padding: 0 2px; text-decoration: none; font-size: .94rem; font-weight: 600; }
-.primary-nav a:hover, .primary-nav a[aria-current="page"] { color: var(--teal); }
-.primary-nav a[aria-current="page"] { border-color: var(--teal); }
+.primary-nav a:hover, .primary-nav a[aria-current] { color: var(--teal); }
+.primary-nav a[aria-current] { border-color: var(--teal); }
 .search-trigger, .search-box { display: flex; align-items: center; gap: 10px; }
 .search-trigger { margin-left: auto; min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--wash); padding: 5px 12px; color: var(--muted); font-size: .875rem; }
 .search-icon { position: relative; display: inline-block; width: 14px; height: 14px; border: 1.7px solid currentColor; border-radius: 50%; margin-right: 3px; flex: none; }
@@ -143,9 +143,10 @@ dialog::backdrop { background: #183a3b65; }
 .search-results a { display: flex; gap: 8px; align-items: center; padding: 7px; border-radius: 6px; width: 100%; }
 .search-results a:hover, .search-results a:focus { background: var(--tint); }
 .search-results .badge { margin-left: auto; }
-.more-filters { margin: -3px 0 9px; font-size: .875rem; color: var(--muted); }
-.more-filters summary { cursor: pointer; width: fit-content; padding-block: 3px; }
-.more-filters .chips { padding-block: 4px; }
+.stock-filters { display: grid; gap: 5px; margin-bottom: 14px; }
+.stock-filter-title { font-size: .875rem; font-weight: 650; }
+.stock-filter-group { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.stock-filter-label { color: var(--muted); font-size: .82rem; white-space: nowrap; }
 .rail p { margin: 10px 0; font-size: .94rem; }
 .period-note, .watch-shortcut { margin-bottom: 12px; }
 .watch-shortcut { text-align: right; font-size: .9rem; }

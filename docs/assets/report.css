@@ -1,36 +1,138 @@
-:root {
-  color-scheme: light;
-  font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
-  color: #162d35;
-  background: #f5f8fa;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.6;
+.report-page .search-trigger { text-decoration: none; }
+.report-page .date-field time {
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--white);
+  color: var(--ink);
 }
+.report-page .date-line > a, .report-page .section-head > a { font-size: .875rem; font-weight: 650; }
+.report-page section[id], .report-fund { scroll-margin-top: 1rem; }
+.report-page #activity > .section-head { margin-bottom: 4px; }
+.report-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  margin: 10px 0 16px;
+  padding: 0;
+}
+.report-group li { display: flex; gap: 6px; align-items: baseline; font-size: .94rem; }
+.report-group li span { color: var(--muted); }
+.report-analysis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.report-analysis > .panel + .panel { margin: 0; }
+.report-analysis h3 { font-size: 1.12rem; letter-spacing: -.02em; }
+.report-analysis .section-head { margin-bottom: 8px; }
+.report-analysis .panel > .muted { margin-bottom: 6px; }
+.report-distribution { margin: 0; padding: 0; list-style: none; }
+.report-distribution li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(22px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: .94rem;
+}
+.report-distribution a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.report-distribution a:hover { color: var(--teal); text-decoration: underline; }
+.report-distribution strong { grid-column: 3; white-space: nowrap; }
+.report-distribution meter {
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--tint);
+}
+.report-distribution meter::-webkit-meter-bar { background: var(--tint); border: 0; border-radius: 8px; }
+.report-distribution meter::-webkit-meter-optimum-value { background: var(--teal); border-radius: 8px; }
+.report-distribution meter::-moz-meter-bar { background: var(--teal); border-radius: 8px; }
+.report-hot, .report-fund { border-bottom: 1px solid var(--line); }
+.report-hot:last-child, .report-fund:last-child { border-bottom: 0; }
+.report-hot summary, .report-fund summary {
+  display: grid;
+  gap: 6px 12px;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+.report-hot summary::-webkit-details-marker, .report-fund summary::-webkit-details-marker { display: none; }
+.report-hot summary::after, .report-fund summary::after {
+  content: "";
+  grid-column: -2;
+  grid-row: 1;
+  justify-self: center;
+  width: .5rem;
+  height: .5rem;
+  border: solid var(--teal);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.report-hot[open] > summary::after, .report-fund[open] > summary::after { transform: rotate(225deg); }
+.report-hot summary:hover, .report-fund summary:hover { background: var(--wash); }
+.report-fund:target > summary { background: var(--tint); }
+.report-hot summary { grid-template-columns: minmax(0, 1fr) auto auto 12px; padding: 10px 0; font-size: .875rem; }
+.report-hot summary strong { font-size: .98rem; overflow-wrap: anywhere; }
+.report-hot summary > span:nth-child(2), .report-status { color: var(--muted); }
+.report-quantity { font-weight: 650; }
+.report-more > summary { padding-block: 8px; width: fit-content; cursor: pointer; color: var(--teal); font-size: .9rem; font-weight: 650; }
+.report-hot > p, .report-fund-body > p { margin-block: 5px 12px; }
+.report-hot > p a, .report-fund-body > p a { font-size: .9rem; font-weight: 650; }
+.report-page #funds { margin-top: 20px; }
+.report-page #funds > .section-head { margin-bottom: 6px; }
+.report-fund summary { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto minmax(0, .9fr) 14px; padding: 14px 0; }
+.report-fund summary strong { grid-column: 1; overflow-wrap: anywhere; }
+.report-fund summary .report-status { grid-column: 2; font-size: .9rem; }
+.report-fund summary .badge { grid-column: 3; width: fit-content; }
+.report-fund summary > .muted { grid-column: 4; text-align: right; }
+.report-fund summary .ticker, .report-hot summary .ticker { display: inline-block; }
+.report-fund-body { padding-bottom: 12px; }
+.report-table-wrap { max-width: 100%; overflow-x: auto; margin-bottom: 12px; }
+.report-table-wrap caption { padding-block: 8px; text-align: left; color: var(--ink); font-weight: 700; }
+.report-table-wrap tbody th {
+  background: transparent;
+  padding: 10px 9px;
+  border-bottom: 1px solid #e3eaeb;
+  color: var(--ink);
+  font-size: .94rem;
+  white-space: normal;
+}
+.report-table-wrap tbody tr:last-child th { border-bottom: 0; }
 
-body { margin: 0; }
-main { max-width: 56rem; margin: 0 auto; padding: 2.5rem clamp(1rem, 4vw, 3rem) 5rem; }
-header { border-top: .3rem solid #086959; padding: 1.25rem 0 .75rem; }
-h1 { margin: .65rem 0; font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.25; }
-h2 { margin: 1.5rem 0 .75rem; font-size: 1.3rem; }
-a { color: #086959; text-underline-offset: .18em; }
-:focus-visible { outline: .17rem solid #086959; outline-offset: .12rem; }
-.fund { margin: .6rem 0; background: white; border: 1px solid #cbd8da; border-radius: .6rem; }
-summary { padding: .9rem 1rem; cursor: pointer; }
-summary span { display: block; margin: .12rem 0 0 1rem; color: #415b64; font-size: .9rem; }
-.fund-body { padding: 0 1rem 1rem; }
-.table-wrap { overflow-x: auto; margin-top: .85rem; }
-table { border-collapse: collapse; white-space: nowrap; width: 100%; font-size: .9rem; }
-caption { text-align: left; font-size: 1rem; font-weight: 650; margin: .5rem 0; }
-th, td { padding: .55rem .6rem; border-bottom: 1px solid #dce5e7; text-align: right; }
-th:first-child { white-space: normal; min-width: 7rem; text-align: left; }
-thead { background: #eef4f4; }
-tbody th { font-weight: 500; }
-
+@media (max-width: 960px) {
+  .report-fund summary { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto 14px; }
+  .report-fund summary > .muted { grid-column: 1 / 4; grid-row: 2; text-align: left; }
+}
+@media (max-width: 760px) {
+  .report-analysis { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@media (max-width: 550px) {
+  .report-group { gap: 4px 12px; margin-block: 6px 12px; }
+  .report-group li { font-size: .875rem; }
+  .report-page #funds { margin-top: 12px; }
+  .report-distribution li { grid-template-columns: minmax(0, 1fr) minmax(18px, 15%) auto; gap: 6px; }
+  .report-hot summary { grid-template-columns: minmax(0, 1fr) auto 12px; gap: 1px 7px; }
+  .report-hot summary > span:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .report-hot summary .report-quantity { grid-column: 2; grid-row: 1; }
+  .report-fund summary { grid-template-columns: minmax(0, 1fr) 14px; gap: 3px 8px; padding: 11px 0; }
+  .report-fund summary .report-status, .report-fund summary .badge, .report-fund summary > .muted { grid-column: 1; grid-row: auto; }
+  .report-fund summary > .muted { font-size: .83rem; }
+  .report-table-wrap .data-table :is(th, td) { padding: 7px 5px; font-size: .875rem; }
+  .report-table-wrap .data-table .symbol { display: grid; gap: 0; }
+}
 @media print {
-  :root, .fund { background: white; }
-  main { max-width: none; padding: 0; }
-  a { color: inherit; }
-  .fund { border: 0; }
-  .table-wrap { overflow: visible; }
-  tr { break-inside: avoid; }
+  :root { color: #000; background: white; }
+  .report-page .masthead, .report-page .skip, .report-page .date-line a, .report-page .title-row a,
+  .report-page .section-head a, .report-fund-body > p a, .report-hot > p a, .coverage-more { display: none; }
+  .report-page .frame { width: 100%; }
+  .report-page .coverage, .report-page .coverage small { color: var(--ink); background: white; }
+  .report-analysis { display: block; }
+  .report-page .panel { border: 0; padding: 0; }
+  .report-table-wrap { overflow: visible; }
+  .report-page details::details-content { display: block; content-visibility: visible; }
+  .report-page summary::after { display: none; }
+  .report-page :is(h1, h2, h3, summary, caption) { break-after: avoid; }
+  .report-page tr { break-inside: avoid; }
 }

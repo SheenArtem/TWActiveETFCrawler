@@ -111,7 +111,10 @@ function setChrome(ctx) {
     if (view===current) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current');
   });
   document.querySelector('[data-home]').href=ctx.href({view:'overview',date:ctx.index[0],range:1,page:null,sort:null,filter:null});
-  $('edition').innerHTML=ctx.day.date===ctx.index[0]? '最新一期' : `歷史報表 <a href="${ctx.href({date:ctx.index[0],page:null})}">前往最新一期</a>`;
+  const edition=ctx.day.date===ctx.index[0]? '最新一期' : `歷史報表 <a href="${ctx.href({date:ctx.index[0],page:null})}">前往最新一期</a>`;
+  const dailyReport=ctx.view==='overview'
+    ? ` <a href="report_${escape(ctx.day.date)}.html" title="${escape(ctx.day.date)} 單日日報">本期靜態日報</a>` : '';
+  $('edition').innerHTML=edition+dailyReport;
   document.title=`${names[ctx.view]} · ${ctx.day.date} · 主動 ETF 觀測站`;
 }
 
@@ -249,4 +252,10 @@ document.addEventListener('submit',e=>{
 window.addEventListener('popstate',e=>{if($('search-dialog').open)$('search-dialog').close();render({position:e.state || {y:0},takeFocus:true});});
 window.addEventListener('storage',e=>{if(e.key===watchKey || e.key===null){watch=readWatch();render({position:{y:window.scrollY}});}});
 if('scrollRestoration' in history) history.scrollRestoration='manual';
-render();
+render().then(() => {
+  if (context && location.hash === '#search') {
+    history.replaceState(history.state, '', location.pathname + location.search);
+    $('open-search').focus();
+    openSearch();
+  }
+});

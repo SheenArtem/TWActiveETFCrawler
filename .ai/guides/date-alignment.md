@@ -130,7 +130,8 @@ UPSERT 區塊守著這件事。
 | --- | --- | --- |
 | `ReportManager.generate_all_reports()`（每日班次） | `build_etf_holdings()` | `detect_changes_batch()`，再拿掉沒有新資料的 ETF（`find_stale_etfs()`） |
 | `scripts/pinned_reports.py`（重生已發布的報表、本機回補兆豐） | 開暫存 DB 後呼叫 `generate_all_reports()` | 同上 |
-| `scripts/regenerate_reports.py`（名稱或版面改了之後重畫全部） | 轉交 `pinned_reports.regenerate()` | 同上 |
+| `scripts/regenerate_reports.py`（名稱或資料修正後重生） | 轉交 `pinned_reports.regenerate()` | 同上 |
+| `scripts/render_report_pages.py`（更新日報版面） | 已發布的逐日 JSON | 只重繪 HTML，沿用報表當時的數據與產生時間 |
 | `HTMLReportGenerator.generate_dashboard_data()` | 沿用傳入的 `etf_holdings` | 由 `etf_holdings` 取 `data_date` 標到 `detailed_changes` |
 
 新版日報的 `report_schema_version` 為 2。每檔的 `previous_data_date` 是分析器實際使用的上一個持股日，
@@ -145,7 +146,7 @@ UPSERT 區塊守著這件事。
 
 ## 重生已發布的報表：`scripts/pinned_reports.py`
 
-新版網頁從新日報直接讀取每檔基金的前次持股日。舊格式報表的日期對照存放在 `docs/assets/report-baselines.json`，以報表日期、產生時間和基金來源日核對。回補或重生舊格式日報後，可在專案根目錄執行 `python scripts/build_report_baselines.py`，從目前 DB 的快照與已發布日報重建這個檔案。
+新版網頁從新日報直接讀取每檔基金的前次持股日。舊格式報表的日期對照存放在 `docs/assets/report-baselines.json`，以報表日期、產生時間和基金來源日核對。回補或重生舊格式日報後，執行 `python scripts/build_report_baselines.py` 重建日期對照，再用 `python scripts/render_report_pages.py` 同步靜態頁。只改 HTML 模板時可直接執行後者。
 
 事後補進或修正了某幾檔 ETF 的持股（本機回補兆豐、來源停更後回補、歷史日期改標），要讓那幾天的報表
 反映出來時用它。**不能整份重生**（每檔取不晚於報表日期的最新資料）：固定落後一天的來源（第一金、00988A）

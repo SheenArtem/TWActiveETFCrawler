@@ -52,6 +52,7 @@ from loguru import logger  # noqa: E402
 from src.database import Database  # noqa: E402
 from src.report_manager import ReportManager  # noqa: E402
 from src.report_generator import REPORT_SCHEMA_VERSION  # noqa: E402
+from src.report_page import render_report_page  # noqa: E402
 
 DB_PATH = ROOT / "data" / "etf_holdings.db"
 DOCS_DIR = ROOT / "docs"
@@ -276,6 +277,9 @@ def regenerate(
                      (new_md, reports_dir / f"changes_{report_date}.md"),
                      (new_txt, reports_dir / f"changes_{report_date}.txt")]
             fresh = {src: _lf(src.read_text(encoding="utf-8")) for src, _ in pairs}
+            if report_schema < 2:
+                # 暫存輸出目錄沒有已發布的日期對照與快照。
+                fresh[new_html] = _lf(render_report_page(data, docs_dir))
 
             if not creating:
                 # 逐位元組比對：把時間戳換回發布版的值再比
@@ -283,7 +287,7 @@ def regenerate(
                 published_md = pairs[2][1].read_text(encoding="utf-8") if pairs[2][1].exists() else ""
                 comparable = {
                     new_json: _lf(json.dumps(kept, ensure_ascii=False, indent=2)),
-                    new_html: _lf(manager.html_generator._generate_report_html(kept)),
+                    new_html: _lf(render_report_page(kept, docs_dir)),
                     new_md: _lf(_with_timestamps_of(new_md.read_text(encoding="utf-8"), published_md)),
                     new_txt: fresh[new_txt],
                 }
