@@ -1,6 +1,6 @@
 {
   "date": "2026-08-12",
-  "update_time": "2026-08-12 18:28:18",
+  "update_time": "2026-11-27 11:09:07",
   "summary": {
     "total_etfs": 16,
     "total_changes": 94
@@ -4072,25 +4072,11 @@
       "data_date": "2026-08-11",
       "holdings": [
         {
-          "stock_code": "現金/存款",
-          "stock_name": "TWD 224,878,305",
-          "market": null,
-          "weight": 13.48,
-          "lots": 0
-        },
-        {
           "stock_code": "2330",
           "stock_name": "台積電",
           "market": "TW",
           "weight": 6.61,
           "lots": 45.999
-        },
-        {
-          "stock_code": "其他+負債",
-          "stock_name": "13.48%",
-          "market": null,
-          "weight": 5.0,
-          "lots": 0
         },
         {
           "stock_code": "2383",
@@ -4322,13 +4308,6 @@
           "market": "TW",
           "weight": 1.03,
           "lots": 90.0
-        },
-        {
-          "stock_code": "股票",
-          "stock_name": "87.97%",
-          "market": null,
-          "weight": 1.0,
-          "lots": 0
         },
         {
           "stock_code": "2891",
@@ -8153,13 +8132,6 @@
           "lots": 334.001
         },
         {
-          "stock_code": "現金/存款",
-          "stock_name": "TWD 285,971,167",
-          "market": null,
-          "weight": 5.58,
-          "lots": 0
-        },
-        {
           "stock_code": "3017",
           "stock_name": "奇鋐",
           "market": "TW",
@@ -8186,13 +8158,6 @@
           "market": "TW",
           "weight": 5.05,
           "lots": 21.001
-        },
-        {
-          "stock_code": "其他+負債",
-          "stock_name": "5.58%",
-          "market": null,
-          "weight": 5.0,
-          "lots": 0
         },
         {
           "stock_code": "6274",
@@ -8298,13 +8263,6 @@
           "market": "TW",
           "weight": 1.03,
           "lots": 13.0
-        },
-        {
-          "stock_code": "股票",
-          "stock_name": "95.27%",
-          "market": null,
-          "weight": 1.0,
-          "lots": 0
         },
         {
           "stock_code": "6239",
@@ -9581,6 +9539,14 @@
           "lots": 269.0
         }
       ]
+    }
+  ],
+  "stale_etfs": [
+    {
+      "etf_code": "00991A",
+      "etf_name": "主動復華未來50",
+      "data_date": "2026-08-11",
+      "trading_days_behind": 1
     }
   ]
 }

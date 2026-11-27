@@ -1,9 +1,9 @@
 {
   "date": "2026-11-24",
-  "update_time": "2026-11-24 18:28:39",
+  "update_time": "2026-11-27 11:10:27",
   "summary": {
-    "total_etfs": 16,
-    "total_changes": 106
+    "total_etfs": 14,
+    "total_changes": 94
   },
   "change_distribution": [
     {
@@ -30,11 +30,6 @@
       "etf_code": "00407A",
       "etf_name": "主動凱基台灣",
       "count": 10
-    },
-    {
-      "etf_code": "00408A",
-      "etf_name": "主動第一金優股息",
-      "count": 6
     },
     {
       "etf_code": "00410A",
@@ -75,11 +70,6 @@
       "etf_code": "00992A",
       "etf_name": "主動群益科技創新",
       "count": 3
-    },
-    {
-      "etf_code": "00994A",
-      "etf_name": "主動第一金台股優",
-      "count": 6
     },
     {
       "etf_code": "00999A",
@@ -619,66 +609,6 @@
           "old_lots": 83.0,
           "new_lots": 91.0,
           "diff": 8.0,
-          "direction": "up"
-        }
-      ]
-    },
-    {
-      "etf_code": "00408A",
-      "etf_name": "主動第一金優股息",
-      "data_date": "2026-11-23",
-      "total_changes": 6,
-      "added": [
-        {
-          "stock_code": "2303",
-          "stock_name": "聯電",
-          "market": "TW",
-          "lots": 120.0
-        }
-      ],
-      "removed": [
-        {
-          "stock_code": "3167",
-          "stock_name": "大量",
-          "market": "TW",
-          "lots": 7.0
-        }
-      ],
-      "modified": [
-        {
-          "stock_code": "4904",
-          "stock_name": "遠傳",
-          "market": "TW",
-          "old_lots": 260.0,
-          "new_lots": 270.0,
-          "diff": 10.0,
-          "direction": "up"
-        },
-        {
-          "stock_code": "3044",
-          "stock_name": "健鼎",
-          "market": "TW",
-          "old_lots": 31.0,
-          "new_lots": 40.0,
-          "diff": 9.0,
-          "direction": "up"
-        },
-        {
-          "stock_code": "2301",
-          "stock_name": "光寶科",
-          "market": "TW",
-          "old_lots": 27.0,
-          "new_lots": 47.0,
-          "diff": 20.0,
-          "direction": "up"
-        },
-        {
-          "stock_code": "6526",
-          "stock_name": "達發",
-          "market": "TW",
-          "old_lots": 6.0,
-          "new_lots": 12.0,
-          "diff": 6.0,
           "direction": "up"
         }
       ]
@@ -1319,66 +1249,6 @@
           "new_lots": 224.0,
           "diff": -65.0,
           "direction": "down"
-        }
-      ]
-    },
-    {
-      "etf_code": "00994A",
-      "etf_name": "主動第一金台股優",
-      "data_date": "2026-11-23",
-      "total_changes": 6,
-      "added": [
-        {
-          "stock_code": "2303",
-          "stock_name": "聯電",
-          "market": "TW",
-          "lots": 240.0
-        }
-      ],
-      "removed": [
-        {
-          "stock_code": "3167",
-          "stock_name": "大量",
-          "market": "TW",
-          "lots": 18.0
-        }
-      ],
-      "modified": [
-        {
-          "stock_code": "3044",
-          "stock_name": "健鼎",
-          "market": "TW",
-          "old_lots": 54.0,
-          "new_lots": 69.0,
-          "diff": 15.0,
-          "direction": "up"
-        },
-        {
-          "stock_code": "4904",
-          "stock_name": "遠傳",
-          "market": "TW",
-          "old_lots": 122.0,
-          "new_lots": 123.0,
-          "diff": 1.0,
-          "direction": "up"
-        },
-        {
-          "stock_code": "2301",
-          "stock_name": "光寶科",
-          "market": "TW",
-          "old_lots": 50.0,
-          "new_lots": 90.0,
-          "diff": 40.0,
-          "direction": "up"
-        },
-        {
-          "stock_code": "6526",
-          "stock_name": "達發",
-          "market": "TW",
-          "old_lots": 16.0,
-          "new_lots": 26.0,
-          "diff": 10.0,
-          "direction": "up"
         }
       ]
     },
@@ -9238,6 +9108,20 @@
           "lots": 207.48
         }
       ]
+    }
+  ],
+  "stale_etfs": [
+    {
+      "etf_code": "00408A",
+      "etf_name": "主動第一金優股息",
+      "data_date": "2026-11-23",
+      "trading_days_behind": 1
+    },
+    {
+      "etf_code": "00994A",
+      "etf_name": "主動第一金台股優",
+      "data_date": "2026-11-23",
+      "trading_days_behind": 1
     }
   ]
 }

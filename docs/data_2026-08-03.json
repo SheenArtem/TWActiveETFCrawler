@@ -1,6 +1,6 @@
 {
   "date": "2026-08-03",
-  "update_time": "2026-08-03 18:27:39",
+  "update_time": "2026-11-27 11:09:02",
   "summary": {
     "total_etfs": 12,
     "total_changes": 232
@@ -8187,13 +8187,6 @@
           "lots": 314.999
         },
         {
-          "stock_code": "現金/存款",
-          "stock_name": "TWD 513,401,219",
-          "market": null,
-          "weight": 10.77,
-          "lots": 0
-        },
-        {
           "stock_code": "2383",
           "stock_name": "台光電",
           "market": "TW",
@@ -8227,13 +8220,6 @@
           "market": "TW",
           "weight": 5.16,
           "lots": 96.5
-        },
-        {
-          "stock_code": "其他+負債",
-          "stock_name": "10.77%",
-          "market": null,
-          "weight": 5.0,
-          "lots": 0
         },
         {
           "stock_code": "6223",
@@ -8346,13 +8332,6 @@
           "market": "TW",
           "weight": 1.05,
           "lots": 8.0
-        },
-        {
-          "stock_code": "股票",
-          "stock_name": "93.21%",
-          "market": null,
-          "weight": 1.0,
-          "lots": 0
         },
         {
           "stock_code": "3231",
@@ -9307,6 +9286,14 @@
           "lots": 2221.0
         }
       ]
+    }
+  ],
+  "stale_etfs": [
+    {
+      "etf_code": "00404A",
+      "etf_name": "主動聯博動能50",
+      "data_date": "2026-07-31",
+      "trading_days_behind": 1
     }
   ]
 }

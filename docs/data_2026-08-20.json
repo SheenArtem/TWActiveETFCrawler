@@ -1,9 +1,9 @@
 {
   "date": "2026-08-20",
-  "update_time": "2026-08-20 18:28:22",
+  "update_time": "2026-11-27 11:09:13",
   "summary": {
-    "total_etfs": 18,
-    "total_changes": 159
+    "total_etfs": 17,
+    "total_changes": 158
   },
   "change_distribution": [
     {
@@ -15,11 +15,6 @@
       "etf_code": "00403A",
       "etf_name": "主動統一升級50",
       "count": 7
-    },
-    {
-      "etf_code": "00404A",
-      "etf_name": "主動聯博動能50",
-      "count": 1
     },
     {
       "etf_code": "00405A",
@@ -254,47 +249,6 @@
       ]
     },
     {
-      "stock_code": "2885",
-      "stock_name": "元大金",
-      "market": "TW",
-      "total_adjustments": 4,
-      "net_change": -1081.04,
-      "etf_details": [
-        {
-          "etf_code": "00404A",
-          "etf_name": "主動聯博動能50",
-          "adjustment": 27.96,
-          "new_lots": 726.96,
-          "weight": 1.37,
-          "lots": 726.96
-        },
-        {
-          "etf_code": "00406A",
-          "etf_name": "主動中信台灣收益",
-          "adjustment": -500.0,
-          "new_lots": 1788.0,
-          "weight": 0.5,
-          "lots": 1788.0
-        },
-        {
-          "etf_code": "00993A",
-          "etf_name": "主動安聯台灣",
-          "adjustment": -409.0,
-          "new_lots": 974.36,
-          "weight": 0.59,
-          "lots": 974.36
-        },
-        {
-          "etf_code": "00995A",
-          "etf_name": "主動中信台灣卓越",
-          "adjustment": -200.0,
-          "new_lots": 312.72,
-          "weight": 0.39,
-          "lots": 312.72
-        }
-      ]
-    },
-    {
       "stock_code": "6187",
       "stock_name": "萬潤",
       "market": "TW",
@@ -523,6 +477,39 @@
           "lots": 2486.0
         }
       ]
+    },
+    {
+      "stock_code": "2308",
+      "stock_name": "台達電",
+      "market": "TW",
+      "total_adjustments": 3,
+      "net_change": -165.0,
+      "etf_details": [
+        {
+          "etf_code": "00405A",
+          "etf_name": "主動富邦台灣龍耀",
+          "adjustment": -200.0,
+          "new_lots": 94.0,
+          "weight": 0.5513,
+          "lots": 94.0
+        },
+        {
+          "etf_code": "00406A",
+          "etf_name": "主動中信台灣收益",
+          "adjustment": 45.0,
+          "new_lots": 347.0,
+          "weight": 2.75,
+          "lots": 347.0
+        },
+        {
+          "etf_code": "00993A",
+          "etf_name": "主動安聯台灣",
+          "adjustment": -10.0,
+          "new_lots": 119.0,
+          "weight": 2.02,
+          "lots": 119.0
+        }
+      ]
     }
   ],
   "detailed_changes": [
@@ -622,25 +609,6 @@
           "new_lots": 700.0,
           "diff": -800.0,
           "direction": "down"
-        }
-      ]
-    },
-    {
-      "etf_code": "00404A",
-      "etf_name": "主動聯博動能50",
-      "data_date": "2026-08-19",
-      "total_changes": 1,
-      "added": [],
-      "removed": [],
-      "modified": [
-        {
-          "stock_code": "2885",
-          "stock_name": "元大金",
-          "market": "TW",
-          "old_lots": 699.0,
-          "new_lots": 726.96,
-          "diff": 27.96,
-          "direction": "up"
         }
       ]
     },
@@ -4759,13 +4727,6 @@
       "data_date": "2026-08-19",
       "holdings": [
         {
-          "stock_code": "現金/存款",
-          "stock_name": "TWD 180,712,591",
-          "market": null,
-          "weight": 11.3,
-          "lots": 0
-        },
-        {
           "stock_code": "2330",
           "stock_name": "台積電",
           "market": "TW",
@@ -4785,13 +4746,6 @@
           "market": "TW",
           "weight": 5.03,
           "lots": 26.0
-        },
-        {
-          "stock_code": "其他+負債",
-          "stock_name": "11.30%",
-          "market": null,
-          "weight": 5.0,
-          "lots": 0
         },
         {
           "stock_code": "2383",
@@ -5009,13 +4963,6 @@
           "market": "TW",
           "weight": 1.02,
           "lots": 90.0
-        },
-        {
-          "stock_code": "股票",
-          "stock_name": "84.67%",
-          "market": null,
-          "weight": 1.0,
-          "lots": 0
         },
         {
           "stock_code": "2891",
@@ -8896,13 +8843,6 @@
           "lots": 67.001
         },
         {
-          "stock_code": "其他+負債",
-          "stock_name": "3.54%",
-          "market": null,
-          "weight": 5.0,
-          "lots": 0
-        },
-        {
           "stock_code": "6274",
           "stock_name": "台燿",
           "market": "TW",
@@ -8915,13 +8855,6 @@
           "market": "TW",
           "weight": 3.85,
           "lots": 36.901
-        },
-        {
-          "stock_code": "現金/存款",
-          "stock_name": "TWD 178,087,975",
-          "market": null,
-          "weight": 3.54,
-          "lots": 0
         },
         {
           "stock_code": "2345",
@@ -9006,13 +8939,6 @@
           "market": "TW",
           "weight": 1.01,
           "lots": 39.0
-        },
-        {
-          "stock_code": "股票",
-          "stock_name": "93.00%",
-          "market": null,
-          "weight": 1.0,
-          "lots": 0
         },
         {
           "stock_code": "2303",
@@ -10275,6 +10201,14 @@
           "lots": 956.0
         }
       ]
+    }
+  ],
+  "stale_etfs": [
+    {
+      "etf_code": "00404A",
+      "etf_name": "主動聯博動能50",
+      "data_date": "2026-08-19",
+      "trading_days_behind": 1
     }
   ]
 }

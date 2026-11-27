@@ -1,6 +1,6 @@
 {
   "date": "2026-11-09",
-  "update_time": "2026-11-09 18:28:20",
+  "update_time": "2026-11-27 11:10:11",
   "summary": {
     "total_etfs": 16,
     "total_changes": 132
@@ -9742,6 +9742,14 @@
           "lots": 207.48
         }
       ]
+    }
+  ],
+  "stale_etfs": [
+    {
+      "etf_code": "00984A",
+      "etf_name": "主動安聯台灣高息",
+      "data_date": "2026-11-06",
+      "trading_days_behind": 1
     }
   ]
 }
