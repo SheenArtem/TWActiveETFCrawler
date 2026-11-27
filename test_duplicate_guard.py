@@ -1134,16 +1134,19 @@ def check_pinned_regeneration():
     shutil.copytree(docs, half / "docs")
     shutil.copytree(reports, half / "reports")
     shutil.copy(db_path, half / "t.db")
-    half_db = Database(str(half / "t.db"))
-    half_db.get_connection().execute("delete from holdings where etf_code='00996A' and date='2026-12-01'")
-    half_db.get_connection().commit()
+    half_con = Database(str(half / "t.db")).get_connection()   # get_connection() 每次都開新連線，刪除與 commit 要用同一條
+    half_con.execute("delete from holdings where etf_code='00996A' and date='2026-12-01'")
+    half_con.commit()
+    half_con.close()
     half_paths = dict(db_path=half / "t.db", docs_dir=half / "docs", reports_dir=half / "reports")
-    pinned.regenerate(all_dates[1:], ["00996A"], **half_paths)
+    half_outcome = pinned.regenerate(all_dates[1:], ["00996A"], **half_paths)
     partial = read_report(half / "docs", "2026-12-01")
     check("只補到 11-30：12-01 的報表改標「沒有新資料」，資料日期是 11-30、落後 1 個交易日",
-          partial.get("stale_etfs") == [{"etf_code": "00996A", "etf_name": "名稱00996A",
-                                         "data_date": "2026-11-30", "trading_days_behind": 1}]
-          and "00996A" not in changed(partial), f"{partial.get('stale_etfs')} changes={changed(partial)}")
+          [r["status"] for r in half_outcome] == ["unchanged", "written"]
+          and partial.get("stale_etfs") == [{"etf_code": "00996A", "etf_name": "名稱00996A",
+                                             "data_date": "2026-11-30", "trading_days_behind": 1}]
+          and "00996A" not in changed(partial),
+          f"{[(r['status'], r['problems']) for r in half_outcome]} {partial.get('stale_etfs')} changes={changed(partial)}")
 
     # 沒指定的 ETF 在 DB 裡被動過：整份不寫回，後面的日期也不處理
     con = db.get_connection()
