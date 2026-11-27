@@ -22,7 +22,7 @@ CTBC_ETF_CODES = {
     '00995A': '00653201',  # 中國信託台灣卓越成長主動式ETF基金
     '00406A': '00682450',  # 中國信託台灣收益成長主動式ETF基金（2026/6/11 掛牌）
     # 未來可以新增其他中信投信 ETF
-    # 查法：瀏覽器開 https://www.ctbcinvestments.com/Etf 點進目標 ETF，
+    # 查法：瀏覽器開 https://www.ctbcinvestments.com.tw/Etf 點進目標 ETF，
     #       網址 /Etf/<fund_id>/Combination 中的數字即為此處的值
 }
 
@@ -30,7 +30,11 @@ CTBC_ETF_CODES = {
 class CTBCScraper:
     """中信投信網站 ETF 爬蟲（使用 Playwright DOM 提取）"""
     
-    BASE_URL = "https://www.ctbcinvestments.com"
+    # 必須用 .com.tw。舊網域 www.ctbcinvestments.com 的頁面還開得起來，但前端一律呼叫
+    # .com.tw 的 API；跨網域的預檢請求（OPTIONS）被 .com.tw 前面的 Incapsula 回 302，
+    # 瀏覽器因此擋下所有 API，頁面永遠停在「資料讀取中...」、沒有「下載EXCEL」按鈕。
+    # 2026-11-04 起每個班次都因此失敗，直到 11-27 才改用 .com.tw（頁面與 API 同源，沒有預檢）。
+    BASE_URL = "https://www.ctbcinvestments.com.tw"
     DETAIL_URL = "/Etf/{fund_id}/Combination"
     
     def __init__(self):

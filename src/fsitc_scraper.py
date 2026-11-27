@@ -12,6 +12,10 @@
 
 已知風險：此 API 的欄位是 A/B/C/D 這種無語意代號，改版時容易無聲失效；
 若日後官網提供檔案下載，或在 DOM 明確標示資料日期，應改回原則路徑。
+
+回應尾端有三列不是持股的彙總列，A 欄是「現金/存款」「股票」「其他+負債」
+（B/C 欄是金額、占比與排序值），要用 market_of() 跳過。2026-11-27 以前沒有過濾，
+這三列被當成持股寫進 DB，權重合計因此長期落在 101–117%。
 """
 import requests
 import pandas as pd
@@ -19,6 +23,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from loguru import logger
 from src.utils import get_user_agent
+from src.stock_markets import market_of
 import time
 import random
 
@@ -210,7 +215,11 @@ class FSITCScraper:
                 name = item.get('B') or item.get('StockName') or item.get('Name')
                 weight_val = item.get('C') or item.get('Rate') or item.get('Weight')
                 shares_val = item.get('D') or item.get('Sheets') or item.get('Shares')
-                
+
+                # 不是股票代號的列（現金/存款、股票、其他+負債 三列彙總）不是持股
+                if code and market_of(code) is None:
+                    continue
+
                 if code:
                     # 處理數據格式
                     shares = 0

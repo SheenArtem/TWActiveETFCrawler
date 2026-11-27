@@ -18,6 +18,8 @@ scraper 會把前一交易日的內容寫成當日。防護應在寫入層擋下
 8. 首頁跨報表彙總（需要 node；找不到時跳過）：「各 ETF 近 5 日買賣明細」在來源停更時
    同一次調整不可在每個報表日重複計入；「同步買賣超」同一欄收到兩次變動時要累加
 9. 摩根 PCF `NAV Date`、野村 API `NavDate`、復華 Excel 表頭 `日期:` 的來源日期解析與非 xlsx 防呆
+10. 2026-11 靜默停更的來源：聯博 xlsx 改版（表頭「權重(%)」、代碼欄改台股代號）、
+    第一金 API 尾端的彙總列不是持股、中信持股頁的網域
 
 跑法：
     python test_duplicate_guard.py
@@ -494,6 +496,118 @@ def check_batch4_parsers():
           dl is None and not (tmp / "ETF23_20261023.xlsx").exists())
 
 
+def check_stalled_source_fixes():
+    """
+    2026-11 三個靜默停更／寫錯的來源（來源改版後 scraper 每班失敗或多寫，workflow 卻一直是綠的）：
+
+    1. 聯博 00404A：xlsx 股票表頭的權重欄從「權重」改成「權重(%)」、代碼欄從 ISIN 改成台股代號，
+       表頭要求完全相等的舊寫法從 11-11 起找不到股票表。
+    2. 第一金 00408A／00994A：API 回應尾端三列彙總（現金/存款、股票、其他+負債）被當成持股寫入。
+    3. 中信 00995A／00406A：舊網域 .com 的頁面跨網域呼叫 .com.tw 的 API 被擋，11-04 起沒有下載按鈕。
+       這個失敗條件要真的連網才重現（2026-11-27 runner 診斷 run 45921910996），這裡只釘住網域。
+    """
+    import io
+
+    try:
+        import openpyxl
+        from src.abfunds_scraper import ABFundsScraper
+    except ImportError as e:
+        results.append((SKIP, "聯博 xlsx 版面（缺套件）", str(e)[:60]))
+        print(f"  [{SKIP}] 聯博 xlsx 版面 — {str(e)[:60]}")
+    else:
+        def xlsx_bytes(rows_data):
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            for row in rows_data:
+                ws.append(row)
+            buf = io.BytesIO()
+            wb.save(buf)
+            return buf.getvalue()
+
+        class FakeXlsResponse:
+            def __init__(self, content):
+                self.content = content
+                self.headers = {"content-disposition": "attachment; filename=2026-11-26-Portfolio-Holding.xlsx"}
+
+        def ab_parse(rows_data):
+            scraper = ABFundsScraper()
+            scraper._download_xls = lambda etf_code, share_class_id: FakeXlsResponse(xlsx_bytes(rows_data))
+            return scraper.get_etf_holdings("00404A", "2026-11-27")
+
+        # 2026-11-26 實際檔案的結構（節錄）：上方的基金資產摘要也有「權重(%)」欄，不可誤認成股票表
+        new_layout = [
+            ["TW00000404A5 聯博台灣動能收益50主動式ETF"],
+            ["2026/11/26 基金持股權重"],
+            [None],
+            ["基金資產"],
+            ["項目", "市值/名目本金", "權重(%)"],
+            ["股票", "3,009,847,371.00", "88.76%"],
+            [None],
+            ["股票"],
+            ["代碼", "名稱", "股數", "市值", "權重(%)"],
+            ["2330", "台灣積體電路製造", "356,000", "763,620,000.00", "22.52%"],
+            ["2637", "慧洋海運股份有限公司", "403,000", "36,068,500.00", "1.06%"],
+            [None],
+            ["期貨"],
+            ["代碼", "名稱", "口數", "市值", "權重(%)"],
+            [None, "台股期貨12/26", "83", "655,567,200.00", "19.33%"],
+        ]
+        got = ab_parse(new_layout)
+        check("聯博：表頭「權重(%)」＋台股代號（2026-11 改版後）-> 解析出股票表",
+              [(h["stock_code"], h["shares"], h["market_value"], h["weight"]) for h in got]
+              == [("2330", 356000, 763620000.0, 22.52), ("2637", 403000, 36068500.0, 1.06)],
+              f"{[(h['stock_code'], h['shares'], h['market_value'], h['weight']) for h in got]}")
+        check("聯博：資料日期取自檔名並標 source_dated；期貨表（口數）不收",
+              bool(got) and {h["date"] for h in got} == {"2026-11-26"}
+              and all(h["source_dated"] is True for h in got) and len(got) == 2,
+              f"{sorted({(h['date'], h['source_dated']) for h in got})}，{len(got)} 列")
+
+        old_layout = [
+            ["股票"],
+            ["代碼", "名稱", "股數", "市值", "權重"],
+            ["TW0002330008", "台灣積體電路製造", 356000, 763620000, 22.52],
+            ["KYG9721M1033", "慧洋-KY", 403000, 36068500, 1.06],
+        ]
+        got_old = ab_parse(old_layout)
+        check("聯博：舊版面（表頭「權重」＋ISIN）照樣解析，KY 股查對照表",
+              [(h["stock_code"], h["shares"], h["weight"]) for h in got_old]
+              == [("2330", 356000, 22.52), ("2637", 403000, 1.06)],
+              f"{[(h['stock_code'], h['shares'], h['weight']) for h in got_old]}")
+
+    try:
+        from src.fsitc_scraper import FSITCScraper
+    except ImportError as e:
+        results.append((SKIP, "第一金 彙總列（缺套件）", str(e)[:60]))
+        print(f"  [{SKIP}] 第一金 彙總列 — {str(e)[:60]}")
+    else:
+        # 2026-11-26 查 00408A 的實際回應（節錄）：股票列 group=1，尾端三列彙總 group=4／5
+        api_rows = [
+            {"fundid": "183", "sdate": "2026-11-25", "group": "1", "A": "2330", "B": "台積電", "C": "6.20", "D": "34,500", "E": ""},
+            {"fundid": "183", "sdate": "2026-11-25", "group": "1", "A": "1216", "B": "統一", "C": "0.13", "D": "20,000", "E": ""},
+            {"fundid": "183", "sdate": "2026-11-25", "group": "4", "A": "現金/存款", "B": "TWD 319,562,130", "C": "26.69", "D": "", "E": ""},
+            {"fundid": "183", "sdate": "2026-11-25", "group": "5", "A": "股票", "B": "77.17%", "C": "1", "D": "", "E": ""},
+            {"fundid": "183", "sdate": "2026-11-25", "group": "5", "A": "其他+負債", "B": "26.69%", "C": "5", "D": "", "E": ""},
+        ]
+        fs_rows, fs_date = FSITCScraper()._parse_json_data(api_rows, "2026-11-26", "00408A")
+        check("第一金：尾端三列彙總（現金/存款、股票、其他+負債）不當成持股",
+              [(h["stock_code"], h["shares"], h["weight"]) for h in fs_rows]
+              == [("2330", 34500, 6.2), ("1216", 20000, 0.13)],
+              f"{[(h['stock_code'], h['shares'], h['weight']) for h in fs_rows]}")
+        check("第一金：資料日期仍取 sdate 並標 source_dated",
+              fs_date == "2026-11-25" and bool(fs_rows)
+              and all(h["date"] == "2026-11-25" and h["source_dated"] is True for h in fs_rows),
+              f"actual_date={fs_date}")
+
+    try:
+        from src.ctbc_scraper import CTBCScraper
+    except ImportError as e:
+        results.append((SKIP, "中信 網域（缺套件）", str(e)[:60]))
+        print(f"  [{SKIP}] 中信 網域 — {str(e)[:60]}")
+    else:
+        check("中信：持股頁走 .com.tw（.com 的頁面跨網域呼叫 API 會被擋）",
+              CTBCScraper.BASE_URL == "https://www.ctbcinvestments.com.tw", CTBCScraper.BASE_URL)
+
+
 def check_foreign_holdings():
     """
     00988A（主動統一全球創新，2026-09-03 加入）含海外成分股。三件事不能壞：
@@ -826,7 +940,7 @@ def check_holiday_dates():
     except ImportError as e:
         check("交易日曆模組存在（src/trading_calendar.py）", False, str(e)[:80])
     else:
-        closed = ["2026-01-01", "2026-02-12", "2026-02-13", "2026-02-16", "2026-02-20",
+        closed = ["2026-01-01", "2026-02-12", "2026-02-13", "2026-02-16", "2026-02-20", "2026-07-10",
                   "2026-09-25", "2026-09-28", "2026-10-09", "2026-10-23", "2026-10-26", "2026-12-25"]
         opened = ["2026-01-02", "2026-02-11", "2026-02-23", "2026-09-24", "2026-09-29"]
         wrong_closed = [d for d in closed if is_trading_day(date.fromisoformat(d))]
@@ -1245,6 +1359,9 @@ def main():
 
     print("=== 第四批來源日期解析（野村/復華）===")
     check_batch4_parsers()
+
+    print("=== 2026-11 靜默停更的來源（聯博版面／第一金彙總列／中信網域）===")
+    check_stalled_source_fixes()
 
     print("=== 海外成分股（00988A）：代號慣例／解析／名稱／單位 ===")
     check_foreign_holdings()

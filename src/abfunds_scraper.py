@@ -8,7 +8,12 @@
 xlsx 下載端點 (從官網 clientlib JS 反推)：
   https://webapi.alliancebernstein.com/v2/funds/tw/zh-tw/investor/<shareClassId>/xls?type=holdings&prec=2
 回傳 content-disposition: attachment; filename=YYYY-MM-DD-Portfolio-Holding.xlsx，
-檔案資料日期即取自該檔名。
+檔案資料日期即取自該檔名。網址加 &date=YYYY-MM-DD 可取歷史檔（回補用，scraper 只取最新一份）。
+
+檔案版面會變（2026-11-11 改版後 scraper 連續 12 個交易日找不到股票表）：
+- 股票表頭的權重欄從「權重」變成「權重(%)」，所以表頭只比對欄名開頭，不要求完全相等。
+- 「代碼」欄從 ISIN（TW0002330008）變成台股代號（2330），兩種都要收。
+- 伺服器產檔約 22 秒才回應，逾時不能設太短。
 
 注意 (與 src/allianz_scraper.py 的「安聯 Allianz」不同公司)：本檔為「聯博 AllianceBernstein」。
 """
@@ -26,6 +31,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from .config import REQUEST_DELAY_MIN, REQUEST_DELAY_MAX, MAX_RETRIES
+from .stock_markets import TW_MARKET, market_of, normalize_code
 
 
 # 聯博投信 ETF 與其 shareClassId 對照表
@@ -39,8 +45,8 @@ XLS_URL_TEMPLATE = (
 )
 PCF_PAGE_TEMPLATE = 'https://www.abfunds.com.tw/zh-tw/etfs/pcf.{share_class_id}.html'
 
-# 非台股 ISIN (KY/海外註冊但於台灣掛牌) 無法由 ISIN 還原台股代號，需人工對照。
-# 未列入者會在解析時 WARN，並暫以原始 ISIN 當代號存入 (避免遺漏導致權重不齊)。
+# 「代碼」欄是 ISIN 的舊版面才用得到：非台股 ISIN (KY/海外註冊但於台灣掛牌) 無法由 ISIN
+# 還原台股代號，需人工對照。未列入者會在解析時 WARN，並暫以原始值當代號存入 (避免遺漏導致權重不齊)。
 AB_ISIN_OVERRIDE = {
     'KYG9721M1033': '2637',  # 慧洋-KY
 }
@@ -84,12 +90,18 @@ class ABFundsScraper:
         return AB_ETF_CODES.copy()
 
     @staticmethod
-    def _isin_to_stock_code(isin: str) -> Optional[str]:
-        """台股 ISIN (TW000 + 4碼代號 + 檢查碼) 取代號；非台股查 override。"""
-        isin = (isin or '').strip()
-        if isin.startswith('TW') and len(isin) >= 9 and isin[5:9].isdigit():
-            return isin[5:9]
-        return AB_ISIN_OVERRIDE.get(isin)
+    def _to_stock_code(raw: str) -> Optional[str]:
+        """「代碼」欄 -> 台股代號；認不得時回 None。
+
+        新版面直接是台股代號 (2330)；舊版面是 ISIN (TW000 + 4碼代號 + 檢查碼)，
+        非台股 ISIN 查 override。
+        """
+        code = normalize_code(raw)
+        if market_of(code) == TW_MARKET:
+            return code
+        if code.startswith('TW') and len(code) >= 9 and code[5:9].isdigit():
+            return code[5:9]
+        return AB_ISIN_OVERRIDE.get(code)
 
     @staticmethod
     def _to_int(raw: Any) -> int:
@@ -110,7 +122,7 @@ class ABFundsScraper:
         logger.info(f"Downloading AB holdings xlsx: {url}")
         self._random_delay()
         try:
-            r = self.session.get(url, headers=self._headers(share_class_id), timeout=30, verify=False)
+            r = self.session.get(url, headers=self._headers(share_class_id), timeout=60, verify=False)
             r.raise_for_status()
             if not r.content or r.content[:2] != b'PK':
                 logger.error(f"{etf_code}: response is not a valid xlsx (magic={r.content[:4]!r})")
@@ -155,11 +167,13 @@ class ABFundsScraper:
 
         rows = list(wb[wb.sheetnames[0]].iter_rows(values_only=True))
 
-        # 定位股票持股表：表頭為「代碼/名稱/股數/市值/權重」(期貨/期權表用「口數」故排除)。
+        # 定位股票持股表：表頭為「代碼/名稱/股數/市值/權重(%)」(期貨/期權表用「口數」故排除)。
+        # 權重欄只比對開頭：改版前是「權重」、改版後是「權重(%)」。
         header_idx = None
         for i, r in enumerate(rows):
             cells = [str(c).strip() if c is not None else '' for c in r[:5]]
-            if '代碼' in cells and '名稱' in cells and '股數' in cells and '權重' in cells:
+            if ('代碼' in cells and '名稱' in cells and '股數' in cells
+                    and any(c.startswith('權重') for c in cells)):
                 header_idx = i
                 break
         if header_idx is None:
@@ -170,16 +184,16 @@ class ABFundsScraper:
         for r in rows[header_idx + 1:]:
             if not r or r[0] is None or str(r[0]).strip() == '':
                 break  # 空列代表股票段結束 (後面是期貨/期權/債券段)
-            isin = str(r[0]).strip()
+            raw_code = str(r[0]).strip()
             name = (str(r[1]).strip() if r[1] is not None else '')
             shares = self._to_int(r[2])
             market_value = self._to_float(r[3])
             weight = self._to_float(r[4])
 
-            stock_code = self._isin_to_stock_code(isin)
+            stock_code = self._to_stock_code(raw_code)
             if not stock_code:
-                logger.warning(f"AB: {etf_code} unmapped non-TW ISIN '{isin}' ({name}); storing raw ISIN as code")
-                stock_code = isin
+                logger.warning(f"AB: {etf_code} unrecognized code '{raw_code}' ({name}); storing raw value as code")
+                stock_code = raw_code
 
             holdings.append({
                 'etf_code': etf_code,
