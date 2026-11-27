@@ -11,12 +11,17 @@
         return value === 'light' || value === 'dark' ? value : null;
     }
 
-    try {
-        storage = window.localStorage;
-        preference = knownTheme(storage.getItem(storageKey));
-    } catch {
-        storage = null;
+    function readStoredPreference() {
+        if (!storage) return;
+        try {
+            preference = knownTheme(storage.getItem(storageKey));
+        } catch {
+            storage = null;
+        }
     }
+
+    try { storage = window.localStorage; } catch { storage = null; }
+    readStoredPreference();
 
     function applyTheme() {
         const theme = preference || (system?.matches ? 'dark' : 'light');
@@ -75,14 +80,18 @@
     if (system?.addEventListener) system.addEventListener('change', followSystem);
     else system?.addListener(followSystem);
 
+    window.addEventListener('pageshow', event => {
+        if (!event.persisted) return;
+        readStoredPreference();
+        applyTheme();
+    });
+
     window.addEventListener('storage', event => {
         if (event.key !== storageKey && event.key !== null) return;
         if (event.storageArea && event.storageArea !== storage) return;
         preference = knownTheme(event.newValue);
-        if (storage && event.storageArea === storage) {
-            // A newer choice may already have been saved while this event was queued.
-            try { preference = knownTheme(storage.getItem(storageKey)); } catch { storage = null; }
-        }
+        // A newer choice may already have been saved while this event was queued.
+        if (event.storageArea === storage) readStoredPreference();
         applyTheme();
     });
 })();

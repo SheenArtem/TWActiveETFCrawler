@@ -5,6 +5,10 @@
   --teal: #086354;
   --brand: #143c38;
   --deep: #104d46;
+  --on-deep: #fff;
+  --on-deep-muted: #d3e9e3;
+  --coverage-track: #396b63;
+  --mint: #a2dcae;
   --line: #d9e3e5;
   --wash: #f4f7f8;
   --surface: #fff;
@@ -12,7 +16,7 @@
   --hover: #f1f7f5;
   --tint: #e6f3ee;
   --control-line: #778e8a;
-  --tint-line: #74998a;
+  --tint-line: #6d8e80;
   --on-action: #fff;
   --action-hover: #104d46;
   --focus: #2877a6;
@@ -24,7 +28,7 @@
   --plot-up: #ad5245;
   --plot-down: #287e70;
   --plot-both: #677887;
-  --plot-flat: #829296;
+  --plot-flat: #7d8d91;
   --plot-unknown: #856d41;
   --scrim: #16343270;
   --shadow: #102a2926;
@@ -124,9 +128,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .topbar { min-height: 72px; display: flex; align-items: center; gap: clamp(14px, 2vw, 32px); }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--brand); font-weight: 800; font-size: 1.15rem; letter-spacing: -.045em; text-decoration: none; white-space: nowrap; }
 .brand-mark { display: inline-flex; justify-content: center; align-items: end; gap: 3px; width: 35px; height: 35px; padding: 8px 6px; border-radius: 9px; background: var(--deep); }
-.brand-mark i { width: 4px; height: 8px; background: #e4f6ec; border-radius: 1px; }
+.brand-mark i { width: 4px; height: 8px; background: var(--on-deep-muted); border-radius: 1px; }
 .brand-mark i:nth-child(2) { height: 13px; }
-.brand-mark i:nth-child(3) { height: 19px; background: #a4d9a0; }
+.brand-mark i:nth-child(3) { height: 19px; background: var(--mint); }
 .primary-nav { display: flex; align-self: stretch; gap: clamp(12px, 1.4vw, 24px); }
 .primary-nav a { display: inline-flex; align-items: center; color: var(--muted); white-space: nowrap; border-bottom: 3px solid transparent; margin-top: 3px; padding: 0 2px; text-decoration: none; font-size: .94rem; font-weight: 600; }
 .primary-nav a:hover, .primary-nav a[aria-current] { color: var(--teal); }
@@ -160,14 +164,14 @@ select:disabled { cursor: default; color: var(--muted); }
 .title-row p, .detail-header p { color: var(--muted); margin-top: 6px; }
 .kicker, .eyebrow { color: var(--teal); font-size: .87rem; font-weight: 700; }
 .summary-grid { display: grid; grid-template-columns: minmax(260px, 1.07fr) minmax(0, 1.9fr); gap: 16px; margin-bottom: 22px; }
-.coverage { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; color: #fff; background: var(--deep); padding: 19px 24px; border-radius: var(--radius); text-decoration: none; align-content: center; }
+.coverage { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; color: var(--on-deep); background: var(--deep); padding: 19px 24px; border-radius: var(--radius); text-decoration: none; align-content: center; }
 .coverage-label { font-size: .92rem; font-weight: 600; }
 .coverage-number { align-self: center; grid-column: 1; font-size: 2.05rem; font-weight: 700; line-height: 1.12; letter-spacing: -.045em; }
-.coverage-number small { color: #d3e9e3; font-size: 1rem; font-weight: 550; letter-spacing: normal; }
-.coverage-more { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: #e2f6ed; font-size: .875rem; text-decoration: underline; text-underline-offset: 3px; }
+.coverage-number small { color: var(--on-deep-muted); font-size: 1rem; font-weight: 550; letter-spacing: normal; }
+.coverage-more { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--on-deep); font-size: .875rem; text-decoration: underline; text-underline-offset: 3px; }
 .coverage-meter { grid-column: 1 / -1; display: flex; gap: 3px; height: 5px; margin-top: 3px; }
-.coverage-meter span { height: 100%; flex: 1; border-radius: 1px; background: #396b63; }
-.coverage-meter span.on { background: #a2dcae; }
+.coverage-meter span { height: 100%; flex: 1; border-radius: 1px; background: var(--coverage-track); }
+.coverage-meter span.on { background: var(--mint); }
 .metrics { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 15px 0; }
 .metric { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 4px clamp(12px, 2vw, 28px); border-right: 1px solid var(--line); text-decoration: none; color: var(--ink); }
 .metric:last-child { border: none; }
