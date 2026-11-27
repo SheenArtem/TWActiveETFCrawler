@@ -173,8 +173,9 @@ class HoldingsAnalyzer:
         那個分支直接跳過，落後一天的 ETF 就永遠不會出現在變動報表裡。
         持股總覽已在 ReportManager 逐檔回退，這裡是另一半。
 
-        代價：來源某天沒有前進時（歷史模擬中信 8 次、富邦 3 次），該檔會以同一個資料
-        日期再被報一次。重複顯示比整檔消失好，且持股卡片上的 data_date 會標出實際日期。
+        代價：來源某天沒有前進時（歷史模擬中信 8 次、富邦 3 次），這裡會以同一個資料日期
+        再回一次同樣的變動。報表不會重列它們：ReportManager.generate_all_reports() 會拿上一份
+        報表的資料日期比對，把沒有新資料的 ETF 改列在「今日沒有新資料」（find_stale_etfs）。
 
         Args:
             etf_codes: ETF 代碼列表
@@ -214,20 +215,37 @@ class HoldingsAnalyzer:
         
         return self.detect_changes_batch(etf_codes, current_date)
     
-    def generate_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str) -> str:
+    @staticmethod
+    def _stale_lines(stale_etfs: Optional[List[dict]]) -> List[str]:
+        """「今日沒有新資料的 ETF」的文字列（純文字報告用）；沒有就回空串列。"""
+        if not stale_etfs:
+            return []
+        lines = [f"今日沒有新資料的 ETF ({len(stale_etfs)})，變動不重複列出:"]
+        for i, etf in enumerate(stale_etfs):
+            prefix = "├─" if i < len(stale_etfs) - 1 else "└─"
+            lines.append(
+                f"  {prefix} {etf['etf_code']} {etf['etf_name']}：資料日期 {etf['data_date']}"
+                f"（落後 {etf['trading_days_behind']} 個交易日）"
+            )
+        lines.append("")
+        return lines
+
+    def generate_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str,
+                        stale_etfs: Optional[List[dict]] = None) -> str:
         """
         生成變動報告
-        
+
         Args:
             changes_dict: ETF代碼 -> 變動列表的字典
             date: 報告日期
-            
+            stale_etfs: 自上一份報表以來沒有新資料的 ETF（ReportManager.find_stale_etfs 的回傳值）
+
         Returns:
             str: 格式化的報告文字
         """
         if not changes_dict:
-            return f"\n=== {date} ETF成分股變動報告 ===\n\n無變動\n"
-        
+            return "\n".join([f"\n=== {date} ETF成分股變動報告 ===\n", "無變動", ""] + self._stale_lines(stale_etfs))
+
         report_lines = [
             f"\n{'='*60}",
             f"=== {date} ETF成分股變動報告 ===",
@@ -289,28 +307,53 @@ class HoldingsAnalyzer:
             
             total_changes += len(changes)
         
+        report_lines.extend(self._stale_lines(stale_etfs))
+
         # 總結
         report_lines.append(f"總計：處理 {len(changes_dict)} 個ETF，發現 {total_changes} 筆變動")
         report_lines.append(f"{'='*60}\n")
-        
+
         return "\n".join(report_lines)
 
-    def generate_markdown_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str) -> str:
+    @staticmethod
+    def _stale_markdown(stale_etfs: Optional[List[dict]]) -> List[str]:
+        """「今日沒有新資料的 ETF」的 Markdown 區塊；沒有就回空串列。"""
+        if not stale_etfs:
+            return []
+        lines = [
+            "### ⚠️ 今日沒有新資料的 ETF\n",
+            "這些 ETF 的來源自上一份報表以來沒有更新，持股停在所列日期，變動不重複列出。\n",
+            "| ETF | 名稱 | 資料日期 | 落後交易日 |",
+            "|-----|------|----------|-----------|",
+        ]
+        for etf in stale_etfs:
+            lines.append(
+                f"| {etf['etf_code']} | {etf['etf_name']} | {etf['data_date']} | {etf['trading_days_behind']} |"
+            )
+        lines.append("")
+        return lines
+
+    def generate_markdown_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str,
+                                 stale_etfs: Optional[List[dict]] = None) -> str:
         """
         生成 Markdown 格式的變動報告（提案 A：簡潔列表式）
-        
+
         Args:
             changes_dict: ETF代碼 -> 變動列表的字典
             date: 報告日期
-            
+            stale_etfs: 自上一份報表以來沒有新資料的 ETF（ReportManager.find_stale_etfs 的回傳值）
+
         Returns:
             str: Markdown 格式的報告
         """
         from datetime import datetime, timedelta
-        
+
         if not changes_dict:
-            return f"# ETF 持股變動追蹤 📊\n\n> 最後更新：{date}\n\n## {date} 變動摘要\n\n**本日無變動**\n"
-        
+            return "\n".join(
+                [f"# ETF 持股變動追蹤 📊\n\n> 最後更新：{date}\n\n## {date} 變動摘要\n\n**本日無變動**\n"]
+                + self._stale_markdown(stale_etfs)
+            )
+
         total_changes = sum(len(changes) for changes in changes_dict.values())
         # 台北时间 (UTC+8)
         current_time = (datetime.utcnow() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S')
@@ -371,7 +414,9 @@ class HoldingsAnalyzer:
                 md_lines.append("")
             
             md_lines.append("</details>\n")
-        
+
+        md_lines.extend(self._stale_markdown(stale_etfs))
+
         # 添加說明
         md_lines.append("---\n")
         md_lines.append("### 📝 說明\n")

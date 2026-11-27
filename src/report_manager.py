@@ -1,13 +1,16 @@
 """
 報告管理模組 - 統一管理所有格式的報告生成
 """
+from datetime import date as date_type
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 import json
+import re
 from loguru import logger
 from .holdings_analyzer import HoldingsAnalyzer, HoldingChange
 from .report_generator import HTMLReportGenerator
 from .stock_markets import market_of
+from .trading_calendar import trading_days_between
 
 
 class ReportManager:
@@ -86,30 +89,98 @@ class ReportManager:
             })
         return etf_holdings
 
+    def previous_report_data_dates(self, date: str) -> Dict[str, str]:
+        """
+        前一份已發布報表裡各 ETF 的資料日期。
+
+        讀 docs 目錄中日期早於 date 的最新一份 `data_<日期>.json`。沒有前一份、或檔案讀不了時回空字典
+        （等於不把任何 ETF 當成沒更新）。
+        """
+        earlier = sorted(
+            m.group(1) for p in self.docs_dir.glob("data_*.json")
+            if (m := re.fullmatch(r"data_(\d{4}-\d{2}-\d{2})\.json", p.name)) and m.group(1) < date
+        )
+        if not earlier:
+            return {}
+        previous_file = self.docs_dir / f"data_{earlier[-1]}.json"
+        try:
+            payload = json.loads(previous_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning(f"Cannot read previous report {previous_file} ({type(e).__name__}: {e}); "
+                           f"no ETF will be treated as not updated")
+            return {}
+        return {
+            e["etf_code"]: e["data_date"]
+            for e in payload.get("etf_holdings", []) if e.get("data_date")
+        }
+
+    @staticmethod
+    def find_stale_etfs(etf_holdings: List[dict], previous_data_dates: Dict[str, str], date: str) -> List[dict]:
+        """
+        自上一份報表以來沒有新資料的 ETF：這一份的資料日期與上一份報表相同。
+
+        這些 ETF 的持股照樣留在持股總覽（最後一次抓到的內容），但它們的變動已經在資料日期
+        第一次出現的那份報表列過，不再重列——否則來源停更幾週，同一批買賣就每天被報成當天的變動
+        （2026-11 中信、聯博、兆豐停更期間，每日報表有 25～57% 的變動是這種舊資料）。
+        固定落後一天的來源（第一金、00988A）每天資料日期都會前進，不在此列。
+
+        Returns:
+            List[dict]: 每檔含 etf_code / etf_name / data_date / trading_days_behind（資料日期落後報表日期幾個交易日）
+        """
+        report_day = date_type.fromisoformat(date)
+        stale = []
+        for etf in etf_holdings:
+            data_date = etf.get('data_date')
+            if data_date and previous_data_dates.get(etf['etf_code']) == data_date:
+                stale.append({
+                    'etf_code': etf['etf_code'],
+                    'etf_name': etf.get('etf_name', etf['etf_code']),
+                    'data_date': data_date,
+                    'trading_days_behind': trading_days_between(date_type.fromisoformat(data_date), report_day),
+                })
+        return stale
+
     def generate_all_reports(
         self,
         changes_dict: Dict[str, List[HoldingChange]],
         date: str,
-        append_txt: bool = False
+        append_txt: bool = False,
+        previous_data_dates: Optional[Dict[str, str]] = None
     ):
         """
         生成所有格式的報告
-        
+
         Args:
             changes_dict: ETF代碼 -> 變動列表的字典
             date: 報告日期
             append_txt: 是否追加到 TXT 報告（用於同一天多次更新）
+            previous_data_dates: 上一份報表各 ETF 的資料日期，用來判斷哪些 ETF 沒有新資料；
+                不給就讀 docs 目錄裡的前一份報表（重生歷史報表的工具要自己給，見 scripts/pinned_reports.py）
         """
         if not changes_dict:
             logger.info("No changes to report")
             return
-        
+
         # 取得 ETF 資訊
         etf_info = self.db.get_active_etfs()
         etf_info_dict = {e['etf_code']: e['etf_name'] for e in etf_info}
-        
+
+        # 持股總覽先組好：要靠各檔的 data_date 找出自上一份報表以來沒有新資料的 ETF，
+        # 它們的變動不重列（見 find_stale_etfs），三種格式的報告與索引都用過濾後的變動。
+        etf_holdings = self.build_etf_holdings(etf_info_dict, date)
+        if previous_data_dates is None:
+            previous_data_dates = self.previous_report_data_dates(date)
+        stale_etfs = self.find_stale_etfs(etf_holdings, previous_data_dates, date)
+        if stale_etfs:
+            stale_codes = {e['etf_code'] for e in stale_etfs}
+            changes_dict = {code: changes for code, changes in changes_dict.items() if code not in stale_codes}
+            logger.info(
+                "No new data since the previous report (changes not repeated): "
+                + ", ".join(f"{e['etf_code']}@{e['data_date']}" for e in stale_etfs)
+            )
+
         # 1. 生成純文字報告（向後兼容）
-        txt_report = self.analyzer.generate_report(changes_dict, date)
+        txt_report = self.analyzer.generate_report(changes_dict, date, stale_etfs)
         txt_file = self.reports_dir / f"changes_{date}.txt"
         mode = 'a' if append_txt and txt_file.exists() else 'w'
         with open(txt_file, mode, encoding='utf-8') as f:
@@ -119,7 +190,7 @@ class ReportManager:
         logger.info(f"TXT report saved to: {txt_file}")
         
         # 2. 生成 Markdown 報告
-        md_report = self.analyzer.generate_markdown_report(changes_dict, date)
+        md_report = self.analyzer.generate_markdown_report(changes_dict, date, stale_etfs)
         md_file = self.reports_dir / f"changes_{date}.md"
         
         # Markdown 不追加，每次都完整生成
@@ -134,13 +205,12 @@ class ReportManager:
         logger.info(f"Markdown report saved to: {md_file}")
         
         # 3. 生成 HTML 報告（GitHub Pages）
-        etf_holdings = self.build_etf_holdings(etf_info_dict, date)
-
         html_file = self.html_generator.generate_daily_report(
-            changes_dict, 
-            date, 
+            changes_dict,
+            date,
             etf_info_dict,
-            etf_holdings
+            etf_holdings,
+            stale_etfs
         )
         logger.info(f"HTML report saved to: {html_file}")
         

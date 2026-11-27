@@ -35,7 +35,7 @@
 | 野村 Nomura | `src/nomura_scraper.py` | API（SPA 無檔案下載） | ✅ API `FundAsset.NavDate`／股票表 `NavDate` | 跳過 | API 嚴格遵守 `SearchDate`（未發布／非交易日 `Table` 回空），且兩處皆帶 `NavDate`（`YYYY/MM/DD`）；2026-10-27 起改讀 `NavDate` 並標 `source_dated`（缺漏或不一致時退回請求日、維持防護） |
 | 復華 FHTrust | `src/fhtrust_scraper.py` | 下載投資組合 Excel | ✅ Excel 表頭 `日期: YYYY/MM/DD` | 跳過 | URL 帶 `YYYYMMDD` 且嚴格遵守：未發布或非交易日回 12 bytes 純文字 `'查無資料'`（2026-10-27 起檢查 `PK` 檔頭，不存壞檔）；有效檔由第 3 列取 `日期:` 並標 `source_dated`，表頭依 `證券代號` 動態定位。網址裡的日期就是資料日期，查歷史直接換日期 |
 | 國泰 Cathay | `src/cathay_scraper.py` | API | ❌ **無法取得** | 仍防護 | 見下方「國泰 API 無法信任日期」 |
-| 兆豐 Mega | `src/megafunds_scraper.py` | 解析網頁 DOM（WebForms postback） | ✅ 黏在金額欄位文字前：`2026/08/07 每基數實際申購總價金(元)`，以「日期＋每基數」為錨（同台新樣態） | 跳過 | 換基金要帶 `__VIEWSTATE` postback（`fund_id=23`＝00996A），**只能回送頁面實際有的 hidden**；頁面最顯眼的「查詢日期」是 PCF 適用日（下一營業日），絕不可用。`qdt` 填適用日（`YYYY/MM/DD`）可查歷史，回補用（scraper 只取最新一份）。2026-09-21 起前端 Akamai 依來源 IP 擋 GitHub runner（整個網域 403，開發機正常），見下方「兆豐：GitHub runner 被 Akamai 依來源 IP 擋」 |
+| 兆豐 Mega | `src/megafunds_scraper.py` | 解析網頁 DOM（WebForms postback） | ✅ 黏在金額欄位文字前：`2026/08/07 每基數實際申購總價金(元)`，以「日期＋每基數」為錨（同台新樣態） | 跳過 | 換基金要帶 `__VIEWSTATE` postback（`fund_id=23`＝00996A），**只能回送頁面實際有的 hidden**；頁面最顯眼的「查詢日期」是 PCF 適用日（下一營業日），絕不可用。`qdt` 填適用日（`YYYY/MM/DD`）可查歷史：`get_holdings_for_data_date()` 查基準日的下一個交易日，頁面標的基準日不符就不收（每日班次的 `get_etf_holdings()` 只取最新一份）。2026-09-21 起前端 Akamai 依來源 IP 擋 GitHub runner（整個網域 403，開發機正常），**改由開發機的排程每天補**，見下方「兆豐：GitHub runner 被 Akamai 依來源 IP 擋」 |
 | 凱基 KGI | `src/kgi_scraper.py` | 解析網頁 DOM（partial view） | ✅ `(2026/08/07)每受益權單位淨資產價值` 括號內即基準日 | 跳過 | 持股表由 `/Fund/RedemptionVC` 回 HTML 片段（`fundID=J024`＝00407A）；hidden `#DataDate` 是適用日，絕不可用 |
 | 永豐 SinoPac | `src/sinopac_scraper.py` | 解析網頁 DOM（SSR） | ✅ 頁面標「資料日期：YYYY/MM/DD」 | 跳過 | 官網**有** xlsx 下載卻不採用，見下方「已知例外：永豐的下載檔案拿不到最新」；`qdate`／`hDate` 是適用日，絕不可用；頁面同時輸出桌機版與手機版表格，只能取桌機版 |
 
@@ -114,11 +114,37 @@ Azure AS8075、美國）：
 連 `robots.txt` 都被擋，代表請求在 Akamai 邊緣就被拒、沒到兆豐主機。**換 client 結果不變、換網路結果就變**，
 所以是依來源 IP 封鎖，改 UA、補標頭、改用 Playwright 都無效。
 
+- 問題出在 GitHub 這一側：抓取是在 runner 上跑的。Cloudflare Workers 只負責準時觸發 `workflow_dispatch`，
+  本身不抓任何投信（它的出口 IP 會不會被兆豐擋沒有測過）。
 - 還沒分辨只擋雲端／Azure IP，還是擋所有非台灣 IP；這決定海外代理能不能用，台灣出口 IP 兩種情況都可行。
 - 向兆豐詢問時附上 `Reference #`，他們可以用它查到是哪一條規則擋的。
 - 正式班次的 log 只有狀態碼；要知道是誰擋的，得在 runner 上印出回應標頭與內文。
   找海外對照點前先確認它的出口 IP（例如打 `ipinfo.io/json`）：這次 agent 的網頁抓取工具實際走開發機的網路，
   一度被誤當成海外對照。
+
+### 現行做法：開發機的排程每天補（2026-11-27 起）
+
+每日班次照樣會試抓兆豐、照樣拿到 403（log 有一行 ERROR，無害）。真正的資料由開發機補：
+
+| 項目 | 內容 |
+| --- | --- |
+| 排程 | Windows 工作排程器 `TWActiveETFCrawler-MegaBackfill`，每天 19:10 與 22:10（台北時間；主班次 18:25 跑完之後。錯過會在下次能跑時補跑；要登入著才會跑） |
+| 跑什麼 | `scripts/local_megafunds_job.ps1`：等每日班次結束 → 專用 clone 同步到 `origin/main` → `scripts/backfill_megafunds.py` → 有變更就 commit、push 到 `main`（被拒就重新同步重做，最多三次） |
+| 補哪幾天 | DB 裡 00996A 最後一個資料日期之後，到兆豐頁面最新基準日為止的每個交易日；開發機關機幾天，下次開機會一次補齊（上限 40 個交易日） |
+| 報表 | 用 `scripts/pinned_reports.py` 重生這幾天已發布的報表：只有 00996A 換成新資料，其他 ETF 固定在發布當時的資料日期 |
+| 專用 clone | `%LOCALAPPDATA%\TWActiveETFCrawler\megafill\repo`（淺層 clone，帶標記檔 `.megafill-clone`；job 只在有標記檔的目錄裡動作，因為它會 `git reset --hard`）。**不要在那裡開發** |
+| 紀錄 | `%LOCALAPPDATA%\TWActiveETFCrawler\megafill\logs\megafill-YYYY-MM.log`；`Get-ScheduledTaskInfo -TaskName TWActiveETFCrawler-MegaBackfill` 看上次結果 |
+| 建立／重建 | 在開發用的 repo 跑 `pwsh -File scripts/setup_local_megafunds_job.ps1`（重複執行是安全的；憑證用這台電腦既有的 git 與 gh 登入狀態） |
+| 手動補 | `pwsh -File "$env:LOCALAPPDATA\TWActiveETFCrawler\megafill\repo\scripts\local_megafunds_job.ps1"`；只想看要補哪幾天：在 repo 裡 `python scripts/backfill_megafunds.py --dry-run` |
+| 移除 | `Unregister-ScheduledTask -TaskName TWActiveETFCrawler-MegaBackfill -Confirm:$false`，再刪掉 `megafill` 資料夾 |
+
+- 主班次發布的當日報表會先把 00996A 列在「今日沒有新資料」，排程補完、重生報表後消失（約 45 分鐘）。
+- 警報：每日班次最後一步的停更檢查不再忽略 00996A。平常它在那裡是落後 1 個交易日；開發機連續 3 個
+  交易日沒補到，班次就變紅、GitHub 寄信。開發機要長時間關機時，把 repo 變數 `STALE_IGNORE` 設成 `00996A`。
+- 開發機與 runner 同時 push 會撞：DB 是 binary，後 push 的那一邊會被拒。job 會先等每日班次結束再動手，
+  被拒就重新同步、整個重做；runner 那一邊被拒則是那個班次失敗（後備班次會再跑）。
+- 換一台電腦：在新電腦 clone repo、確認 `git push` 與 `gh` 能用，跑一次 `setup_local_megafunds_job.ps1`；
+  舊電腦照「移除」做。兩台同時跑不會壞資料（後跑的那台會發現沒有要補的），但沒有必要。
 
 ## 中信：舊網域的頁面沒有資料
 

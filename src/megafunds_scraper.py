@@ -18,6 +18,7 @@ WebForms，預設顯示清單裡的第一檔基金，要換基金必須帶 `__VI
 """
 
 import re
+from datetime import date as date_type
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -25,6 +26,7 @@ import urllib3
 from bs4 import BeautifulSoup
 from loguru import logger
 
+from src.trading_calendar import next_trading_day
 from src.utils import get_user_agent
 
 
@@ -85,11 +87,45 @@ class MegaFundsScraper:
 
         return holdings
 
-    def _fetch_fund_page(self, etf_code: str, fund_id: str) -> Optional[BeautifulSoup]:
+    def get_holdings_for_data_date(self, etf_code: str, data_date: str) -> List[Dict[str, Any]]:
+        """取指定持股基準日的清單（回補用，見 scripts/backfill_megafunds.py）
+
+        頁面的「查詢日期」（`qdt`）是 PCF 適用日，所以要拿基準日 D 的持股，得查 D 的下一個交易日。
+        頁面自己標的基準日不等於 data_date 時回空串列：寧可缺一天，也不把別天的內容寫成這一天。
+
+        Args:
+            etf_code: ETF 代碼（例如 00996A）
+            data_date: 持股基準日 (YYYY-MM-DD)
+
+        Returns:
+            List[Dict]: 持股明細列表（每列的 date 都是 data_date、source_dated=True）；拿不到時為空
+        """
+        fund_id = MEGA_ETF_CODES.get(etf_code)
+        if not fund_id:
+            logger.error(f"Mega: unknown ETF code {etf_code} (not in MEGA_ETF_CODES)")
+            return []
+
+        applicable = next_trading_day(date_type.fromisoformat(data_date)).strftime('%Y/%m/%d')
+        soup = self._fetch_fund_page(etf_code, fund_id, qdt=applicable)
+        if soup is None:
+            return []
+
+        actual_date, source_dated = self._extract_data_date(soup, data_date)
+        if not source_dated or actual_date != data_date:
+            logger.warning(
+                f"Mega: qdt={applicable} returned data date {actual_date} "
+                f"(source_dated={source_dated}), expected {data_date}; nothing returned for {etf_code}"
+            )
+            return []
+        return self._parse_html_table(soup, actual_date, etf_code, True)
+
+    def _fetch_fund_page(self, etf_code: str, fund_id: str, qdt: str = '') -> Optional[BeautifulSoup]:
         """GET 取 VIEWSTATE，再 POST 切換到指定基金
 
         只回送頁面上實際存在的 hidden 欄位。多送 `__EVENTTARGET` 之類頁面沒有的欄位
         會讓 ASP.NET 把請求丟回首頁（2026-08-09 實測），拿到的頁面就沒有持股表。
+
+        qdt 是頁面的「查詢日期」＝PCF 適用日（YYYY/MM/DD）；留空取最新一份。
         """
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         logger.info(f"Fetching Mega holdings for {etf_code} (fund_id={fund_id})")
@@ -112,7 +148,7 @@ class MegaFundsScraper:
             f'{self.CTL_PREFIX}category_id': '',
             f'{self.CTL_PREFIX}fund_id': fund_id,
             # qdt（查詢日期）留空＝取最新一份 PCF，其基準日為最近交易日
-            f'{self.CTL_PREFIX}qdt': '',
+            f'{self.CTL_PREFIX}qdt': qdt,
             f'{self.CTL_PREFIX}button1': '查 詢',
         }
 

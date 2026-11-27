@@ -19,27 +19,20 @@
 import os
 import sqlite3
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.trading_calendar import is_trading_day, last_trading_day  # noqa: E402
+from src.trading_calendar import last_trading_day, trading_days_between  # noqa: E402
 
 DB_PATH = ROOT / "data" / "etf_holdings.db"
 
 
 def trading_days_behind(latest: str, today: date) -> int:
     """latest（YYYY-MM-DD）之後、到不晚於 today 的最近一個交易日為止，共有幾個交易日。"""
-    end = last_trading_day(today)
-    day = date.fromisoformat(latest) + timedelta(days=1)
-    behind = 0
-    while day <= end:
-        if is_trading_day(day):
-            behind += 1
-        day += timedelta(days=1)
-    return behind
+    return trading_days_between(date.fromisoformat(latest), last_trading_day(today))
 
 
 def find_stale(db_path, today: date, threshold: int) -> list:
