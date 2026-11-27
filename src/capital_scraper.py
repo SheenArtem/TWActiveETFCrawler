@@ -39,7 +39,10 @@ from .config import (
 CAPITAL_ETF_CODES = {
     '00982A': '399',  # 群益台灣精選強棒
     '00992A': '500',  # 群益科技創新
+    '00415A': '504',  # 群益台灣核心50主動式ETF基金（2026/10/20 掛牌）
     # 未來可以新增其他群益證券 ETF
+    # 查法：POST /CFWeb/api/etf/product（body {}）回全部 ETF 的 fundId 與 etfNo；
+    #       再用 buyback API 回應的 data.pcf.fundName 核對基金全名
 }
 
 
