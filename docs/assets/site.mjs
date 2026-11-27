@@ -95,6 +95,14 @@ async function extendSearch(){
   updateSearch();
 }
 
+function syncPicker(index,date) {
+  const picker=$('report-date');
+  const key=index.join('|');
+  if(key!==datesKey){picker.replaceChildren(...index.map(day=>new Option(day,day)));datesKey=key;}
+  picker.disabled=false;
+  picker.value=date;
+}
+
 function setChrome(ctx) {
   const current = ctx.view==='etf'?'funds':ctx.view==='stock'?'overview':ctx.view;
   document.querySelectorAll('a[data-view]').forEach(a=>{
@@ -103,10 +111,6 @@ function setChrome(ctx) {
     if (view===current) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current');
   });
   document.querySelector('[data-home]').href=ctx.href({view:'overview',date:ctx.index[0],range:1,page:null,sort:null,filter:null});
-  const picker=$('report-date');
-  const key=ctx.index.join('|');
-  if(key!==datesKey){picker.replaceChildren(...ctx.index.map(day=>new Option(day,day)));datesKey=key;}
-  picker.disabled=false;picker.value=ctx.day.date;
   $('edition').innerHTML=ctx.day.date===ctx.index[0]? '最新一期' : `歷史報表 <a href="${ctx.href({date:ctx.index[0],page:null})}">前往最新一期</a>`;
   document.title=`${names[ctx.view]} · ${ctx.day.date} · 主動 ETF 觀測站`;
 }
@@ -114,8 +118,9 @@ function setChrome(ctx) {
 function returnPosition(position,takeFocus){
   requestAnimationFrame(()=>{
     if (position?.focus) {
-      const el=[...document.querySelectorAll('main a,main button,main select')].find(el=>focusKey(el)===position.focus);
+      const el=document.getElementById(position.focus) || [...document.querySelectorAll('main a,main button,main select')].find(el=>focusKey(el)===position.focus);
       if(el) el.focus({preventScroll:true});
+      else if(takeFocus) $('workspace').focus({preventScroll:true});
     } else if(takeFocus) $('workspace').focus({preventScroll:true});
     if(position?.y!=null) window.scrollTo(0,position.y);
   });
@@ -137,8 +142,11 @@ async function render({position=null,takeFocus=false}={}) {
   let index=[];
   try {
     index=await getIndex();
+    if(ticket!==revision) return;
     if(!index.length) throw new Error('尚無可讀取的報表。');
     const date=params.get('date') || index[0];
+    syncPicker(index,date);
+    if(!before || before.day.date!==date) $('edition').textContent='';
     if(!index.includes(date)) throw new Error('查無這個日期的報表。');
     const range=allowedRange(params.get('range')), href=patch=>link(params,date,patch);
     const day=await getDay(date);
@@ -183,7 +191,7 @@ function navigate(url){
   const old=new URL(location.href);
   const sameDate=(old.searchParams.get('date')||context?.day.date)===(dest.searchParams.get('date')||context?.day.date);
   const sameView=(old.searchParams.get('view')||'overview')===(dest.searchParams.get('view')||'overview') && old.searchParams.get('code')===dest.searchParams.get('code');
-  const focus=focusKey(document.activeElement);
+  const focus=$('search-dialog').open ? 'open-search' : focusKey(document.activeElement);
   const previous={y:window.scrollY,focus};
   history.replaceState(previous,'',location.href);
   history.pushState({},'',dest);

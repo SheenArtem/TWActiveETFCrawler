@@ -1,9 +1,12 @@
 """Index the two source dates for published reports that predate schema version 2."""
+from contextlib import closing
 from datetime import date, timedelta
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
+from tempfile import mkstemp
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -13,7 +16,7 @@ from src.trading_calendar import last_trading_day
 def build_baselines(reports_dir, database):
     previous = {}
     last = {}
-    with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as connection:
+    with closing(sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True)) as connection:
         for code, source_date in connection.execute(
             "SELECT DISTINCT etf_code, date FROM holdings ORDER BY etf_code, date"
         ):
@@ -48,5 +51,11 @@ if __name__ == "__main__":
     destination.parent.mkdir(parents=True, exist_ok=True)
     # One line per date keeps the archive compact and corrections reviewable.
     entries = [json.dumps(day) + ":" + json.dumps(row, separators=(",", ":")) for day, row in payload.items()]
-    with destination.open("w", encoding="utf-8", newline="\n") as out:
-        out.write("{\n" + ",\n".join(entries) + "\n}\n")
+    descriptor, name = mkstemp(dir=destination.parent, prefix=".report-baselines-", suffix=".tmp")
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as out:
+            out.write("{\n" + ",\n".join(entries) + "\n}\n")
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)

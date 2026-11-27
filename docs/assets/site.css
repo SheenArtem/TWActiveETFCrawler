@@ -77,6 +77,7 @@ select { max-width: 100%; appearance: none; background-color: white; background-
 .metric:hover { background: #f2f8f5; }
 .metric span { color: var(--muted); font-size: .93rem; font-weight: 580; }
 .metric strong { font-size: clamp(1.65rem, 3vw, 2.2rem); line-height: 1.25; letter-spacing: -.045em; }
+.metric-value { display: grid; }
 .metric small { font-size: .78rem; color: var(--muted); }
 .board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 290px); gap: 20px; align-items: start; }
 .panel { min-width: 0; background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(15px, 2vw, 24px); }
@@ -116,6 +117,8 @@ select { max-width: 100%; appearance: none; background-color: white; background-
 .plain-button { border: 0; border-radius: 5px; background: transparent; padding: 6px 8px; color: var(--teal); }
 .direction-plot { display: flex; gap: 2px; height: 11px; border-radius: 4px; overflow: hidden; background: #eff4f3; margin-block: 16px 10px; }
 .dir-up { background: #b96859; } .dir-down { background: #419185; } .dir-both { background: #87919d; } .dir-flat { background: #bdc8cb; }
+.dir-unknown { background: #9b8662; }
+.precision-note { display: block; color: var(--muted); }
 .legend, .aside-list { margin: 0; padding: 0; list-style: none; }
 .legend a, .aside-list a { display: flex; align-items: center; gap: 9px; padding: 7px 0; text-decoration: none; color: var(--ink); font-size: .9rem; }
 .legend a:hover, .aside-list a:hover { color: var(--teal); text-decoration: underline; }
@@ -164,7 +167,7 @@ dialog::backdrop { background: #183a3b65; }
   .summary-grid { gap: 10px; grid-template-columns: 1fr 1.35fr; }
   .coverage { padding: 15px; }
   .metric { padding-inline: 10px; }
-  .metric small { display: none; }
+  .metric-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 5px; }
 }
 @media (max-width: 550px) {
   .frame { width: calc(100% - 24px); }
@@ -197,6 +200,18 @@ dialog::backdrop { background: #183a3b65; }
   .fund-table td, .fund-table th { padding: 8px 4px; font-size: .875rem; }
   .fund-table .symbol { display: flex; flex-direction: column; }
   .fund-table .optional-col { display: none; }
+  .fund-directory, .fund-directory tbody { display: block; }
+  .fund-directory thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .fund-directory tr { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 6px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .fund-directory td { border: 0; padding: 0; }
+  .fund-directory .symbol { display: inline; }
+  .fund-directory .ticker { margin-left: 6px; }
+  .fund-directory .fund-activity { grid-column: 2; grid-row: 1; }
+  .fund-directory .fund-date, .fund-directory .fund-actions, .fund-directory .fund-size { color: var(--muted); font-size: .82rem; }
+  .fund-directory .fund-date { grid-column: 1/-1; }
+  .fund-directory .fund-actions { grid-column: 1/-1; }
+  .fund-directory .fund-size { display: none; }
+  .fund-directory.by-size .fund-size { display: block; grid-column: 1/-1; text-align: left; }
   .footer { margin-top: 25px; }
 }
 @media (prefers-reduced-motion: no-preference) { a, button { transition: background-color .14s, border-color .14s; } }

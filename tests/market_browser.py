@@ -51,6 +51,11 @@ def accept(page, base, device):
     expect(event).to_contain_text("11,967")
     expect(event).to_contain_text("14,258")
     no_horizontal_overflow(page)
+    page.go_back()
+    expect(page.locator(".chip[aria-current]")).to_have_text("僅一檔")
+    expect(page.locator("#open-search")).to_be_focused()
+    page.go_forward()
+    expect(page.locator(".detail-header h1")).to_contain_text("3231")
     page.get_by_role("button", name=re.compile("^追蹤 ")).click()
     page.get_by_role("navigation", name="主要導覽").get_by_role("link", name="我的追蹤").click()
     expect(page.get_by_role("table", name="追蹤的股票")).to_contain_text("3231")
@@ -79,6 +84,26 @@ def accept(page, base, device):
     ready(page)
     expect(page.locator("#content")).to_contain_text("2,291")
 
+    # The live market file only retains recent AUM. Pin an as-of value to test a historical edition.
+    page.route("**/etf_market_data.json", lambda route: route.fulfill(json={"data": [
+        {"etf_code": "00981A", "aum_billion": 2730.98, "aum_date": "2026/11/26"}
+    ]}))
+    page.get_by_role("navigation", name="主要導覽").get_by_role("link", name="ETF 清單").click()
+    page.locator('select[data-set="sort"]').select_option("aum")
+    size = page.locator(".by-size tbody tr").first.locator(".fund-size")
+    expect(size).to_be_visible()
+    expect(size).to_contain_text("2,730.98")
+    expect(size).to_contain_text("2026-11-26")
+    no_horizontal_overflow(page)
+
+    page.route("**/data_2026-11-13.json", lambda route: route.fulfill(status=503, body="temporary"))
+    page.goto(base + "index.html?date=2026-11-13")
+    expect(page.get_by_role("heading", name="報表暫時無法顯示")).to_be_visible()
+    expect(page.locator("#report-date")).to_be_enabled()
+    page.unroute("**/data_2026-11-13.json")
+    page.get_by_role("button", name="重新載入").click()
+    expect(page.get_by_role("heading", name="每日持股異動")).to_be_visible()
+
     page.goto(base + "report_2026-11-18.html")
     page.locator('a[href="index.html"]').click()
     expect(page.locator("#report-date")).to_have_value("2026-11-18")
@@ -91,7 +116,8 @@ def accept(page, base, device):
 
 if __name__ == "__main__":
     ARTIFACTS.mkdir(exist_ok=True)
-    handler = partial(SimpleHTTPRequestHandler, directory=str(ROOT / "docs"))
+    # A path prefix exercises the same relative links and fetches used by project Pages.
+    handler = partial(SimpleHTTPRequestHandler, directory=str(ROOT))
     with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server, sync_playwright() as playwright:
         threading.Thread(target=server.serve_forever, daemon=True).start()
         browser = playwright.chromium.launch(executable_path=shutil.which("google-chrome"), headless=True)
@@ -99,7 +125,7 @@ if __name__ == "__main__":
             for device, size in [("mobile", {"width": 390, "height": 844}), ("desktop", {"width": 1440, "height": 960})]:
                 page = browser.new_page(viewport=size, locale="zh-TW", is_mobile=device == "mobile", has_touch=device == "mobile")
                 try:
-                    accept(page, f"http://127.0.0.1:{server.server_port}/", device)
+                    accept(page, f"http://127.0.0.1:{server.server_port}/docs/", device)
                 finally:
                     page.close()
         finally:
