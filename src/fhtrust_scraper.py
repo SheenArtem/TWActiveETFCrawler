@@ -22,7 +22,9 @@ from .stock_markets import market_of, normalize_code
 # 復華投信 ETF 基金代碼對照表
 FHTRUST_ETF_CODES = {
     '00991A': 'ETF23',  # 復華台灣未來50主動式ETF基金
+    '00418A': 'ETF27',  # 復華台灣新星主動式ETF基金（2026/11/11 掛牌）
     # 未來可以新增其他復華投信 ETF
+    # 查法：下載 /api/assetsExcel/<fund_id>/<YYYYMMDD>，Excel 第 1 列是基金全名與證券代碼
 }
 
 

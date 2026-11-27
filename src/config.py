@@ -34,7 +34,8 @@ LOG_PATH = BASE_DIR / os.getenv("LOG_PATH", "logs/etf_crawler.log")
 # 判定為投信尚未更新當日 PCF，不寫入並記錄警告，避免把前一日資料標成當日。
 #
 # 只對「用請求日期當資料日期」的來源生效。2026-10-27（摩根改讀 NAV Date、野村與復華補齊來源日期）後：
-# - source_dated 豁免（22/23 檔，scraper 從來源取得日期）：中信、富邦、第一金、聯博、
+# - source_dated 豁免（22/23 檔；2026-11-27 新增群益、台新、復華各一檔後為 25/26。scraper 從來源取得日期）：
+#   中信、富邦、第一金、聯博、
 #   統一（Excel 表頭與 API 的 TranDate，含全球型 00988A）、台新、安聯、群益（buyback API 路徑）、
 #   兆豐、凱基、永豐（三家都是自頁面取得基準日）、摩根（PCF 表頭 NAV Date）、
 #   野村（API NavDate）、復華（Excel 表頭 日期:）。
