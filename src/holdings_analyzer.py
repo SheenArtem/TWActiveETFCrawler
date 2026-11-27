@@ -231,7 +231,7 @@ class HoldingsAnalyzer:
         return lines
 
     def generate_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str,
-                        stale_etfs: Optional[List[dict]] = None) -> str:
+                        stale_etfs: Optional[List[dict]] = None, empty_note: Optional[str] = None) -> str:
         """
         生成變動報告
 
@@ -244,7 +244,7 @@ class HoldingsAnalyzer:
             str: 格式化的報告文字
         """
         if not changes_dict:
-            return "\n".join([f"\n=== {date} ETF成分股變動報告 ===\n", "無變動", ""] + self._stale_lines(stale_etfs))
+            return "\n".join([f"\n=== {date} ETF成分股變動報告 ===\n", empty_note or "無變動", ""] + self._stale_lines(stale_etfs))
 
         report_lines = [
             f"\n{'='*60}",
@@ -334,7 +334,7 @@ class HoldingsAnalyzer:
         return lines
 
     def generate_markdown_report(self, changes_dict: Dict[str, List[HoldingChange]], date: str,
-                                 stale_etfs: Optional[List[dict]] = None) -> str:
+                                 stale_etfs: Optional[List[dict]] = None, empty_note: Optional[str] = None) -> str:
         """
         生成 Markdown 格式的變動報告（提案 A：簡潔列表式）
 
@@ -350,7 +350,7 @@ class HoldingsAnalyzer:
 
         if not changes_dict:
             return "\n".join(
-                [f"# ETF 持股變動追蹤 📊\n\n> 最後更新：{date}\n\n## {date} 變動摘要\n\n**本日無變動**\n"]
+                [f"# ETF 持股變動追蹤 📊\n\n> 最後更新：{date}\n\n## {date} 變動摘要\n\n**{empty_note or '本日無變動'}**\n"]
                 + self._stale_markdown(stale_etfs)
             )
 

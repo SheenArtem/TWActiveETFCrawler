@@ -16,6 +16,7 @@
 週末（假日又會產生假報表）。颱風假不在證交所的清單內，發生時手動補上。
 """
 from datetime import date, timedelta
+from typing import Optional
 
 from loguru import logger
 
@@ -85,6 +86,14 @@ def last_trading_day(day: date) -> date:
     while not is_trading_day(day):
         day -= timedelta(days=1)
     return day
+
+
+def confirmed_previous_trading_day(day: date) -> Optional[date]:
+    """已收錄休市日的交易日才有可確認的前一交易日，供報表標示比較期間。"""
+    if day.year not in TWSE_CLOSED_WEEKDAYS or not is_trading_day(day):
+        return None
+    previous = last_trading_day(day - timedelta(days=1))
+    return previous if previous.year in TWSE_CLOSED_WEEKDAYS else None
 
 
 def next_trading_day(day: date) -> date:
