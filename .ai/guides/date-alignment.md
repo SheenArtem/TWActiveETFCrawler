@@ -131,7 +131,7 @@ UPSERT 區塊守著這件事。
 | `ReportManager.generate_all_reports()`（每日班次） | `build_etf_holdings()` | `detect_changes_batch()`，再拿掉沒有新資料的 ETF（`find_stale_etfs()`） |
 | `scripts/pinned_reports.py`（重生已發布的報表、本機回補兆豐） | 開暫存 DB 後呼叫 `generate_all_reports()` | 同上 |
 | `scripts/regenerate_reports.py`（名稱或資料修正後重生） | 轉交 `pinned_reports.regenerate()` | 同上 |
-| `scripts/render_report_pages.py`（更新日報版面） | 已發布的逐日 JSON | 只重繪 HTML，沿用報表當時的數據與產生時間 |
+| `scripts/render_report_pages.py`（更新首頁與日報的共用版面） | 已發布的逐日 JSON | 從 `src/templates/site.html` 重繪頁面，沿用報表當時的數據與產生時間 |
 | `HTMLReportGenerator.generate_dashboard_data()` | 沿用傳入的 `etf_holdings` | 由 `etf_holdings` 取 `data_date` 標到 `detailed_changes` |
 
 新版日報的 `report_schema_version` 為 2。每檔的 `previous_data_date` 是分析器實際使用的上一個持股日，

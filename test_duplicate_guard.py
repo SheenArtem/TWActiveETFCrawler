@@ -1026,6 +1026,8 @@ def check_stale_etfs_not_repeated():
 
 def check_report_comparison_periods():
     """日報分別保留來源比較日與上一份報表可見的日期，包含首次、無異動與跨期後恢復。"""
+    from urllib.parse import parse_qs, urlsplit
+
     from bs4 import BeautifulSoup
     from src.report_manager import ReportManager
 
@@ -1065,14 +1067,31 @@ def check_report_comparison_periods():
     html = (docs / "report_2026-11-18.html").read_text(encoding="utf-8")
     page = BeautifulSoup(html, "html.parser")
     styles = {link.get("href", "").removeprefix("./") for link in page.select('link[rel="stylesheet"]')}
-    check("新產製日報沿用全站品牌及導覽，靜態內容可從異動、基金披露查閱",
+    article = page.select_one('main.frame #content > article#daily-report[data-report-date="2026-11-18"]')
+    nav = page.select_one('.masthead .primary-nav')
+    check("新產製日報沿用全站品牌、主題、日期與搜尋，靜態揭露仍可單獨閱讀",
           {'assets/site.css', 'assets/report.css'} <= styles
-          and page.select_one('.masthead .topbar.frame .brand') and page.select_one('.masthead .primary-nav')
-          and page.select_one('main.frame h1') and '持股日報' in page.select_one('main.frame h1').get_text()
-          and page.select_one('main #activity') and page.select_one('main #funds details.fund#etf-00404A table'))
+          and page.select_one('.masthead .topbar.frame .brand') and nav
+          and len(nav.select('a[data-view]')) == 6 and nav.select_one('[data-view="report"][aria-current="page"]')
+          and page.select_one('.masthead [data-theme-choice="light"][aria-label="白天模式"]')
+          and page.select_one('.masthead [data-theme-choice="dark"][aria-label="夜間模式"]')
+          and page.select_one('#open-search') and page.select_one('dialog#search-dialog')
+          and page.select_one('#report-date option[value="2026-11-18"]')
+          and page.select_one('noscript time[datetime="2026-11-18"]')
+          and article and article.select_one('h1') and article.h1.get_text(strip=True) == '持股日報'
+          and article.select_one('#activity') and article.select_one('#funds details.fund#etf-00404A table'))
+
+    def destination(link):
+        url = urlsplit(link['href'])
+        return (url.path.removeprefix('./'), parse_qs(url.query))
+
+    overview = nav.select_one('[data-view="overview"]') if nav else None
+    links = [destination(a) for a in article.select('a[href]')] if article else []
     check("靜態日報可開同日 ETF、完整海外股票代號與兩期變動",
-          'href="index.html?date=2026-11-18"' in html and 'view=etf&amp;code=00404A' in html
-          and 'view=stock&amp;code=3308+HK' in html and '2026-11-10 → 2026-11-18 · 跨期比較' in html)
+          overview and destination(overview) == ('index.html', {'date': ['2026-11-18']})
+          and all(('index.html', {'date': ['2026-11-18'], 'view': [view], 'code': [code]}) in links
+                  for view, code in [('etf', '00404A'), ('stock', '3308 HK')])
+          and '2026-11-10 → 2026-11-18 · 跨期比較' in article.get_text())
 
     archive = Path(__file__).resolve().parent / "docs" / "report_2026-02-06.html"
     published = BeautifulSoup(archive.read_text(encoding="utf-8"), "html.parser")

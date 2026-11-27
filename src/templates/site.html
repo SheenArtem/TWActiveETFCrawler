@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c5148">
+  <meta name="description" content="$description">
+  <title>$title</title>
+  <link rel="icon" href="data:,">
+  <script src="./assets/theme.js"></script>
+  <link rel="stylesheet" href="./assets/site.css">
+  <link rel="stylesheet" href="./assets/research.css">
+  <link rel="stylesheet" href="./assets/report.css">
+  <script type="module" src="./assets/site.js"></script>
+  <noscript><style>.requires-js { display: none !important; }</style></noscript>
+</head>
+<body>
+  <a class="skip" href="#workspace">跳到主要內容</a>
+  <header class="masthead">
+    <div class="topbar frame">
+      <a class="brand" href="$overview" data-home><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>主動 ETF 觀測站</span></a>
+      <nav class="primary-nav" aria-label="主要導覽">
+        $navigation
+      </nav>
+      <div class="header-tools">
+        <button id="open-search" type="button" class="search-trigger requires-js" aria-haspopup="dialog" aria-label="搜尋股票或 ETF"><span class="search-icon" aria-hidden="true"></span><span>搜尋<span class="desktop-only">股票或 ETF</span></span><kbd>/</kbd></button>
+        <div class="theme-picker" role="group" aria-label="顯示主題" hidden>
+          <button type="button" data-theme-choice="light" aria-label="白天模式" title="白天模式" aria-pressed="false"><span class="theme-icon sun-icon" aria-hidden="true">☀︎</span></button>
+          <button type="button" data-theme-choice="dark" aria-label="夜間模式" title="夜間模式" aria-pressed="false"><span class="theme-icon moon-icon" aria-hidden="true">☾</span></button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="frame" id="workspace" tabindex="-1">
+    <div class="date-line">
+      <label class="date-field requires-js" for="report-date"><span>報表日期</span><select id="report-date" disabled>$date_option</select></label>
+$static_date
+      <span id="edition"></span>
+    </div>
+    <div id="content" aria-busy="$busy">$content</div>
+$no_script
+  </main>
+  <footer class="frame footer"><span>台灣主動式 ETF 持股資料</span><a href="$sources" data-view="sources">資料來源與計算方式</a></footer>
+  <dialog id="search-dialog" aria-labelledby="search-title">
+    <div class="search-head"><h2 id="search-title">搜尋股票或 ETF</h2><button id="close-search" type="button" class="plain-button">關閉</button></div>
+    <label class="search-box"><span class="search-icon" aria-hidden="true"></span><input id="search-input" type="search" aria-label="輸入代號或名稱" placeholder="輸入代號或名稱，例如 3231、緯創" autocomplete="off"></label>
+    <div id="search-results" class="search-results" aria-live="polite"></div>
+  </dialog>
+</body>
+</html>

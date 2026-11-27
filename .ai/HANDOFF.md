@@ -40,8 +40,8 @@
 3. 兆豐的長期解法未定：台灣出口 IP，或附 Akamai `Reference #` 請兆豐放行。在那之前靠開發機排程。
 4. 上面列的 28 個歷史缺口：有來源可查的（統一、復華、聯博較早的 5 天）補進 DB 後用 `pinned_reports.py --etf` 重生報表；
    聯博的歷史檔要先拿列數與權重合計跟相鄰日比（見 `data-sources.md`）。
-5. **網站改版**已接上股票／ETF 總覽、反查、追蹤與比較。總覽的「多檔調整」等篩選固定可見。每日與歷史日報共用主頁樣式，日期旁可直接開啟該期靜態日報。
-   純版面改動用 `python scripts/render_report_pages.py` 從已發布 JSON 重繪，CI 核對全庫 HTML 並走手機、桌面及免 JavaScript 閱讀流程。8 位讀者的可用性試用仍待安排。[整站計畫](guides/ui-ux-redesign-v2.md) · [競品比較](guides/ui-ux-competitive-landscape.md)
+5. **網站改版**含股票／ETF 總覽、反查、追蹤、比較與站內持股日報。主題初次跟隨系統，手動選擇後保存在瀏覽器。日報沿用同一日期選單、搜尋和導覽；舊日報網址可免 JavaScript 閱讀。
+   共用外框在 `src/templates/site.html`，用 `python scripts/render_report_pages.py` 從已發布 JSON 更新首頁與日報。CI 核對全庫 HTML 及手機／桌面操作。8 位讀者的可用性試用仍待安排。[整站計畫](guides/ui-ux-redesign-v2.md) · [競品比較](guides/ui-ux-competitive-landscape.md)
 6. 颱風休市不在證交所的清單內，當天要手動補進 `src/trading_calendar.py`（2027 的國定假日已收）。
 
 ## 限制與驗證邊界

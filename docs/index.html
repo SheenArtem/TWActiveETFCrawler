@@ -7,34 +7,45 @@
   <meta name="description" content="逐日查詢台灣主動式 ETF 持股異動、比較基金，並核對投信揭露的持股日期。">
   <title>每日持股異動 · 台灣主動 ETF 觀測站</title>
   <link rel="icon" href="data:,">
+  <script src="./assets/theme.js"></script>
   <link rel="stylesheet" href="./assets/site.css">
   <link rel="stylesheet" href="./assets/research.css">
+  <link rel="stylesheet" href="./assets/report.css">
   <script type="module" src="./assets/site.js"></script>
+  <noscript><style>.requires-js { display: none !important; }</style></noscript>
 </head>
 <body>
   <a class="skip" href="#workspace">跳到主要內容</a>
   <header class="masthead">
     <div class="topbar frame">
-      <a class="brand" href="./index.html" data-home><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>主動 ETF 觀測站</span></a>
+      <a class="brand" href="index.html" data-home><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>主動 ETF 觀測站</span></a>
       <nav class="primary-nav" aria-label="主要導覽">
-        <a href="?view=overview" data-view="overview">市場總覽</a>
-        <a href="?view=funds" data-view="funds">ETF 清單</a>
-        <a href="?view=compare" data-view="compare">比較</a>
-        <a href="?view=history" data-view="history">歷史報表</a>
-        <a href="?view=watch" data-view="watch">我的追蹤</a>
+        <a href="index.html" data-view="overview" aria-current="page">市場總覽</a>
+        <a href="index.html?view=report" data-view="report">持股日報</a>
+        <a href="index.html?view=funds" data-view="funds">ETF 清單</a>
+        <a href="index.html?view=compare" data-view="compare">比較</a>
+        <a href="index.html?view=history" data-view="history">歷史報表</a>
+        <a href="index.html?view=watch" data-view="watch">我的追蹤</a>
       </nav>
-      <button id="open-search" type="button" class="search-trigger" aria-haspopup="dialog"><span class="search-icon" aria-hidden="true"></span><span>搜尋<span class="desktop-only">股票或 ETF</span></span><kbd>/</kbd></button>
+      <div class="header-tools">
+        <button id="open-search" type="button" class="search-trigger requires-js" aria-haspopup="dialog" aria-label="搜尋股票或 ETF"><span class="search-icon" aria-hidden="true"></span><span>搜尋<span class="desktop-only">股票或 ETF</span></span><kbd>/</kbd></button>
+        <div class="theme-picker" role="group" aria-label="顯示主題" hidden>
+          <button type="button" data-theme-choice="light" aria-label="白天模式" title="白天模式" aria-pressed="false"><span class="theme-icon sun-icon" aria-hidden="true">☀︎</span></button>
+          <button type="button" data-theme-choice="dark" aria-label="夜間模式" title="夜間模式" aria-pressed="false"><span class="theme-icon moon-icon" aria-hidden="true">☾</span></button>
+        </div>
+      </div>
     </div>
   </header>
   <main class="frame" id="workspace" tabindex="-1">
     <div class="date-line">
-      <label class="date-field" for="report-date"><span>報表日期</span><select id="report-date" disabled><option>載入中</option></select></label>
+      <label class="date-field requires-js" for="report-date"><span>報表日期</span><select id="report-date" disabled><option>載入中</option></select></label>
+
       <span id="edition"></span>
     </div>
-    <div id="content" aria-busy="true"><div class="loading" role="status">正在讀取持股報表…</div></div>
-    <noscript>互動分析需要 JavaScript。你也可以從<a href="reports_index.json">報表日期索引</a>查閱日期，再開啟同目錄的 report_日期.html 靜態日報。</noscript>
+    <div id="content" aria-busy="true"><div class="loading requires-js" role="status">正在讀取持股報表…</div></div>
+    <noscript>互動查詢需要 JavaScript。可從<a href="reports_index.json">報表日期索引</a>查閱日期，再直接開啟同目錄的 report_日期.html 日報。</noscript>
   </main>
-  <footer class="frame footer"><span>台灣主動式 ETF 持股資料</span><a href="?view=sources" data-view="sources">資料來源與計算方式</a></footer>
+  <footer class="frame footer"><span>台灣主動式 ETF 持股資料</span><a href="index.html?view=sources" data-view="sources">資料來源與計算方式</a></footer>
   <dialog id="search-dialog" aria-labelledby="search-title">
     <div class="search-head"><h2 id="search-title">搜尋股票或 ETF</h2><button id="close-search" type="button" class="plain-button">關閉</button></div>
     <label class="search-box"><span class="search-icon" aria-hidden="true"></span><input id="search-input" type="search" aria-label="輸入代號或名稱" placeholder="輸入代號或名稱，例如 3231、緯創" autocomplete="off"></label>

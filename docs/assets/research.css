@@ -1,7 +1,7 @@
 .research-header { margin-bottom: 18px; }
 .research-header h1 { font-size: clamp(1.65rem, 3vw, 2.55rem); line-height: 1.25; }
 .research-header .symbol { font: 600 .55em/1.4 ui-monospace, Consolas, monospace; color: var(--muted); }
-.research-watch[aria-pressed="true"] { background: var(--tint); border-color: #a3c5b6; }
+.research-watch[aria-pressed="true"] { background: var(--tint); border-color: var(--tint-line); }
 .research-segments { flex-wrap: wrap; margin-bottom: 14px; }
 .research-segments a { display: inline-flex; align-items: center; min-height: 36px; }
 .research-note { line-height: 1.65; margin: 0 0 14px; }
@@ -12,11 +12,12 @@
 .research-form select { min-height: 38px; }
 .research-disclosure { margin: 10px 0 16px; }
 .research-disclosure summary { color: var(--teal); font-weight: 650; cursor: pointer; padding: 6px 0; }
+.research-disclosure summary:hover { text-decoration: underline; text-underline-offset: .2em; }
 .research-disclosure[open] summary { margin-bottom: 7px; }
 .research-table thead th:not(:first-child), .research-table tbody td { text-align: right; }
 .research-table tbody th[scope="row"] {
     background: transparent;
-    border-bottom: 1px solid #e3eaeb;
+    border-bottom: 1px solid var(--line);
     color: var(--ink);
     font-size: .94rem;
     white-space: normal;
