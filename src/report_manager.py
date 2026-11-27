@@ -3,14 +3,14 @@
 """
 from datetime import date as date_type
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import json
 import re
 from loguru import logger
 from .holdings_analyzer import HoldingsAnalyzer, HoldingChange
-from .report_generator import HTMLReportGenerator
+from .report_generator import HTMLReportGenerator, REPORT_SCHEMA_VERSION
 from .stock_markets import market_of
-from .trading_calendar import trading_days_between
+from .trading_calendar import confirmed_previous_trading_day, is_trading_day, trading_days_between
 
 
 class ReportManager:
@@ -35,7 +35,9 @@ class ReportManager:
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.docs_dir.mkdir(parents=True, exist_ok=True)
     
-    def build_etf_holdings(self, etf_info_dict: Dict[str, str], date: str) -> List[dict]:
+    def build_etf_holdings(self, etf_info_dict: Dict[str, str], date: str, *,
+                           report_schema: int = REPORT_SCHEMA_VERSION,
+                           observed_dates: Optional[Dict[str, str]] = None) -> List[dict]:
         """
         組出報表用的持股資料，逐檔回退到各自最新可得的資料日期。
 
@@ -71,7 +73,7 @@ class ReportManager:
                     f"{etf_code}: no holdings on {date}; "
                     f"falling back to its latest available date {holdings_date}"
                 )
-            etf_holdings.append({
+            entry = {
                 'etf_code': etf_code,
                 'etf_name': etf_info_dict.get(etf_code, etf_code),
                 'data_date': holdings_date,
@@ -86,14 +88,29 @@ class ReportManager:
                     }
                     for h in holdings
                 ]
-            })
+            }
+            if report_schema >= 2:
+                # 與 HoldingsAnalyzer.detect_changes() 取同檔基金的同一個比較基準。
+                previous = self.db.get_previous_trading_date(holdings_date, etf_code)
+                expected = confirmed_previous_trading_day(date_type.fromisoformat(holdings_date))
+                if not previous:
+                    comparison = 'first'
+                elif expected is None or not is_trading_day(date_type.fromisoformat(previous)):
+                    comparison = 'unknown'
+                elif previous == expected.isoformat():
+                    comparison = 'daily'
+                else:
+                    comparison = 'interval'
+                entry.update(previous_data_date=previous, comparison_kind=comparison,
+                             previous_report_data_date=(observed_dates or {}).get(etf_code))
+            etf_holdings.append(entry)
         return etf_holdings
 
-    def previous_report_data_dates(self, date: str) -> Dict[str, str]:
+    def _previous_report(self, date: str) -> Tuple[Optional[str], Dict[str, str]]:
         """
         前一份已發布報表裡各 ETF 的資料日期。
 
-        讀 docs 目錄中日期早於 date 的最新一份 `data_<日期>.json`。沒有前一份、或檔案讀不了時回空字典
+        讀 docs 目錄中日期早於 date 的最新一份 `data_<日期>.json`。沒有前一份、或檔案讀不了時回空日期與空字典
         （等於不把任何 ETF 當成沒更新）。
         """
         earlier = sorted(
@@ -101,18 +118,22 @@ class ReportManager:
             if (m := re.fullmatch(r"data_(\d{4}-\d{2}-\d{2})\.json", p.name)) and m.group(1) < date
         )
         if not earlier:
-            return {}
+            return None, {}
         previous_file = self.docs_dir / f"data_{earlier[-1]}.json"
         try:
             payload = json.loads(previous_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
             logger.warning(f"Cannot read previous report {previous_file} ({type(e).__name__}: {e}); "
                            f"no ETF will be treated as not updated")
-            return {}
-        return {
+            return None, {}
+        return earlier[-1], {
             e["etf_code"]: e["data_date"]
             for e in payload.get("etf_holdings", []) if e.get("data_date")
         }
+
+    def previous_report_data_dates(self, date: str) -> Dict[str, str]:
+        """前一份可讀報表內的逐檔來源日。"""
+        return self._previous_report(date)[1]
 
     @staticmethod
     def find_stale_etfs(etf_holdings: List[dict], previous_data_dates: Dict[str, str], date: str) -> List[dict]:
@@ -145,7 +166,11 @@ class ReportManager:
         changes_dict: Dict[str, List[HoldingChange]],
         date: str,
         append_txt: bool = False,
-        previous_data_dates: Optional[Dict[str, str]] = None
+        previous_data_dates: Optional[Dict[str, str]] = None,
+        *,
+        previous_report_date: Optional[str] = None,
+        report_schema: int = REPORT_SCHEMA_VERSION,
+        complete_changes: bool = False,
     ):
         """
         生成所有格式的報告
@@ -156,20 +181,38 @@ class ReportManager:
             append_txt: 是否追加到 TXT 報告（用於同一天多次更新）
             previous_data_dates: 上一份報表各 ETF 的資料日期，用來判斷哪些 ETF 沒有新資料；
                 不給就讀 docs 目錄裡的前一份報表（重生歷史報表的工具要自己給，見 scripts/pinned_reports.py）
+            complete_changes: 已比較所有追蹤基金。單家投信的入口只分析一部分，產生整站日報時補齊其餘基金。
         """
-        if not changes_dict:
-            logger.info("No changes to report")
-            return
-
         # 取得 ETF 資訊
         etf_info = self.db.get_active_etfs()
         etf_info_dict = {e['etf_code']: e['etf_name'] for e in etf_info}
 
         # 持股總覽先組好：要靠各檔的 data_date 找出自上一份報表以來沒有新資料的 ETF，
         # 它們的變動不重列（見 find_stale_etfs），三種格式的報告與索引都用過濾後的變動。
-        etf_holdings = self.build_etf_holdings(etf_info_dict, date)
+        if previous_report_date is None:
+            previous_report_date, observed_dates = self._previous_report(date)
+        else:
+            # 歷史重生使用暫存輸出目錄，發布時的前一份報表由呼叫端提供。
+            observed_dates = previous_data_dates or {}
         if previous_data_dates is None:
-            previous_data_dates = self.previous_report_data_dates(date)
+            previous_data_dates = observed_dates
+        etf_holdings = self.build_etf_holdings(etf_info_dict, date, report_schema=report_schema,
+                                              observed_dates=observed_dates)
+        if report_schema >= 2:
+            has_new_snapshot = any(
+                etf['data_date'] == date or (
+                    previous_report_date and etf['data_date'] > observed_dates.get(etf['etf_code'], '')
+                ) for etf in etf_holdings
+            )
+            if not is_trading_day(date_type.fromisoformat(date)) or not has_new_snapshot:
+                logger.info("No new holdings snapshot to report")
+                return
+            if not complete_changes:
+                remaining = [etf['etf_code'] for etf in etf_holdings
+                             if etf['previous_data_date'] and etf['etf_code'] not in changes_dict]
+                changes_dict = {**changes_dict, **self.analyzer.detect_changes_batch(remaining, date)}
+        elif not changes_dict:
+            return
         stale_etfs = self.find_stale_etfs(etf_holdings, previous_data_dates, date)
         if stale_etfs:
             stale_codes = {e['etf_code'] for e in stale_etfs}
@@ -180,7 +223,8 @@ class ReportManager:
             )
 
         # 1. 生成純文字報告（向後兼容）
-        txt_report = self.analyzer.generate_report(changes_dict, date, stale_etfs)
+        empty_note = '本期沒有可列出的持股異動。逐檔持股日與比較基準請見日報。' if report_schema >= 2 else None
+        txt_report = self.analyzer.generate_report(changes_dict, date, stale_etfs, empty_note)
         txt_file = self.reports_dir / f"changes_{date}.txt"
         mode = 'a' if append_txt and txt_file.exists() else 'w'
         with open(txt_file, mode, encoding='utf-8') as f:
@@ -190,7 +234,7 @@ class ReportManager:
         logger.info(f"TXT report saved to: {txt_file}")
         
         # 2. 生成 Markdown 報告
-        md_report = self.analyzer.generate_markdown_report(changes_dict, date, stale_etfs)
+        md_report = self.analyzer.generate_markdown_report(changes_dict, date, stale_etfs, empty_note)
         md_file = self.reports_dir / f"changes_{date}.md"
         
         # Markdown 不追加，每次都完整生成
@@ -210,7 +254,9 @@ class ReportManager:
             date,
             etf_info_dict,
             etf_holdings,
-            stale_etfs
+            stale_etfs,
+            report_schema=report_schema,
+            previous_report_date=previous_report_date,
         )
         logger.info(f"HTML report saved to: {html_file}")
         
@@ -260,9 +306,6 @@ class ReportManager:
         
         # 按日期排序（最新的在前）
         reports.sort(key=lambda x: x['date'], reverse=True)
-        
-        # 只保留最近 90 天的記錄
-        reports = reports[:90]
         
         # 儲存索引
         with open(index_file, 'w', encoding='utf-8') as f:

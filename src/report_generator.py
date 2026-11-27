@@ -1,12 +1,18 @@
 """
 報告生成器模組 - 生成 HTML 格式的視覺化報告
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 from pathlib import Path
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date as date_type, datetime, timedelta, timezone
+from html import escape
+from urllib.parse import urlencode
 from .holdings_analyzer import HoldingChange
 from .stock_markets import lot_unit, market_of
+from .trading_calendar import confirmed_previous_trading_day
+
+
+REPORT_SCHEMA_VERSION = 2
 
 
 class HTMLReportGenerator:
@@ -28,7 +34,10 @@ class HTMLReportGenerator:
         date: str,
         etf_info_dict: Dict[str, str],
         etf_holdings: List[dict] = None,
-        stale_etfs: List[dict] = None
+        stale_etfs: List[dict] = None,
+        *,
+        report_schema: int = REPORT_SCHEMA_VERSION,
+        previous_report_date: Optional[str] = None,
     ) -> dict:
         """
         生成儀表板所需的 JSON 資料
@@ -44,6 +53,15 @@ class HTMLReportGenerator:
             dict: 包含所有圖表資料的字典
         """
         total_changes = sum(len(changes) for changes in changes_dict.values())
+
+        def report_lots(shares, lots):
+            # 每一股等於 0.001 張／千股。歷史格式保留原先的兩位小數。
+            return shares / 1000 if report_schema >= 2 and shares is not None else round(lots, 2)
+
+        def increases(change):
+            if report_schema >= 2:
+                return change.change_type == 'SHARES_UP'
+            return change.lots_diff > 0
         
         # 1. 變動分布數據（圓餅圖）
         change_distribution = []
@@ -76,17 +94,16 @@ class HTMLReportGenerator:
                     etf_detail = {
                         'etf_code': etf_code,
                         'etf_name': etf_name,
-                        'adjustment': round(change.lots_diff, 2),
-                        'new_lots': round(change.new_lots, 2)
+                        'adjustment': report_lots(change.shares_diff, change.lots_diff),
+                        'new_lots': report_lots(change.new_shares, change.new_lots)
                     }
                     stock_changes[code]['etf_details'].append(etf_detail)
+                    stock_changes[code]['net_change'] += etf_detail['adjustment'] if report_schema >= 2 else change.lots_diff
                     
                     if change.change_type == 'SHARES_UP':
                         stock_changes[code]['up_count'] += 1
-                        stock_changes[code]['net_change'] += change.lots_diff
                     else:
                         stock_changes[code]['down_count'] += 1
-                        stock_changes[code]['net_change'] += change.lots_diff
         
         # 補充權重資訊
         if etf_holdings:
@@ -111,7 +128,7 @@ class HTMLReportGenerator:
                 'stock_name': data['name'],
                 'market': market_of(code),
                 'total_adjustments': data['up_count'] + data['down_count'],
-                'net_change': round(data['net_change'], 2),
+                'net_change': round(data['net_change'], 3 if report_schema >= 2 else 2),
                 'etf_details': data['etf_details']
             }
             for code, data in stock_changes.items()
@@ -143,7 +160,7 @@ class HTMLReportGenerator:
             etf_changes = {
                 'etf_code': etf_code,
                 'etf_name': etf_name,
-                'data_date': holdings_date_map.get(etf_code, date),
+                'data_date': holdings_date_map.get(etf_code, None if report_schema >= 2 else date),
                 'total_changes': len(changes),
                 # market：'TW' 或 Bloomberg 市場後綴（US/JP/KS…）。海外成分股（00988A）的
                 # lots 數值同樣是 股數/1000，但單位是「千股」不是「張」，前端據此換單位名稱。
@@ -152,7 +169,7 @@ class HTMLReportGenerator:
                         'stock_code': c.stock_code,
                         'stock_name': c.stock_name,
                         'market': market_of(c.stock_code),
-                        'lots': round(c.new_lots, 2)
+                        'lots': report_lots(c.new_shares, c.new_lots)
                     }
                     for c in added
                 ],
@@ -161,7 +178,7 @@ class HTMLReportGenerator:
                         'stock_code': c.stock_code,
                         'stock_name': c.stock_name,
                         'market': market_of(c.stock_code),
-                        'lots': round(c.old_lots, 2)
+                        'lots': report_lots(c.old_shares, c.old_lots)
                     }
                     for c in removed
                 ],
@@ -170,10 +187,10 @@ class HTMLReportGenerator:
                         'stock_code': c.stock_code,
                         'stock_name': c.stock_name,
                         'market': market_of(c.stock_code),
-                        'old_lots': round(c.old_lots, 2),
-                        'new_lots': round(c.new_lots, 2),
-                        'diff': round(c.lots_diff, 2),
-                        'direction': 'up' if c.lots_diff > 0 else 'down'
+                        'old_lots': report_lots(c.old_shares, c.old_lots),
+                        'new_lots': report_lots(c.new_shares, c.new_lots),
+                        'diff': report_lots(c.shares_diff, c.lots_diff),
+                        'direction': 'up' if increases(c) else 'down'
                     }
                     for c in modified
                 ]
@@ -196,6 +213,11 @@ class HTMLReportGenerator:
         }
         if stale_etfs:
             data['stale_etfs'] = stale_etfs
+        if report_schema >= 2:
+            previous_session = confirmed_previous_trading_day(date_type.fromisoformat(date))
+            data['report_schema_version'] = report_schema
+            data['previous_trading_date'] = previous_session.isoformat() if previous_session else None
+            data['previous_report_date'] = previous_report_date
         return data
 
     def generate_daily_report(
@@ -204,7 +226,10 @@ class HTMLReportGenerator:
         date: str,
         etf_info_dict: Dict[str, str],
         etf_holdings: List[dict] = None,
-        stale_etfs: List[dict] = None
+        stale_etfs: List[dict] = None,
+        *,
+        report_schema: int = REPORT_SCHEMA_VERSION,
+        previous_report_date: Optional[str] = None,
     ) -> Path:
         """
         生成每日報告 HTML 檔案
@@ -220,7 +245,8 @@ class HTMLReportGenerator:
             Path: 生成的 HTML 檔案路徑
         """
         # 生成 JSON 資料
-        data = self.generate_dashboard_data(changes_dict, date, etf_info_dict, etf_holdings, stale_etfs)
+        data = self.generate_dashboard_data(changes_dict, date, etf_info_dict, etf_holdings, stale_etfs,
+                                            report_schema=report_schema, previous_report_date=previous_report_date)
         
         # 儲存 JSON 資料檔
         json_file = self.output_dir / f"data_{date}.json"
@@ -235,9 +261,110 @@ class HTMLReportGenerator:
             f.write(html_content)
         
         return html_file
+
+    @staticmethod
+    def _snapshot_html(data: dict) -> str:
+        """供分享、列印與離線查閱的靜態日報，所有明細指向同一報表日的互動頁。"""
+        date = data['date']
+        funds = data.get('etf_holdings', [])
+        changes = {entry['etf_code']: entry for entry in data.get('detailed_changes', [])}
+        stale = {entry['etf_code'] for entry in data.get('stale_etfs', [])}
+
+        def link(view=None, code=None):
+            query = {'date': date}
+            if view:
+                query.update(view=view, code=code)
+            return 'index.html?' + escape(urlencode(query))
+
+        def num(value, signed=False):
+            if value is None:
+                return '—'
+            prefix = '+' if signed and value > 0 else ''
+            return prefix + f'{value:,.3f}'.rstrip('0').rstrip('.')
+
+        def stock_link(stock):
+            code = stock['stock_code']
+            return (f'<a href="{link("stock", code)}">{escape(code)} '
+                    f'{escape(stock.get("stock_name") or code)}</a>')
+
+        sections = []
+        for fund in funds:
+            code = fund['etf_code']
+            period_end = fund.get('data_date')
+            period_start = fund.get('previous_data_date')
+            kind = fund.get('comparison_kind')
+            if kind == 'first':
+                period_label = f'{period_end} 首份持股，缺比較基準'
+            elif period_start and period_end:
+                label = {'daily': '相鄰交易日', 'interval': '跨期比較'}.get(kind, '交易日間隔未確認')
+                period_label = f'{period_start} → {period_end} · {label}'
+            else:
+                period_label = f'持股日 {period_end or "未提供"} · 比較期間未確認'
+            if code in stale:
+                period_label += ' · 今日未更新'
+            elif period_end and period_end < date:
+                period_label += ' · 較早的持股日'
+
+            event = changes.get(code, {})
+            event_rows = []
+            for field in ('added', 'removed', 'modified'):
+                for stock in event.get(field, []):
+                    if field == 'added':
+                        action, before, after = '新增', 0, stock['lots']
+                    elif field == 'removed':
+                        action, before, after = '移除', stock['lots'], 0
+                    else:
+                        action = '增持' if stock['direction'] == 'up' else '減持'
+                        before, after = stock['old_lots'], stock['new_lots']
+                    unit = lot_unit(stock['stock_code'])
+                    event_rows.append(
+                        f'<tr><th scope="row">{stock_link(stock)}</th><td>{action}</td>'
+                        f'<td>{num(before)} {unit}</td><td>{num(after)} {unit}</td>'
+                        f'<td>{num(after - before, signed=True)} {unit}</td></tr>'
+                    )
+            if event_rows:
+                change_table = ('<div class="table-wrap"><table><caption>兩次揭露間的持股異動</caption>'
+                                '<thead><tr><th>股票</th><th>異動</th><th>前期</th><th>本期</th><th>差額</th></tr></thead>'
+                                '<tbody>' + ''.join(event_rows) + '</tbody></table></div>')
+            elif code in stale:
+                change_table = '<p>持股沿用上次揭露。</p>'
+            elif kind in ('daily', 'interval'):
+                change_table = '<p>兩期持股數量相同。</p>'
+            else:
+                change_table = '<p>比較基準不足，可查閱本期持股。</p>'
+
+            holding_rows = []
+            for stock in fund.get('holdings', []):
+                weight = stock.get('weight')
+                weight_display = num(weight) + '%' if weight is not None else '—'
+                holding_rows.append(f'<tr><th scope="row">{stock_link(stock)}</th><td>{weight_display}</td>'
+                                    f'<td>{num(stock.get("lots"))} {lot_unit(stock["stock_code"])}</td></tr>')
+            sections.append(
+                f'<details class="fund"><summary><strong>{escape(code)} {escape(fund.get("etf_name") or code)}</strong>'
+                f'<span>{escape(period_label)}</span></summary><div class="fund-body">'
+                f'<p><a href="{link("etf", code)}">開啟 {escape(code)} 互動明細</a></p>{change_table}'
+                f'<div class="table-wrap"><table><caption>完整持股 · {len(holding_rows)} 檔</caption>'
+                '<thead><tr><th>成分股</th><th>權重</th><th>持有數量</th></tr></thead>'
+                f'<tbody>{"".join(holding_rows)}</tbody></table></div></div></details>'
+            )
+        current = sum(fund.get('data_date') == date for fund in funds)
+        stale_note = f'<p>{len(stale)} 檔 ETF 今日沒有新資料，詳見各基金的持股日。</p>' if stale else ''
+        return f"""<!doctype html>
+<html lang="zh-Hant-TW"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{escape(date)} 持股日報｜台灣主動 ETF</title><link rel="stylesheet" href="assets/report.css">
+</head><body><main><header>
+<a href="{link()}">開啟同日互動總覽</a>
+<h1>{escape(date)} 持股日報</h1>
+<p>收錄 {len(funds)} 檔 ETF，{current} 檔有當日持股。報表產生於 {escape(data['update_time'])}（台北時間）。</p>
+{stale_note}</header><h2>各 ETF 揭露與持股</h2>
+{''.join(sections)}</main></body></html>
+"""
     
     def _generate_report_html(self, data: dict) -> str:
         """生成報告 HTML 內容"""
+        if data.get('report_schema_version', 1) >= 2:
+            return self._snapshot_html(data)
         date = data['date']
         summary = data['summary']
         

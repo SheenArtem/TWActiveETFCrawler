@@ -1060,15 +1060,10 @@ def generate_consolidated_reports():
     report_mgr = ReportManager(db, REPORTS_DIR)
     all_changes_dict = report_mgr.analyzer.detect_changes_batch(etf_codes, date_str)
     
-    if all_changes_dict:
-        total_changes = sum(len(changes) for changes in all_changes_dict.values())
-        logger.info(f"Found {len(all_changes_dict)} ETFs with {total_changes} total changes")
-
-        # 生成所有格式的報告（覆蓋模式，包含完整數據）
-        report_mgr.generate_all_reports(all_changes_dict, date_str, append_txt=False)
-        logger.info("Consolidated reports generated successfully")
-    else:
-        logger.info("No changes detected across all ETFs")
+    total_changes = sum(len(changes) for changes in all_changes_dict.values())
+    logger.info(f"Found {len(all_changes_dict)} ETFs with {total_changes} total changes")
+    # 新持股即使與上期相同，仍要能在當期頁面查閱來源日與完整持股。
+    report_mgr.generate_all_reports(all_changes_dict, date_str, append_txt=False, complete_changes=True)
 
     # 更新 ETF 市場資料（基金規模、淨值等）
     update_etf_market_data(db)

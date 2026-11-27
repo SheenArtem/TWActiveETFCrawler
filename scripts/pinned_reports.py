@@ -51,6 +51,7 @@ from loguru import logger  # noqa: E402
 
 from src.database import Database  # noqa: E402
 from src.report_manager import ReportManager  # noqa: E402
+from src.report_generator import REPORT_SCHEMA_VERSION  # noqa: E402
 
 DB_PATH = ROOT / "data" / "etf_holdings.db"
 DOCS_DIR = ROOT / "docs"
@@ -58,7 +59,6 @@ REPORTS_DIR = ROOT / "reports"
 
 # 07-30 以前發布的報表沒有 market 欄位（前端從代號判斷單位）。比對內容時不看這個欄位。
 IGNORED_KEYS = {"market"}
-INDEX_SIZE = 90  # 與 ReportManager._update_reports_index 相同
 
 
 def published_dates(docs_dir: Path = DOCS_DIR) -> List[str]:
@@ -187,6 +187,7 @@ def regenerate(
                 continue
 
             published = {} if creating else json.loads(published_json.read_text(encoding="utf-8"))
+            report_schema = REPORT_SCHEMA_VERSION if creating else published.get("report_schema_version", 1)
             pub_holdings = _by_etf(published.get("etf_holdings"))
             pub_changes = _by_etf(published.get("detailed_changes"))
             pub_stale = _by_etf(published.get("stale_etfs"))
@@ -221,23 +222,25 @@ def regenerate(
             manager = ReportManager(Database(str(out_root / "temp.db")), out_reports, out_docs)
             etf_names = {e["etf_code"]: e["etf_name"] for e in manager.db.get_active_etfs()}
             changes = manager.analyzer.detect_changes_batch(list(etf_names), report_date)
-            if not changes:
-                result.update(status="failed", problems=[
-                    "這一天沒有任何變動，產生器不會寫出報表；要不要留這份報表得人工決定"])
+            manager.generate_all_reports(changes, report_date, append_txt=False,
+                                         previous_data_dates=previous_data_dates,
+                                         previous_report_date=earlier[-1] if earlier else None,
+                                         report_schema=report_schema, complete_changes=True)
+
+            new_json = out_docs / f"data_{report_date}.json"
+            if not new_json.exists():
+                result.update(status="failed", problems=["這一天沒有可發布的持股報表。"])
                 failed_at = failed_at or report_date
                 shutil.rmtree(out_root, ignore_errors=True)
                 continue
-            manager.generate_all_reports(changes, report_date, append_txt=False,
-                                         previous_data_dates=previous_data_dates)
-
-            new_json = out_docs / f"data_{report_date}.json"
             data = json.loads(new_json.read_text(encoding="utf-8"))
             new_holdings = _by_etf(data.get("etf_holdings"))
             new_changes = _by_etf(data.get("detailed_changes"))
             new_stale = _by_etf(data.get("stale_etfs"))
             # 沒有套「沒有新資料就不重列」時的變動清單：舊規則發布的報表要拿它來對
             unfiltered = _by_etf(manager.html_generator.generate_dashboard_data(
-                changes, report_date, etf_names, data.get("etf_holdings"))["detailed_changes"]) if new_stale else {}
+                changes, report_date, etf_names, data.get("etf_holdings"),
+                report_schema=report_schema)["detailed_changes"]) if new_stale else {}
 
             problems, notes = [], []
             for code in sorted(set(pub_holdings) | set(new_holdings) | set(pub_changes) | set(new_changes)
@@ -308,7 +311,7 @@ def regenerate(
                 index_path = docs_dir / "reports_index.json"
                 index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.exists() else []
                 merged = sorted([row for row in index if row["date"] != report_date] + [entry],
-                                key=lambda row: row["date"], reverse=True)[:INDEX_SIZE]
+                                key=lambda row: row["date"], reverse=True)
                 if merged != index:
                     index_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8",
                                           newline="\n")
