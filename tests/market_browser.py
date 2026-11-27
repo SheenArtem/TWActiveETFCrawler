@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "ui-screenshots"
 
 
+class PagesHandler(SimpleHTTPRequestHandler):
+    # The Windows workstation serves .mjs as text/plain with python -m http.server.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".mjs": "text/plain"}
+
+
 def ready(page):
     expect(page.locator("#content")).to_have_attribute("aria-busy", "false")
     expect(page.get_by_role("heading", name="報表暫時無法顯示")).to_have_count(0)
@@ -95,6 +100,7 @@ def accept(page, base, device):
     expect(size).to_contain_text("2,730.98")
     expect(size).to_contain_text("2026-11-26")
     no_horizontal_overflow(page)
+    page.screenshot(path=ARTIFACTS / f"{device}-directory.png", animations="disabled")
 
     page.route("**/data_2026-11-13.json", lambda route: route.fulfill(status=503, body="temporary"))
     page.goto(base + "index.html?date=2026-11-13")
@@ -117,7 +123,7 @@ def accept(page, base, device):
 if __name__ == "__main__":
     ARTIFACTS.mkdir(exist_ok=True)
     # A path prefix exercises the same relative links and fetches used by project Pages.
-    handler = partial(SimpleHTTPRequestHandler, directory=str(ROOT))
+    handler = partial(PagesHandler, directory=str(ROOT))
     with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server, sync_playwright() as playwright:
         threading.Thread(target=server.serve_forever, daemon=True).start()
         browser = playwright.chromium.launch(executable_path=shutil.which("google-chrome"), headless=True)

@@ -1,4 +1,4 @@
-import { snapshotChanges } from './market-data.mjs';
+import { snapshotChanges } from './market-data.js';
 
 const changeLabels = new Map([
     ['added', '新增'], ['removed', '移除'], ['increased', '增持'], ['decreased', '減持'],

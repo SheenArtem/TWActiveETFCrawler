@@ -1,6 +1,6 @@
-import {getDay, getIndex, getMarket, getPeriod} from './market-data.mjs';
-import {renderOverview, renderFunds, renderSources} from './overview.mjs';
-import {renderResearch} from './research-views.mjs';
+import {getDay, getIndex, getMarket, getPeriod} from './market-data.js';
+import {renderOverview, renderFunds, renderSources} from './overview.js';
+import {renderResearch} from './research-views.js';
 
 const $ = id => document.getElementById(id);
 const names = {overview:'每日持股異動',funds:'ETF 清單',etf:'ETF 明細',stock:'個股明細',compare:'持股比較',history:'歷史報表',watch:'我的追蹤',sources:'資料來源與狀態'};

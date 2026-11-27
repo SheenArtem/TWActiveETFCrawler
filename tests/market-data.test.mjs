@@ -17,7 +17,7 @@ async function model(t, files) {
         const payload = files ? files.get(key) : JSON.parse(await readFile(url, 'utf8'));
         return {ok: true, status: 200, json: async () => payload};
     });
-    const module = new URL('../docs/assets/market-data.mjs', import.meta.url);
+    const module = new URL('../docs/assets/market-data.js', import.meta.url);
     module.searchParams.set('case', String(++instance));
     return {api: await import(module.href), requests};
 }
